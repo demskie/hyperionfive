@@ -1,0 +1,51 @@
+// protobuf.proto
+// cd D:\OneDrive\GoPrototypes\src\ProtobufTest
+// D:\OneDrive\GoPrototypes\bin\protoc --go_out=D:\OneDrive\GoPrototypes\src\ProtobufTest\ protobuf.proto
+// cd D:\OneDrive\GoPrototypes\bin\
+
+syntax = "proto3";
+package main;
+
+
+message Planet {
+    string name = 1;
+    double localX = 2;
+    double localY = 3;
+    string owner = 4;
+    double population = 5;
+    int32 type = 6;
+    int32 food = 7;
+}
+
+
+message Spaceship {
+    string name = 1;
+    double localX = 2;
+    double localY = 3;
+    string owner = 4;
+    double population = 5;
+    bool weapons = 6;
+    bool engines = 7;
+    bool shields = 8;
+    int32 type = 9;
+    int32 status = 10;
+}
+
+
+message SolarSystem {
+    string name = 1;
+    double interX = 2;
+    double interY = 3;
+    repeated Planet planetslice = 4;
+    repeated Spaceship spaceshipslice = 5;
+    int32 type = 6;
+}
+
+
+message Galaxy {
+    string name = 1;
+    double globalX = 2;
+    double globalY = 3;
+    repeated SolarSystem solarsystemslice = 4;
+    int32 type = 5;
+}
