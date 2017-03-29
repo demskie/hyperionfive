@@ -9,8 +9,8 @@
 		<!-- below disables webapp mode as it is not compatibile with default Google OAuth signin -->
 		<meta name="apple-mobile-web-app-capable" content="no">
 		<title>hyperion5 game</title>
-		<link href='http://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
-		<link href='http://fonts.googleapis.com/css?family=Roboto+Condensed' rel='stylesheet' type='text/css'>
+		<link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
+		<link href='https://fonts.googleapis.com/css?family=Roboto+Condensed' rel='stylesheet' type='text/css'>
 		<style>
 			body {
 				font-family: 'Roboto Condensed', sans-serif;
@@ -84,9 +84,9 @@
 
 				// send data to loadbalance.hyperion5.com
 				function contactLoadBalancer() {
-					var socket = new WebSocket("ws://hyperion5.com/loadbalance");
+					var socket = new WebSocket("wss://hyperion5.com/loadbalance");
 					socket.onopen = function(event) {
-						console.log("sending id_token to ws://hyperion5.com/loadbalance");
+						console.log("sending id_token to wss://hyperion5.com/loadbalance");
 						socket.send(JSON.stringify(
 							{
 								"login_type" : login_type,
