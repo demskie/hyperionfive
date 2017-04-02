@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/tls"
+	"net"
 	"regexp"
 	"sync"
 
@@ -23,14 +26,16 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"google.golang.org/api/oauth2/v2"
-	//"golang.org/x/crypto/acme/autocert"
+
+	cryptorand "crypto/rand"
+	// defined in protobuf.pb.go
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// defining global variables
+// defining global variables for CLI arguments
 var (
 	inputFilename    string
 	outputFilename   string
@@ -41,19 +46,46 @@ var (
 	debugModeBool    bool
 )
 
+// FirewallClientValues defines values for firewalling
+type FirewallClientValues struct {
+	mutex                 sync.RWMutex
+	failedChallengeCount  uint16
+	failedChallengeTime   int64
+	failedGoogleAuthCount uint16
+	failedGoogleAuthTime  int64
+}
+
+// defining global variables for internal firewall
+var (
+	clientBlacklist         map[string]FirewallClientValues
+	clientBlacklistMutex    sync.RWMutex
+	clientSessionCount      map[string]uint16
+	clientSessionCountMutex sync.RWMutex
+)
+
 func init() {
+
 	// define commandline flags to parse for
-	inputFilePtr := flag.String("input", "", "specify data source (either json or blob)")
-	outputFilePtr := flag.String("output", "", "specify export destination (either json or blob)")
-	defaultAudience := "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
-	googleAudiencePtr := flag.String("audience", defaultAudience, "specify google oauth 'audience'")
-	authPasswordPtr := flag.String("password", "", "specify password for authentication purposes (not optional)")
+	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
+	outputFilePtr := flag.String("output", "", "specify export destination, either json or blob")
+	googleAudiencePtr := flag.String("audience", "", "specify google oauth audience")
+	authPasswordPtr := flag.String("password", "", "specify password for authentication purposes")
 	loadBalanceBoolPtr := flag.Bool("loadbalance", false, "enable frontend loadbalancer mode")
-	createGalaxyBoolPtr := flag.Bool("generate", false, "enable generation of new Galaxy (dangerous)")
+	createGalaxyBoolPtr := flag.Bool("generate", false, "enable generation of new Galaxy, dangerous!")
 	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
 
-	// pull flags that were attached to commandline
+	// pull flags attached to CLI invocation
 	flag.Parse()
+
+	// handle default and/or invalid parameters
+	if *googleAudiencePtr == "" {
+		*googleAudiencePtr = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
+	}
+	if *authPasswordPtr == "" {
+		logInfo("(init) FATALERROR: no password provided")
+		waitForLogging.Wait()
+		os.Exit(1)
+	}
 
 	// convert pointers to values and store in global variables
 	inputFilename = *inputFilePtr
@@ -63,13 +95,20 @@ func init() {
 	loadBalanceBool = *loadBalanceBoolPtr
 	createGalaxyBool = *createGalaxyBoolPtr
 	debugModeBool = *debugModeBoolPtr
+
+	// initializing global IP blacklist with example IP
+	clientBlacklist = map[string]FirewallClientValues{}
+
+	// initializing global IP session count
+	clientSessionCount = make(map[string]uint16)
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// defining global variables
+// defining core global variables
 var (
 	randomSeed     *rand.Rand
 	currentGalaxy  Galaxy
@@ -79,9 +118,6 @@ var (
 )
 
 func main() {
-	// initializing main data structures, locks, etc
-	currentGalaxy = Galaxy{}
-	//futureGalaxy := Galaxy{}
 
 	// branch here based on command line invocation
 	if loadBalanceBool == true {
@@ -107,7 +143,7 @@ func startLoadBalancingMode() {
 	muxSecure := http.NewServeMux()
 
 	// to enable perfect forward secrecy it's necessary to add 'Strict-Transport-Security'
-	// since we are not writing out own FileServer, we'll need to add Headers this way
+	// and since we are not writing out own FileServer, we'll need to add Headers this way
 	addSecurityHeaders := func(h http.Handler) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
@@ -120,40 +156,40 @@ func startLoadBalancingMode() {
 	// setup the fileserver handler now that the necessary security headers have been added
 	muxSecure.Handle("/", fileserverWithModifiedHeaders)
 
-	// setup the loadbalance handler ... please note that the security headers are added in
-	// the 'loadBalancingWebSocket' function itself unlike earlier with the fileserver handler
-	muxSecure.HandleFunc("/loadbalance", loadBalancingWebSocket)
+	// setup the websocket handlers
+	muxSecure.HandleFunc("/loadbalance", clientLoadbalancingWebSocket)
+	muxSecure.HandleFunc("/backend", backendFacingWebSocket)
 
-	// defining various security parameters used to specify accepted ciphersuites
-	cfg := &tls.Config{
-		MinVersion:               tls.VersionTLS12,
-		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, // Go 1.8 only
-			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,   // Go 1.8 only
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		},
-	}
-
-	// tying the above security parameters to the HTTP handlers associated with 'muxSecure'
+	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
 		Addr:         ":443",
 		Handler:      muxSecure,
-		TLSConfig:    cfg,
+
+		// defining various security parameters used to specify accepted ciphersuites
+		TLSConfig: &tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, // Go 1.8 only
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,   // Go 1.8 only
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
+		},
+
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 	}
 
 	// define waitgroup to be used to stop premature termination
 	var lbWaitGroup sync.WaitGroup
 
-	// Serve HTTPS requests with config defined above
+	// serve HTTPS requests with config defined above
 	lbWaitGroup.Add(1)
 	go func() {
 		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
@@ -164,7 +200,7 @@ func startLoadBalancingMode() {
 		lbWaitGroup.Done()
 	}()
 
-	// define non secure HTTP parameters
+	// define nonsecure HTTP parameters
 	srvInsecure := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -176,7 +212,7 @@ func startLoadBalancingMode() {
 		}),
 	}
 
-	// redirect all "/" HTTP requests to HTTPS "/" homepage
+	// serve HTTP requests by redirecting to HTTPS
 	lbWaitGroup.Add(1)
 	go func() {
 		errServeInsecure := srvInsecure.ListenAndServe()
@@ -191,28 +227,136 @@ func startLoadBalancingMode() {
 	lbWaitGroup.Wait()
 }
 
-func loadBalancingWebSocket(w http.ResponseWriter, r *http.Request) {
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// to enable perfect forward secrecy it's necessary to add 'Strict-Transport-Security' header
-	w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 
+	////////////////////////////////////////////////////////////
+	// check that the host is not currently blacklisted
+	////////////////////////////////////////////////////////////
+
+	// parsing IP address of this new client
+	client, _, _ := net.SplitHostPort(r.RemoteAddr)
+
+	// checking blacklist and acting on it accordingly
+	clientBlacklistMutex.RLock()
+	clientFirewallValues, exists := clientBlacklist[client]
+	clientBlacklistMutex.RUnlock()
+	if exists == true {
+		clientFirewallValues.mutex.RLock()
+		currentTime := time.Now().Unix()
+		timeSinceBlacklist := currentTime - clientFirewallValues.failedChallengeTime
+		if timeSinceBlacklist < int64(time.Second/time.Hour) {
+			logInfo("(lbsocket) blacklisted client attempting to connect:", r.RemoteAddr,
+				"\n\ttimeleft:", string(timeSinceBlacklist),
+				"\n\treason: failedChallengeTime",
+				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedChallengeCount))
+			return
+		}
+		timeSinceBlacklist = currentTime - clientFirewallValues.failedGoogleAuthTime
+		if timeSinceBlacklist < int64(time.Second/time.Hour) {
+			logInfo("(lbsocket) blacklisted client attempting to connect:", r.RemoteAddr,
+				"\n\ttimeleft:", string(timeSinceBlacklist),
+				"\n\treason: failedChallengeTime",
+				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedGoogleAuthCount))
+			return
+		}
+		clientFirewallValues.mutex.RUnlock()
+	} else {
+		// intialize client with default values
+		clientBlacklistMutex.Lock()
+		clientBlacklist[client] = FirewallClientValues{}
+		clientBlacklistMutex.Unlock()
+	}
+
+	////////////////////////////////////////////////////////////
+	// begin processing incoming message
+	////////////////////////////////////////////////////////////
+
+	// defining websocket.Upgrader parameters
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:    1024,
 		WriteBufferSize:   1024,
 		EnableCompression: true,
 	}
+
+	// attempting to process the incoming client's request
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if checkError("(lbsocket) upgrade error:", err) == true {
 		return
 	}
+	logDebug("(lbsocket) opening socket:", string(r.RemoteAddr))
 	defer conn.Close()
 
-	logDebug("(lbsocket) opening socket:", string(r.RemoteAddr))
+	////////////////////////////////////////////////////////////
+	// receive JSON message from client
+	////////////////////////////////////////////////////////////
 
 	type incomingMessage struct {
 		LoginType string `json:"login_type"`
 		IDToken   string `json:"id_token"`
 	}
+
+	var inMsg incomingMessage
+	err = conn.ReadJSON(&inMsg)
+	if checkError("(lbsocket) error receiving message:", err) == true {
+		conn.Close()
+		return
+	}
+	logDebug("(lbsocket) received the following message\n", fmt.Sprintf("%s", inMsg))
+
+	////////////////////////////////////////////////////////////
+	// send id_token to google oauth service
+	////////////////////////////////////////////////////////////
+
+	successful := false
+	var oauth2Service *oauth2.Service // will be used outside of 'for' loop
+	for i := 0; i < 3; i++ {
+		var httpClient = &http.Client{}
+		oauth2Service, err = oauth2.New(httpClient)
+		if checkError("(lbsocket) error contacting google:", err) == true {
+			continue
+		} else {
+			successful = true
+			break
+		}
+	}
+	if successful == false {
+		currentTime := time.Now().Unix()
+		clientFirewallValues.mutex.Lock()
+		clientFirewallValues.failedGoogleAuthCount += 3
+		clientFirewallValues.failedGoogleAuthTime = currentTime
+		clientFirewallValues.mutex.Unlock()
+		conn.Close()
+		return
+	}
+
+	tokenInfoCall := oauth2Service.Tokeninfo()
+	tokenInfoCall.IdToken(inMsg.IDToken)
+	tokenInfo, err := tokenInfoCall.Do()
+	if checkError("(lbsocket) error parsing incoming google response:", err) == true {
+		conn.Close()
+		return
+	}
+
+	rawJSON, err := tokenInfo.MarshalJSON()
+	if checkError("(lbsocket) error MarshalJSON'ing google response:", err) == true {
+		conn.Close()
+		return
+	}
+
+	if debugModeBool == true {
+		var prettyJSON bytes.Buffer
+		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
+		checkError("(lbsocket) error jsonIndent'ing google response:", err)
+		logDebug("(lbsocket) received the following message from google:\n", string(prettyJSON.Bytes()))
+	}
+
+	////////////////////////////////////////////////////////////
+	// send list of galaxy servers to client
+	////////////////////////////////////////////////////////////
 
 	type PotentialServers struct {
 		GalaxyName string
@@ -222,40 +366,10 @@ func loadBalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 		Servers []PotentialServers
 	}
 
-	var inMsg incomingMessage
-	err = conn.ReadJSON(&inMsg)
-	if checkError("(lbsocket) error receiving message:", err) == true {
-		conn.Close()
-	}
+	////////////////////////////////////////////////////////////
+	// close websocket with completion
+	////////////////////////////////////////////////////////////
 
-	logDebug("(lbsocket) received the following message:", fmt.Sprintf("%s", inMsg))
-
-	var httpClient = &http.Client{}
-	oauth2Service, err := oauth2.New(httpClient)
-	checkError("(lbsocket) error contacting google:", err)
-
-	tokenInfoCall := oauth2Service.Tokeninfo()
-	tokenInfoCall.IdToken(inMsg.IDToken)
-	tokenInfo, err := tokenInfoCall.Do()
-	checkError("(lbsocket) error parsing incoming google response:", err)
-
-	rawJSON, err := tokenInfo.MarshalJSON()
-	checkError("(lbsocket) error MarshalJSON'ing google response:", err)
-
-	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, rawJSON, "", "    ")
-	checkError("(lbsocket) error jsonIndent'ing google response:", err)
-
-	logDebug("(lbsocket) received the following message from google:", string(prettyJSON.Bytes()))
-
-	//err = conn.WriteMessage(websocket.BinaryMessage, lbgalaxy)
-	//if checkError("(lbsocket) error sending message:", err) == true {
-	//	conn.Close()
-	//}
-
-	//logDebug("(lbsocket) just sent", fmt.Sprintf("%v", binary.Size(lbgalaxy)), "bytes")
-
-	conn.Close()
 	logDebug("(lbsocket) closing socket:", string(r.RemoteAddr))
 }
 
@@ -263,7 +377,31 @@ func loadBalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
+
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:    1024,
+		WriteBufferSize:   1024,
+		EnableCompression: true,
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if checkError("(lbsocket) upgrade error:", err) == true {
+		return
+	}
+	defer conn.Close()
+
+	logDebug("(backendsocket) opening socket:", string(r.RemoteAddr))
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func startBackendMode() {
+
+	// initializing main data structures, locks, etc
+	currentGalaxy = Galaxy{}
 
 	// handle input file parameters
 	// is the inputfilename empty?
@@ -322,9 +460,13 @@ func startBackendMode() {
 		log.Fatalln("(backend_init) unknown inputfilename - skipping data import process")
 	}
 
+	////////////////////////////////////////////////////////////
+	// open websocket with loadbalancer and initiate two-way challenge-response authentication
+	////////////////////////////////////////////////////////////
+
 	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("ws://hyperion5.com:81", nil)
+	conn, _, err := dialer.Dial("wss://hyperion5.com/", nil)
 	if checkError("(backend_init) unable to open websocket with frontend loadbalancer:", err) {
 		waitForLogging.Wait()
 		os.Exit(1)
@@ -332,13 +474,13 @@ func startBackendMode() {
 
 	// generate 128 random bytes
 	randomBytes := make([]byte, 128)
-	_, err = rand.Read(randomBytes)
+	_, err = cryptorand.Read(randomBytes)
 	checkError("(backend_init) error while generating bytes:", err)
 
-	// convert randomBytes to randomString and print
+	// if debug: convert randomBytes to randomString and print
 	if debugModeBool == true {
-		randomString := base64.URLEncoding.EncodeToString(randomBytes)
-		logDebug("(backend_init) sent the following challenge: ", randomString)
+		randomString := base64.StdEncoding.EncodeToString(randomBytes)
+		logDebug("(backend_init) sent the following challenge:", randomString)
 	}
 
 	// send random string to frontend
@@ -348,18 +490,59 @@ func startBackendMode() {
 		os.Exit(1)
 	}
 
-	// wait for response from websocket frontend
-	_, _, err = conn.ReadMessage()
-	if checkError("(backend_init) error receiving message from frontend loadbalancer:", err) {
-		waitForLogging.Wait()
-		os.Exit(1)
+	////////////////////////////////////////////////////////////
+	// parse incoming response
+	////////////////////////////////////////////////////////////
+
+	type incomingMessage struct {
+		Response  string `json:"response"`
+		Challenge string `json:"challenge"`
 	}
+
+	var inMsg incomingMessage
+	err = conn.ReadJSON(&inMsg)
+	if checkError("(backend_init) error receiving initial response from frontend loadbalancer:", err) == true {
+		conn.Close()
+		return
+	}
+	logDebug("(lbsocket) received the following message\n", fmt.Sprintf("%s", inMsg))
+
+	////////////////////////////////////////////////////////////
+	// validate incoming response to our challenge
+	////////////////////////////////////////////////////////////
+
+	// create local hash to compare with Response
+	mac := hmac.New(sha256.New, []byte(authPassword))
+	mac.Write(randomBytes)
+
+	// if debug: print local hash
+	if debugModeBool == true {
+		randomString := base64.StdEncoding.EncodeToString(randomBytes)
+		logDebug("(backend_init) local hash is:\n", randomString)
+	}
+
+	// compare locally generated hash to received hash
+	expectedHASH := mac.Sum(nil)
+	remoteHASH := []byte(inMsg.Response)
+	if hmac.Equal(expectedHASH, remoteHASH) != true {
+
+	}
+
+	// wait for response from websocket frontend
+	//_, inMsgBinary, err := conn.ReadMessage()
+	//if checkError("(backend_init) error receiving message from frontend loadbalancer:", err) {
+	//	waitForLogging.Wait()
+	//	os.Exit(1)
+	//}
+
+	// convert incomingmessage to string
+	//inMsg := bytes.IndexByte(inMsgBinary, 0)
 
 	// main game loop
 	// lots of concurrency here (locking, waitgroups, etc)
-	//for {
-	//
-	//}
+	for i := 0; i > 100; i++ {
+		// do something
+	}
 
 	//i := 0
 	//for {
@@ -376,12 +559,20 @@ func startBackendMode() {
 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func backendWebSocket(w http.ResponseWriter, r *http.Request) {
 	//upgrader := websocket.Upgrader{
 	//	ReadBufferSize:  1024,
 	//	WriteBufferSize: 1024,
 	//}
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 func gracefullyCloseBackend() {
 
@@ -406,6 +597,13 @@ func gracefullyCloseBackend() {
 			log.Fatalln("Failed to write Galaxy:", err)
 		}
 	}
+
+	// wait for logging to complete
+	waitForLogging.Wait()
+
+	// halt all further execution
+	os.Exit(1)
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
