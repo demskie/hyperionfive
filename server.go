@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/tls"
 	"net"
 	"regexp"
@@ -28,14 +28,13 @@ import (
 	"google.golang.org/api/oauth2/v2"
 
 	cryptorand "crypto/rand"
-	// defined in protobuf.pb.go
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// defining global variables for CLI arguments
+// defining various global variables
 var (
 	inputFilename    string
 	outputFilename   string
@@ -44,26 +43,48 @@ var (
 	loadBalanceBool  bool
 	createGalaxyBool bool
 	debugModeBool    bool
-)
 
-// FirewallClientValues defines values for firewalling
-type FirewallClientValues struct {
-	mutex                 sync.RWMutex
-	failedChallengeCount  uint16
-	failedChallengeTime   int64
-	failedGoogleAuthCount uint16
-	failedGoogleAuthTime  int64
-}
-
-// defining global variables for internal firewall
-var (
 	clientBlacklist         map[string]FirewallClientValues
 	clientBlacklistMutex    sync.RWMutex
 	clientSessionCount      map[string]uint16
 	clientSessionCountMutex sync.RWMutex
+
+	randomSeed     *rand.Rand
+	currentGalaxy  Galaxy
+	futureGalaxy   Galaxy
+	loggingMutex   sync.Mutex
+	waitForLogging sync.WaitGroup
 )
 
+// defining global constants for internal firewall
+const (
+	constChallenge     = 3
+	constGoogleAuth    = 3
+	constClientSession = 25
+)
+
+// FirewallClientValues defines values for firewalling
+type FirewallClientValues struct {
+	mutex                   sync.RWMutex
+	failedChallengeCount    uint16
+	failedChallengeTime     int64
+	failedGoogleAuthCount   uint16
+	failedGoogleAuthTime    int64
+	failedSessionLimitCount uint16
+	failedSessionLimitTime  int64
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func init() {
+
+	// initializing global IP blacklist
+	clientBlacklist = map[string]FirewallClientValues{}
+
+	// initializing global IP session count
+	clientSessionCount = make(map[string]uint16)
 
 	// define commandline flags to parse for
 	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
@@ -71,7 +92,7 @@ func init() {
 	googleAudiencePtr := flag.String("audience", "", "specify google oauth audience")
 	authPasswordPtr := flag.String("password", "", "specify password for authentication purposes")
 	loadBalanceBoolPtr := flag.Bool("loadbalance", false, "enable frontend loadbalancer mode")
-	createGalaxyBoolPtr := flag.Bool("generate", false, "enable generation of new Galaxy, dangerous!")
+	createGalaxyBoolPtr := flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
 	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
 
 	// pull flags attached to CLI invocation
@@ -96,26 +117,11 @@ func init() {
 	createGalaxyBool = *createGalaxyBoolPtr
 	debugModeBool = *debugModeBoolPtr
 
-	// initializing global IP blacklist with example IP
-	clientBlacklist = map[string]FirewallClientValues{}
-
-	// initializing global IP session count
-	clientSessionCount = make(map[string]uint16)
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
-// defining core global variables
-var (
-	randomSeed     *rand.Rand
-	currentGalaxy  Galaxy
-	futureGalaxy   Galaxy
-	loggingMutex   sync.Mutex
-	waitForLogging sync.WaitGroup
-)
 
 func main() {
 
@@ -248,18 +254,22 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 		clientFirewallValues.mutex.RLock()
 		currentTime := time.Now().Unix()
 		timeSinceBlacklist := currentTime - clientFirewallValues.failedChallengeTime
-		if timeSinceBlacklist < int64(time.Second/time.Hour) {
+		blacklistExpGrowth := int64((clientFirewallValues.failedChallengeCount) / constChallenge)
+		currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
+		if timeSinceBlacklist < currentBlacklistGiven {
 			logInfo("(lbsocket) blacklisted client attempting to connect:", r.RemoteAddr,
-				"\n\ttimeleft:", string(timeSinceBlacklist),
+				"\n\tblacklistedFor:", string(timeSinceBlacklist),
 				"\n\treason: failedChallengeTime",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedChallengeCount))
 			return
 		}
 		timeSinceBlacklist = currentTime - clientFirewallValues.failedGoogleAuthTime
-		if timeSinceBlacklist < int64(time.Second/time.Hour) {
+		blacklistExpGrowth = int64((clientFirewallValues.failedGoogleAuthCount) / constGoogleAuth)
+		currentBlacklistGiven = blacklistExpGrowth * int64(time.Hour/time.Minute)
+		if timeSinceBlacklist < currentBlacklistGiven {
 			logInfo("(lbsocket) blacklisted client attempting to connect:", r.RemoteAddr,
-				"\n\ttimeleft:", string(timeSinceBlacklist),
-				"\n\treason: failedChallengeTime",
+				"\n\tblacklistedFor:", string(timeSinceBlacklist),
+				"\n\treason: failedGoogleAuth",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedGoogleAuthCount))
 			return
 		}
@@ -288,7 +298,24 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logDebug("(lbsocket) opening socket:", string(r.RemoteAddr))
+
+	////////////////////////////////////////////////////////////
+	// DEFER STATEMENTS
+	////////////////////////////////////////////////////////////
+
 	defer conn.Close()
+
+	go func() {
+		clientSessionCountMutex.Lock()
+		clientSessionCount[client]++
+		clientSessionCountMutex.Unlock()
+	}()
+
+	defer func() {
+		clientSessionCountMutex.Lock()
+		clientSessionCount[client]--
+		clientSessionCountMutex.Unlock()
+	}()
 
 	////////////////////////////////////////////////////////////
 	// receive JSON message from client
@@ -302,7 +329,6 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 	var inMsg incomingMessage
 	err = conn.ReadJSON(&inMsg)
 	if checkError("(lbsocket) error receiving message:", err) == true {
-		conn.Close()
 		return
 	}
 	logDebug("(lbsocket) received the following message\n", fmt.Sprintf("%s", inMsg))
@@ -313,7 +339,7 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	successful := false
 	var oauth2Service *oauth2.Service // will be used outside of 'for' loop
-	for i := 0; i < 3; i++ {
+	for i := 0; i < constGoogleAuth; i++ {
 		var httpClient = &http.Client{}
 		oauth2Service, err = oauth2.New(httpClient)
 		if checkError("(lbsocket) error contacting google:", err) == true {
@@ -326,7 +352,7 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 	if successful == false {
 		currentTime := time.Now().Unix()
 		clientFirewallValues.mutex.Lock()
-		clientFirewallValues.failedGoogleAuthCount += 3
+		clientFirewallValues.failedGoogleAuthCount += constGoogleAuth
 		clientFirewallValues.failedGoogleAuthTime = currentTime
 		clientFirewallValues.mutex.Unlock()
 		conn.Close()
@@ -460,102 +486,119 @@ func startBackendMode() {
 		log.Fatalln("(backend_init) unknown inputfilename - skipping data import process")
 	}
 
-	////////////////////////////////////////////////////////////
-	// open websocket with loadbalancer and initiate two-way challenge-response authentication
-	////////////////////////////////////////////////////////////
+	challengeResponseWithLoadbalancer := func() bool {
 
-	// create websocket with loadbalancer frontend
-	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://hyperion5.com/", nil)
-	if checkError("(backend_init) unable to open websocket with frontend loadbalancer:", err) {
-		waitForLogging.Wait()
-		os.Exit(1)
+		////////////////////////////////////////////////////////////
+		// open websocket with loadbalancer and initiate two-way challenge-response authentication
+		////////////////////////////////////////////////////////////
+
+		// create websocket with loadbalancer frontend
+		var dialer *websocket.Dialer
+		conn, _, err := dialer.Dial("wss://hyperion5.com/", nil)
+		defer conn.Close()
+		if checkError("(backend_init) unable to open websocket with frontend loadbalancer:", err) {
+			return false
+		}
+
+		// generate 256 random bytes
+		randomBytes := make([]byte, 256)
+		_, err = cryptorand.Read(randomBytes)
+		if checkError("(backend_init) error while generating bytes:", err) {
+			return false
+		}
+
+		// if debug: convert randomBytes to randomString and print
+		if debugModeBool == true {
+			randomString := base64.StdEncoding.EncodeToString(randomBytes)
+			logDebug("(backend_init) sent the following challenge:", randomString)
+		}
+
+		// send random string to frontend
+		err = conn.WriteMessage(websocket.TextMessage, []byte(randomBytes))
+		if checkError("(backend_init) error sending message to frontend loadbalancer:", err) {
+			return false
+		}
+
+		////////////////////////////////////////////////////////////
+		// parse incoming response
+		////////////////////////////////////////////////////////////
+
+		type incomingMessage struct {
+			Response  string `json:"response"`
+			Challenge string `json:"challenge"`
+		}
+
+		var inMsg incomingMessage
+		err = conn.ReadJSON(&inMsg)
+		if checkError("(backend_init) error receiving initial response from frontend loadbalancer:", err) == true {
+			return false
+		}
+		logDebug("(backend_init) received the following message\n", fmt.Sprintf("%s", inMsg))
+
+		////////////////////////////////////////////////////////////
+		// validate incoming response to our challenge
+		////////////////////////////////////////////////////////////
+
+		// create local hash to compare with Response
+		hash := hmac.New(sha512.New512_256, []byte(authPassword))
+		hash.Write(randomBytes)
+		expectedHASH := hash.Sum(nil)
+
+		// if debug: print local hash
+		if debugModeBool == true {
+			randomString := base64.StdEncoding.EncodeToString(randomBytes)
+			logDebug("(backend_init) local hash is:\n", randomString)
+		}
+
+		// compare locally generated hash to received hash
+		remoteHASH := []byte(inMsg.Response)
+		if hmac.Equal(expectedHASH, remoteHASH) != true {
+			logInfo("(backend_init) initial challenge-response failed:")
+			return false
+		}
+
+		////////////////////////////////////////////////////////////
+		// respond to challenge sent to us
+		////////////////////////////////////////////////////////////
+
+		// create local hash using Challenge instead of locally generated bytes
+		randomBytes = []byte(inMsg.Challenge)
+		hash = hmac.New(sha512.New512_256, []byte(authPassword))
+		hash.Write(randomBytes)
+		response := hash.Sum(nil)
+
+		// if debug: print local hash
+		if debugModeBool == true {
+			randomString := base64.StdEncoding.EncodeToString(randomBytes)
+			logDebug("(backend_init) local hash for challenge sent by LoadBalancer:\n", randomString)
+		}
+
+		// send response to frontend
+		err = conn.WriteMessage(websocket.TextMessage, []byte(response))
+		if checkError("(backend_init) error sending message to frontend loadbalancer:", err) {
+			return false
+		}
+
+		////////////////////////////////////////////////////////////
+		// wait for response saying okay
+		////////////////////////////////////////////////////////////
+		_, data, err := conn.ReadMessage()
+		if checkError("(backend_init) error sending message to frontend loadbalancer:", err) {
+			return false
+		}
+
+		message := base64.StdEncoding.EncodeToString(data)
+		if message == "hellothere" {
+			return true
+		}
+
+		return false
 	}
 
-	// generate 128 random bytes
-	randomBytes := make([]byte, 128)
-	_, err = cryptorand.Read(randomBytes)
-	checkError("(backend_init) error while generating bytes:", err)
-
-	// if debug: convert randomBytes to randomString and print
-	if debugModeBool == true {
-		randomString := base64.StdEncoding.EncodeToString(randomBytes)
-		logDebug("(backend_init) sent the following challenge:", randomString)
-	}
-
-	// send random string to frontend
-	err = conn.WriteMessage(websocket.TextMessage, []byte(randomBytes))
-	if checkError("(backend_init) error sending message to frontend loadbalancer:", err) {
-		waitForLogging.Wait()
-		os.Exit(1)
-	}
-
-	////////////////////////////////////////////////////////////
-	// parse incoming response
-	////////////////////////////////////////////////////////////
-
-	type incomingMessage struct {
-		Response  string `json:"response"`
-		Challenge string `json:"challenge"`
-	}
-
-	var inMsg incomingMessage
-	err = conn.ReadJSON(&inMsg)
-	if checkError("(backend_init) error receiving initial response from frontend loadbalancer:", err) == true {
-		conn.Close()
+	if challengeResponseWithLoadbalancer() != true {
 		return
 	}
-	logDebug("(lbsocket) received the following message\n", fmt.Sprintf("%s", inMsg))
-
-	////////////////////////////////////////////////////////////
-	// validate incoming response to our challenge
-	////////////////////////////////////////////////////////////
-
-	// create local hash to compare with Response
-	mac := hmac.New(sha256.New, []byte(authPassword))
-	mac.Write(randomBytes)
-
-	// if debug: print local hash
-	if debugModeBool == true {
-		randomString := base64.StdEncoding.EncodeToString(randomBytes)
-		logDebug("(backend_init) local hash is:\n", randomString)
-	}
-
-	// compare locally generated hash to received hash
-	expectedHASH := mac.Sum(nil)
-	remoteHASH := []byte(inMsg.Response)
-	if hmac.Equal(expectedHASH, remoteHASH) != true {
-
-	}
-
-	// wait for response from websocket frontend
-	//_, inMsgBinary, err := conn.ReadMessage()
-	//if checkError("(backend_init) error receiving message from frontend loadbalancer:", err) {
-	//	waitForLogging.Wait()
-	//	os.Exit(1)
-	//}
-
-	// convert incomingmessage to string
-	//inMsg := bytes.IndexByte(inMsgBinary, 0)
-
-	// main game loop
-	// lots of concurrency here (locking, waitgroups, etc)
-	for i := 0; i > 100; i++ {
-		// do something
-	}
-
-	//i := 0
-	//for {
-	//	i++
-	//	for _, ss := range currentGalaxy.Solarsystemslice {
-	//		for _, pl := range ss.Planetslice {
-	//			pl.Population = growPopulation(pl.Population, pl.Food)
-	//		}
-	//	}
-	//	if i == 100 {
-	//		break
-	//	}
-	//}
+	logDebug("(backend_init) succesfully completed handshake with loadbalancer")
 
 }
 
