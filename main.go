@@ -24,6 +24,7 @@ var (
 	outputFilename   string
 	googleAudience   string
 	authPassword     string
+	staticFrontend   string
 	loadBalanceBool  bool
 	createGalaxyBool bool
 	debugModeBool    bool
@@ -75,6 +76,7 @@ func init() {
 	outputFilePtr := flag.String("output", "", "specify export destination, either json or blob")
 	googleAudiencePtr := flag.String("audience", "", "specify google oauth audience")
 	authPasswordPtr := flag.String("password", "", "specify password for authentication purposes")
+	staticFrontendPtr := flag.String("staticfrontend", "", "specify static frontend address")
 	loadBalanceBoolPtr := flag.Bool("loadbalance", false, "enable frontend loadbalancer mode")
 	createGalaxyBoolPtr := flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
 	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
@@ -97,6 +99,7 @@ func init() {
 	outputFilename = *outputFilePtr
 	googleAudience = *googleAudiencePtr
 	authPassword = *authPasswordPtr
+	staticFrontend = *staticFrontendPtr
 	loadBalanceBool = *loadBalanceBoolPtr
 	createGalaxyBool = *createGalaxyBoolPtr
 	debugModeBool = *debugModeBoolPtr

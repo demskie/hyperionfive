@@ -44,8 +44,8 @@ func startFrontendMode() {
 	muxSecure.Handle("/", fileserverWithModifiedHeaders)
 
 	// setup the websocket handlers
-	muxSecure.HandleFunc("/loadbalance", clientLoadbalancingWebSocket)
-	muxSecure.HandleFunc("/backend", backendFacingWebSocket)
+	muxSecure.HandleFunc("/loadbalance", loadbalanceClients)
+	muxSecure.HandleFunc("/backend", handshakeWithBackend)
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
@@ -118,7 +118,7 @@ func startFrontendMode() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
+func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 
 	////////////////////////////////////////////////////////////
 	// check that the host is not currently blacklisted
@@ -138,7 +138,7 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 		blacklistExpGrowth := int64((clientFirewallValues.failedChallengeCount) / constChallenge)
 		currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
 		if timeSinceBlacklist < currentBlacklistGiven {
-			logInfo("(lbsocket) blacklisted client attempting to connect:", r.RemoteAddr,
+			logInfo("(loadbalanceClients) blacklisted client attempting to connect:", r.RemoteAddr,
 				"\n\tblacklistedFor:", string(timeSinceBlacklist),
 				"\n\treason: failedChallengeTime",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedChallengeCount))
@@ -148,7 +148,7 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 		blacklistExpGrowth = int64((clientFirewallValues.failedGoogleAuthCount) / constGoogleAuth)
 		currentBlacklistGiven = blacklistExpGrowth * int64(time.Hour/time.Minute)
 		if timeSinceBlacklist < currentBlacklistGiven {
-			logInfo("(lbsocket) blacklisted client attempting to connect:", r.RemoteAddr,
+			logInfo("(loadbalanceClients) blacklisted client attempting to connect:", r.RemoteAddr,
 				"\n\tblacklistedFor:", string(timeSinceBlacklist),
 				"\n\treason: failedGoogleAuth",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedGoogleAuthCount))
@@ -175,10 +175,12 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// attempting to process the incoming client's request
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError("(lbsocket) upgrade error:", err) == true {
+	if checkError("(loadbalanceClients) upgrade error:", err) == true {
 		return
 	}
-	logDebug("(lbsocket) opening socket:", string(r.RemoteAddr))
+	logDebug("(loadbalanceClients) opening socket:", string(r.RemoteAddr))
+
+	// enable write compression
 
 	////////////////////////////////////////////////////////////
 	// DEFER STATEMENTS
@@ -214,10 +216,10 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	var inMsg incomingMessage
 	err = conn.ReadJSON(&inMsg)
-	if checkError("(lbsocket) error receiving message:", err) == true {
+	if checkError("(loadbalanceClients) error receiving message:", err) == true {
 		return
 	}
-	logDebug("(lbsocket) received the following message\n", fmt.Sprintf("%s", inMsg))
+	logDebug("(loadbalanceClients) received the following message\n", fmt.Sprintf("%s", inMsg))
 
 	////////////////////////////////////////////////////////////
 	// send id_token to google oauth service
@@ -228,7 +230,7 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < constGoogleAuth; i++ {
 		var httpClient = &http.Client{}
 		oauth2Service, err = oauth2.New(httpClient)
-		if checkError("(lbsocket) error contacting google:", err) == true {
+		if checkError("(loadbalanceClients) error contacting google:", err) == true {
 			continue
 		} else {
 			successful = true
@@ -248,13 +250,13 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 	tokenInfoCall := oauth2Service.Tokeninfo()
 	tokenInfoCall.IdToken(inMsg.IDToken)
 	tokenInfo, err := tokenInfoCall.Do()
-	if checkError("(lbsocket) error parsing incoming google response:", err) == true {
+	if checkError("(loadbalanceClients) error parsing incoming google response:", err) == true {
 		conn.Close()
 		return
 	}
 
 	rawJSON, err := tokenInfo.MarshalJSON()
-	if checkError("(lbsocket) error MarshalJSON'ing google response:", err) == true {
+	if checkError("(loadbalanceClients) error MarshalJSON'ing google response:", err) == true {
 		conn.Close()
 		return
 	}
@@ -262,8 +264,8 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 	if debugModeBool == true {
 		var prettyJSON bytes.Buffer
 		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
-		checkError("(lbsocket) error jsonIndent'ing google response:", err)
-		logDebug("(lbsocket) received the following message from google:\n", string(prettyJSON.Bytes()))
+		checkError("(loadbalanceClients) error jsonIndent'ing google response:", err)
+		logDebug("(loadbalanceClients) received the following message from google:\n", string(prettyJSON.Bytes()))
 	}
 
 	////////////////////////////////////////////////////////////
@@ -282,14 +284,14 @@ func clientLoadbalancingWebSocket(w http.ResponseWriter, r *http.Request) {
 	// close websocket with completion
 	////////////////////////////////////////////////////////////
 
-	logDebug("(lbsocket) closing socket:", string(r.RemoteAddr))
+	logDebug("(loadbalanceClients) closing socket:", string(r.RemoteAddr))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
+func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 
 	////////////////////////////////////////////////////////////
 	// check that the host is not currently blacklisted
@@ -309,7 +311,7 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 		blacklistExpGrowth := int64((clientFirewallValues.failedChallengeCount) / constChallenge)
 		currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
 		if timeSinceBlacklist < currentBlacklistGiven {
-			logInfo("(backendsocket) blacklisted client attempting to connect:", r.RemoteAddr,
+			logInfo("(handshakeWithBackend) blacklisted client attempting to connect:", r.RemoteAddr,
 				"\n\tblacklistedFor:", string(timeSinceBlacklist),
 				"\n\treason: failedChallengeTime",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedChallengeCount))
@@ -319,7 +321,7 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 		blacklistExpGrowth = int64((clientFirewallValues.failedGoogleAuthCount) / constGoogleAuth)
 		currentBlacklistGiven = blacklistExpGrowth * int64(time.Hour/time.Minute)
 		if timeSinceBlacklist < currentBlacklistGiven {
-			logInfo("(backendsocket) blacklisted client attempting to connect:", r.RemoteAddr,
+			logInfo("(handshakeWithBackend) blacklisted client attempting to connect:", r.RemoteAddr,
 				"\n\tblacklistedFor:", string(timeSinceBlacklist),
 				"\n\treason: failedGoogleAuth",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedGoogleAuthCount))
@@ -345,10 +347,10 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	defer conn.Close()
-	if checkError("(backendsocket) upgrade error:", err) == true {
+	if checkError("(handshakeWithBackend) upgrade error:", err) == true {
 		return
 	}
-	logDebug("(backendsocket) opening socket:", string(r.RemoteAddr))
+	logDebug("(handshakeWithBackend) opening socket:", string(r.RemoteAddr))
 
 	////////////////////////////////////////////////////////////
 	// modify sessionCount accordingly
@@ -361,7 +363,7 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 			clientSessionCount[client]++
 		} else {
 			clientSessionCount[client] = 1
-			logInfo("(backendsocket) unsuccessfully tried to increment",
+			logInfo("(handshakeWithBackend) unsuccessfully tried to increment",
 				"'clientSessionCount' for this client:", client)
 		}
 		clientSessionCountMutex.Unlock()
@@ -374,7 +376,7 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 			clientSessionCount[client]--
 		} else {
 			clientSessionCount[client] = 0
-			logInfo("(backendsocket) unsuccessfully tried to decrement",
+			logInfo("(handshakeWithBackend) unsuccessfully tried to decrement",
 				"'clientSessionCount' for this client:", client)
 		}
 		clientSessionCountMutex.Unlock()
@@ -385,11 +387,11 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 
 	_, dataChallenge, err := conn.ReadMessage()
-	if checkError("(backendsocket) error receiving challenge from backend:", err) == true {
+	if checkError("(handshakeWithBackend) error receiving challenge from backend:", err) == true {
 		return
 	}
 	if len(dataChallenge) != 256 {
-		logDebug("(backendsocket) received a challenge with invalid length:", string(len(dataChallenge)), "bytes")
+		logDebug("(handshakeWithBackend) received a challenge with invalid length:", string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
 		clientFirewallValues.mutex.Lock()
 		clientFirewallValues.failedChallengeCount++
@@ -397,7 +399,7 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 		clientFirewallValues.mutex.Unlock()
 		return
 	}
-	logDebug("(backendsocket) received the following challenge:\n", fmt.Sprintf("%s", dataChallenge))
+	logDebug("(handshakeWithBackend) received the following challenge:\n", fmt.Sprintf("%s", dataChallenge))
 
 	////////////////////////////////////////////////////////////
 	// compute response and create a challenge of our own
@@ -407,15 +409,15 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 	hash := hmac.New(sha512.New512_256, []byte(authPassword))
 	hash.Write(dataChallenge)
 	expectedHash := hash.Sum(nil)
-	logDebug("(backendsocket) computed the following response:\n", fmt.Sprintf("%s", expectedHash))
+	logDebug("(handshakeWithBackend) computed the following response:\n", fmt.Sprintf("%s", expectedHash))
 
 	// generate 256 random bytes
 	randomBytes := make([]byte, 256)
 	_, err = cryptorand.Read(randomBytes)
-	if checkError("(backendsocket) error while generating bytes:", err) {
+	if checkError("(handshakeWithBackend) error while generating bytes:", err) {
 		return
 	}
-	logDebug("(backendsocket) generated the following challenge:\n", fmt.Sprintf("%s", randomBytes))
+	logDebug("(handshakeWithBackend) generated the following challenge:\n", fmt.Sprintf("%s", randomBytes))
 
 	////////////////////////////////////////////////////////////
 	// send the response in addition to own challenge
@@ -430,7 +432,7 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 	outMsg.Response = base64.StdEncoding.EncodeToString(expectedHash)
 	outMsg.Challenge = base64.StdEncoding.EncodeToString(randomBytes)
 	err = conn.WriteJSON(outMsg)
-	if checkError("(backendsocket) error sending response to backend:", err) == true {
+	if checkError("(handshakeWithBackend) error sending response to backend:", err) == true {
 		return
 	}
 
@@ -440,13 +442,13 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// receive data from backend
 	_, remoteHash, err := conn.ReadMessage()
-	if checkError("(backendsocket) error receiving response from backend:", err) == true {
+	if checkError("(handshakeWithBackend) error receiving response from backend:", err) == true {
 		return
 	}
 
 	// check for equality
 	if hmac.Equal(expectedHash, remoteHash) != true {
-		logInfo("(backendsocket) initial challenge-response failed:")
+		logInfo("(handshakeWithBackend) initial challenge-response failed:")
 		return
 	}
 
@@ -456,7 +458,7 @@ func backendFacingWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// send response to frontend
 	err = conn.WriteMessage(websocket.TextMessage, []byte("hellothere"))
-	if checkError("(backendsocket) error sending hellothere to backend:", err) {
+	if checkError("(handshakeWithBackend) error sending hellothere to backend:", err) {
 		return
 	}
 

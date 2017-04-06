@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
@@ -26,6 +28,7 @@ func startBackendMode() {
 
 	// initializing main data structures, locks, etc
 	currentGalaxy = Galaxy{}
+	futureGalaxy = Galaxy{}
 
 	// handle input file parameters
 	// is the inputfilename empty?
@@ -84,125 +87,189 @@ func startBackendMode() {
 		log.Fatalln("(backend_init) unknown inputfilename - skipping data import process")
 	}
 
-	challengeResponseWithLoadbalancer := func() bool {
+	////////////////////////////////////////////////////////////
+	// start communication with frontend
+	////////////////////////////////////////////////////////////
 
-		////////////////////////////////////////////////////////////
-		// open websocket with loadbalancer and initiate two-way challenge-response authentication
-		////////////////////////////////////////////////////////////
-
+	numberFailedHandshakes := 0
+	for {
 		// create websocket with loadbalancer frontend
 		var dialer *websocket.Dialer
 		conn, _, err := dialer.Dial("wss://hyperion5.com/backend", nil)
 		defer conn.Close()
-		if checkError("(backend_init) unable to open websocket with frontend loadbalancer:", err) {
-			return false
+		if checkError("(handshakeFrontend) unable to open websocket with frontend loadbalancer:", err) {
+			return
+		}
+		if handshakeWithFrontend(conn) != true {
+			logDebug("(handshakeFrontend) initial handshake with loadbalancer failed")
+			numberFailedHandshakes++
+			if numberFailedHandshakes > 3 {
+				logDebug("(handshakeFrontend) just failed three handshakes in a row!!!")
+				waitForLogging.Wait()
+				os.Exit(1)
+			} else {
+				numberFailedHandshakes = 0
+			}
 		}
 
-		// generate 256 random bytes
-		randomBytes := make([]byte, 256)
-		_, err = cryptorand.Read(randomBytes)
-		if checkError("(backend_init) error while generating bytes:", err) {
-			return false
+		var inMsg, inMsgOld incomingMessage
+		var outMsg, outMsgOld outgoingMessage
+
+		for {
+			if periodicUpdate(conn, &inMsg, &inMsgOld, &outMsg, &outMsgOld) != true {
+				logDebug("(periodicUpdates) failed to periodicly receive or send data with loadbalancer")
+				break // fall back to handshake
+			}
+			time.Sleep(1 * time.Second)
 		}
-		logDebug("(backend_init) generated the following challenge:\n", fmt.Sprintf("%s", randomBytes))
+	}
 
-		// if debug: convert randomBytes to randomString and print
-		if debugModeBool == true {
-			randomString := base64.StdEncoding.EncodeToString(randomBytes)
-			logDebug("(backend_init) sent the following challenge:", randomString)
-		}
+}
 
-		// send random string to frontend
-		err = conn.WriteMessage(websocket.TextMessage, []byte(randomBytes))
-		if checkError("(backend_init) error sending message to frontend loadbalancer:", err) {
-			return false
-		}
+func handshakeWithFrontend(conn *websocket.Conn) bool {
 
-		////////////////////////////////////////////////////////////
-		// parse incoming response
-		////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////
+	// initiate two-way challenge-response authentication
+	////////////////////////////////////////////////////////////
 
-		type incomingMessage struct {
-			Response  string `json:"response"`
-			Challenge string `json:"challenge"`
-		}
+	// generate 256 random bytes
+	randomBytes := make([]byte, 256)
+	_, err := cryptorand.Read(randomBytes)
+	if checkError("(handshakeFrontend) error while generating bytes:", err) {
+		return false
+	}
+	logDebug("(handshakeFrontend) generated the following challenge:\n", fmt.Sprintf("%s", randomBytes))
 
-		var inMsg incomingMessage
-		err = conn.ReadJSON(&inMsg)
-		if checkError("(backend_init) error receiving initial response from frontend loadbalancer:", err) == true {
-			return false
-		}
-		if len(inMsg.Challenge) != 256 {
-			logInfo("(backendsocket) received a challenge with invalid length:", string(len(inMsg.Challenge)), "bytes")
-			return false
-		}
-		logDebug("(backend_init) received the following challenge:\n", fmt.Sprintf("%s", inMsg))
+	// if debug: convert randomBytes to randomString and print
+	if debugModeBool == true {
+		randomString := base64.StdEncoding.EncodeToString(randomBytes)
+		logDebug("(handshakeFrontend) sent the following challenge:", randomString)
+	}
 
-		////////////////////////////////////////////////////////////
-		// validate incoming response to our challenge
-		////////////////////////////////////////////////////////////
-
-		// create local hash to compare with Response
-		hash := hmac.New(sha512.New512_256, []byte(authPassword))
-		hash.Write(randomBytes)
-		expectedHASH := hash.Sum(nil)
-
-		// if debug: print local hash
-		if debugModeBool == true {
-			randomString := base64.StdEncoding.EncodeToString(randomBytes)
-			logDebug("(backend_init) local hash is:\n", randomString)
-		}
-
-		// compare locally generated hash to received hash
-		remoteHASH := []byte(inMsg.Response)
-		if hmac.Equal(expectedHASH, remoteHASH) != true {
-			logInfo("(backend_init) initial challenge-response failed:")
-			return false
-		}
-
-		////////////////////////////////////////////////////////////
-		// respond to challenge sent to us
-		////////////////////////////////////////////////////////////
-
-		// create local hash using Challenge instead of locally generated bytes
-		randomBytes = []byte(inMsg.Challenge)
-		hash = hmac.New(sha512.New512_256, []byte(authPassword))
-		hash.Write(randomBytes)
-		response := hash.Sum(nil)
-
-		// if debug: print local hash
-		if debugModeBool == true {
-			randomString := base64.StdEncoding.EncodeToString(randomBytes)
-			logDebug("(backend_init) local hash for challenge sent by LoadBalancer:\n", randomString)
-		}
-
-		// send response to frontend
-		err = conn.WriteMessage(websocket.TextMessage, []byte(response))
-		if checkError("(backend_init) error sending message to frontend loadbalancer:", err) {
-			return false
-		}
-
-		////////////////////////////////////////////////////////////
-		// wait for response saying okay
-		////////////////////////////////////////////////////////////
-		_, data, err := conn.ReadMessage()
-		if checkError("(backend_init) error receiving message to frontend loadbalancer:", err) {
-			return false
-		}
-
-		message := base64.StdEncoding.EncodeToString(data)
-		if message == "hellothere" {
-			return true
-		}
-
+	// send random string to frontend
+	err = conn.WriteMessage(websocket.TextMessage, []byte(randomBytes))
+	if checkError("(handshakeFrontend) error sending message to frontend loadbalancer:", err) {
 		return false
 	}
 
-	if challengeResponseWithLoadbalancer() != true {
-		return
-	}
-	logDebug("(backend_init) successfully completed handshake with loadbalancer")
+	////////////////////////////////////////////////////////////
+	// parse incoming response
+	////////////////////////////////////////////////////////////
 
+	type incomingChallengeResponse struct {
+		Response  string `json:"response"`
+		Challenge string `json:"challenge"`
+	}
+
+	var inMsg incomingChallengeResponse
+	err = conn.ReadJSON(&inMsg)
+	if checkError("(handshakeFrontend) error receiving initial response from frontend loadbalancer:", err) == true {
+		return false
+	}
+	if len(inMsg.Challenge) != 256 {
+		logInfo("(handshakeFrontend) received a challenge with invalid length:", string(len(inMsg.Challenge)), "bytes")
+		return false
+	}
+	logDebug("(handshakeFrontend) received the following challenge:\n", fmt.Sprintf("%s", inMsg))
+
+	////////////////////////////////////////////////////////////
+	// validate incoming response to our challenge
+	////////////////////////////////////////////////////////////
+
+	// create local hash to compare with Response
+	hash := hmac.New(sha512.New512_256, []byte(authPassword))
+	hash.Write(randomBytes)
+	expectedHASH := hash.Sum(nil)
+
+	// if debug: print local hash
+	if debugModeBool == true {
+		randomString := base64.StdEncoding.EncodeToString(randomBytes)
+		logDebug("(handshakeFrontend) local hash is:\n", randomString)
+	}
+
+	// compare locally generated hash to received hash
+	remoteHASH := []byte(inMsg.Response)
+	if hmac.Equal(expectedHASH, remoteHASH) != true {
+		logInfo("(handshakeFrontend) initial challenge-response failed:")
+		return false
+	}
+
+	////////////////////////////////////////////////////////////
+	// respond to challenge sent to us
+	////////////////////////////////////////////////////////////
+
+	// create local hash using Challenge instead of locally generated bytes
+	randomBytes = []byte(inMsg.Challenge)
+	hash = hmac.New(sha512.New512_256, []byte(authPassword))
+	hash.Write(randomBytes)
+	response := hash.Sum(nil)
+
+	// if debug: print local hash
+	if debugModeBool == true {
+		randomString := base64.StdEncoding.EncodeToString(randomBytes)
+		logDebug("(handshakeFrontend) local hash for challenge sent by LoadBalancer:\n", randomString)
+	}
+
+	// send response to frontend
+	err = conn.WriteMessage(websocket.TextMessage, []byte(response))
+	if checkError("(handshakeFrontend) error sending message to frontend loadbalancer:", err) {
+		return false
+	}
+
+	////////////////////////////////////////////////////////////
+	// wait for response saying okay
+	////////////////////////////////////////////////////////////
+	_, data, err := conn.ReadMessage()
+	if checkError("(handshakeFrontend) error receiving message to frontend loadbalancer:", err) {
+		return false
+	}
+
+	message := base64.StdEncoding.EncodeToString(data)
+	if message == "hellothere" {
+		return true
+	}
+
+	return false
+}
+
+type incomingMessage struct {
+	ListOfGalaxies []struct {
+		GalaxyName string  `json:"GalaxyName"`
+		GlobalX    float64 `json:"GlobalX"`
+		GlobalY    float64 `json:"GlobalY"`
+		Diameter   int32   `json:"Diameter"`
+	} `json:"ListOfGalaxies"`
+	OtherFrontends []string `json:"OtherFrontends"`
+	OtherBackends  []string `json:"OtherBackends"`
+	Message        string   `json:"Message"`
+}
+type outgoingMessage struct {
+	ServerAddress     string   `json:"ServerAddress"`
+	GalaxyName        string   `json:"GalaxyName"`
+	ActiveClientCount int32    `json:"ActiveClientCount"`
+	TotalClientCount  int32    `json:"TotalClientCount"`
+	OtherFrontends    []string `json:"OtherFrontends"`
+	OtherBackends     []string `json:"OtherBackends"`
+	Message           string   `json:"Message"`
+}
+
+func periodicUpdate(conn *websocket.Conn,
+	inMsg *incomingMessage, inMsgOld *incomingMessage,
+	outMsg *outgoingMessage, outMsgOld *outgoingMessage) bool {
+
+	////////////////////////////////////////////////////////////
+	// send outgoingMessage to other end
+	////////////////////////////////////////////////////////////
+
+	netAddr := conn.LocalAddr()
+	ipAddress, _, _ := net.SplitHostPort(netAddr.String())
+	outMsg.ServerAddress = ipAddress
+
+	outMsg.GalaxyName = currentGalaxy.Name
+
+	// TBC
+
+	return true
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
