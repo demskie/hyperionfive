@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"sync"
 	"time"
 
@@ -23,6 +24,9 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
+
+// defining specific global variables
+var ()
 
 func startFrontendMode() {
 
@@ -45,7 +49,7 @@ func startFrontendMode() {
 
 	// setup the websocket handlers
 	muxSecure.HandleFunc("/loadbalance", loadbalanceClients)
-	muxSecure.HandleFunc("/backend", handshakeWithBackend)
+	muxSecure.HandleFunc("/backend", handshakeBackend)
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
@@ -110,7 +114,8 @@ func startFrontendMode() {
 		lbWaitGroup.Done()
 	}()
 
-	// use waitgroup to stop permature termination unless all the above goroutines are finished executing
+	// use waitgroup to stop permature termination unless all
+	// the above goroutines are finished executing
 	lbWaitGroup.Wait()
 }
 
@@ -175,7 +180,7 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 
 	// attempting to process the incoming client's request
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError("(loadbalanceClients) upgrade error:", err) == true {
+	if checkError("(loadbalanceClients) upgrade error:", err) {
 		return
 	}
 	logDebug("(loadbalanceClients) opening socket:", string(r.RemoteAddr))
@@ -216,7 +221,7 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 
 	var inMsg incomingMessage
 	err = conn.ReadJSON(&inMsg)
-	if checkError("(loadbalanceClients) error receiving message:", err) == true {
+	if checkError("(loadbalanceClients) error receiving message:", err) {
 		return
 	}
 	logDebug("(loadbalanceClients) received the following message\n", fmt.Sprintf("%s", inMsg))
@@ -230,7 +235,7 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < constGoogleAuth; i++ {
 		var httpClient = &http.Client{}
 		oauth2Service, err = oauth2.New(httpClient)
-		if checkError("(loadbalanceClients) error contacting google:", err) == true {
+		if checkError("(loadbalanceClients) error contacting google:", err) {
 			continue
 		} else {
 			successful = true
@@ -250,13 +255,13 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 	tokenInfoCall := oauth2Service.Tokeninfo()
 	tokenInfoCall.IdToken(inMsg.IDToken)
 	tokenInfo, err := tokenInfoCall.Do()
-	if checkError("(loadbalanceClients) error parsing incoming google response:", err) == true {
+	if checkError("(loadbalanceClients) error parsing incoming google response:", err) {
 		conn.Close()
 		return
 	}
 
 	rawJSON, err := tokenInfo.MarshalJSON()
-	if checkError("(loadbalanceClients) error MarshalJSON'ing google response:", err) == true {
+	if checkError("(loadbalanceClients) error MarshalJSON'ing google response:", err) {
 		conn.Close()
 		return
 	}
@@ -265,7 +270,8 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 		var prettyJSON bytes.Buffer
 		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
 		checkError("(loadbalanceClients) error jsonIndent'ing google response:", err)
-		logDebug("(loadbalanceClients) received the following message from google:\n", string(prettyJSON.Bytes()))
+		logDebug("(loadbalanceClients) received the following message from google:\n",
+			string(prettyJSON.Bytes()))
 	}
 
 	////////////////////////////////////////////////////////////
@@ -291,7 +297,7 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
+func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 
 	////////////////////////////////////////////////////////////
 	// check that the host is not currently blacklisted
@@ -311,7 +317,7 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 		blacklistExpGrowth := int64((clientFirewallValues.failedChallengeCount) / constChallenge)
 		currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
 		if timeSinceBlacklist < currentBlacklistGiven {
-			logInfo("(handshakeWithBackend) blacklisted client attempting to connect:", r.RemoteAddr,
+			logInfo("(handshakeBackend) blacklisted client attempting to connect:", r.RemoteAddr,
 				"\n\tblacklistedFor:", string(timeSinceBlacklist),
 				"\n\treason: failedChallengeTime",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedChallengeCount))
@@ -321,7 +327,7 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 		blacklistExpGrowth = int64((clientFirewallValues.failedGoogleAuthCount) / constGoogleAuth)
 		currentBlacklistGiven = blacklistExpGrowth * int64(time.Hour/time.Minute)
 		if timeSinceBlacklist < currentBlacklistGiven {
-			logInfo("(handshakeWithBackend) blacklisted client attempting to connect:", r.RemoteAddr,
+			logInfo("(handshakeBackend) blacklisted client attempting to connect:", r.RemoteAddr,
 				"\n\tblacklistedFor:", string(timeSinceBlacklist),
 				"\n\treason: failedGoogleAuth",
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedGoogleAuthCount))
@@ -347,10 +353,11 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	defer conn.Close()
-	if checkError("(handshakeWithBackend) upgrade error:", err) == true {
+	defer logDebug("(handshakeBackend) closing connection:", client)
+	if checkError("(handshakeBackend) upgrade error:", err) {
 		return
 	}
-	logDebug("(handshakeWithBackend) opening socket:", string(r.RemoteAddr))
+	logDebug("(handshakeBackend) opening socket:", string(r.RemoteAddr))
 
 	////////////////////////////////////////////////////////////
 	// modify sessionCount accordingly
@@ -363,7 +370,7 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 			clientSessionCount[client]++
 		} else {
 			clientSessionCount[client] = 1
-			logInfo("(handshakeWithBackend) unsuccessfully tried to increment",
+			logInfo("(handshakeBackend) unsuccessfully tried to increment",
 				"'clientSessionCount' for this client:", client)
 		}
 		clientSessionCountMutex.Unlock()
@@ -376,7 +383,7 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 			clientSessionCount[client]--
 		} else {
 			clientSessionCount[client] = 0
-			logInfo("(handshakeWithBackend) unsuccessfully tried to decrement",
+			logInfo("(handshakeBackend) unsuccessfully tried to decrement",
 				"'clientSessionCount' for this client:", client)
 		}
 		clientSessionCountMutex.Unlock()
@@ -387,11 +394,12 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 
 	_, dataChallenge, err := conn.ReadMessage()
-	if checkError("(handshakeWithBackend) error receiving challenge from backend:", err) == true {
+	if checkError("(handshakeBackend) error receiving challenge from backend:", err) {
 		return
 	}
 	if len(dataChallenge) != 256 {
-		logDebug("(handshakeWithBackend) received a challenge with invalid length:", string(len(dataChallenge)), "bytes")
+		logDebug("(handshakeBackend) received a challenge with invalid length:",
+			string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
 		clientFirewallValues.mutex.Lock()
 		clientFirewallValues.failedChallengeCount++
@@ -399,7 +407,8 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 		clientFirewallValues.mutex.Unlock()
 		return
 	}
-	logDebug("(handshakeWithBackend) received the following challenge:\n", fmt.Sprintf("%s", dataChallenge))
+	logDebug("(handshakeBackend) received the following challenge:\n",
+		fmt.Sprintf("%s", dataChallenge))
 
 	////////////////////////////////////////////////////////////
 	// compute response and create a challenge of our own
@@ -409,15 +418,17 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 	hash := hmac.New(sha512.New512_256, []byte(authPassword))
 	hash.Write(dataChallenge)
 	expectedHash := hash.Sum(nil)
-	logDebug("(handshakeWithBackend) computed the following response:\n", fmt.Sprintf("%s", expectedHash))
+	logDebug("(handshakeBackend) computed the following response:\n",
+		fmt.Sprintf("%s", expectedHash))
 
 	// generate 256 random bytes
 	randomBytes := make([]byte, 256)
 	_, err = cryptorand.Read(randomBytes)
-	if checkError("(handshakeWithBackend) error while generating bytes:", err) {
+	if checkError("(handshakeBackend) error while generating bytes:", err) {
 		return
 	}
-	logDebug("(handshakeWithBackend) generated the following challenge:\n", fmt.Sprintf("%s", randomBytes))
+	logDebug("(handshakeBackend) generated the following challenge:\n",
+		fmt.Sprintf("%s", randomBytes))
 
 	////////////////////////////////////////////////////////////
 	// send the response in addition to own challenge
@@ -428,11 +439,11 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 		Challenge string `json:"challenge"`
 	}
 
-	var outMsg outgoingMessage
-	outMsg.Response = base64.StdEncoding.EncodeToString(expectedHash)
-	outMsg.Challenge = base64.StdEncoding.EncodeToString(randomBytes)
-	err = conn.WriteJSON(outMsg)
-	if checkError("(handshakeWithBackend) error sending response to backend:", err) == true {
+	var outMsgResponse outgoingMessage
+	outMsgResponse.Response = base64.StdEncoding.EncodeToString(expectedHash)
+	outMsgResponse.Challenge = base64.StdEncoding.EncodeToString(randomBytes)
+	err = conn.WriteJSON(outMsgResponse)
+	if checkError("(handshakeBackend) error sending response to backend:", err) {
 		return
 	}
 
@@ -442,13 +453,13 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 
 	// receive data from backend
 	_, remoteHash, err := conn.ReadMessage()
-	if checkError("(handshakeWithBackend) error receiving response from backend:", err) == true {
+	if checkError("(handshakeBackend) error receiving response from backend:", err) {
 		return
 	}
 
 	// check for equality
 	if hmac.Equal(expectedHash, remoteHash) != true {
-		logInfo("(handshakeWithBackend) initial challenge-response failed:")
+		logInfo("(handshakeBackend) initial challenge-response failed:")
 		return
 	}
 
@@ -456,10 +467,91 @@ func handshakeWithBackend(w http.ResponseWriter, r *http.Request) {
 	// say hello
 	////////////////////////////////////////////////////////////
 
-	// send response to frontend
 	err = conn.WriteMessage(websocket.TextMessage, []byte("hellothere"))
-	if checkError("(handshakeWithBackend) error sending hellothere to backend:", err) {
+	if checkError("(handshakeBackend) error sending hellothere to backend:", err) {
 		return
+	}
+
+	////////////////////////////////////////////////////////////
+	// define data structures for upcoming back/forth communication
+	////////////////////////////////////////////////////////////
+
+	type incomingMessageBackend struct {
+		ServerAddress     string   `json:"ServerAddress"`
+		GalaxyName        string   `json:"GalaxyName"`
+		ActiveClientCount int      `json:"ActiveClientCount"`
+		TotalClientCount  int      `json:"TotalClientCount"`
+		OtherFrontends    []string `json:"OtherFrontends"`
+		OtherBackends     []string `json:"OtherBackends"`
+		Message           string   `json:"Message"`
+	}
+	type outgoingMessageBackend struct {
+		ListOfGalaxies []struct {
+			GalaxyName string  `json:"GalaxyName"`
+			GlobalX    float64 `json:"GlobalX"`
+			GlobalY    float64 `json:"GlobalY"`
+			Diameter   int32   `json:"Diameter"`
+		} `json:"ListOfGalaxies"`
+		OtherFrontends []string `json:"OtherFrontends"`
+		OtherBackends  []string `json:"OtherBackends"`
+		Message        string   `json:"Message"`
+	}
+
+	var (
+		inMsg     = incomingMessageBackend{}
+		inMsgOld  = incomingMessageBackend{}
+		outMsg    = outgoingMessageBackend{}
+		outMsgOld = outgoingMessageBackend{}
+	)
+
+	////////////////////////////////////////////////////////////
+	// start communication with backend
+	////////////////////////////////////////////////////////////
+
+	for {
+
+		// wait for JSON message from Backend
+		err = conn.ReadJSON(&inMsg)
+		if checkError("(periodicUpdateBackend) error receiving message:", err) {
+			return
+		}
+
+		// look at the value of 'message' sent from Backend
+		switch inMsg.Message {
+		case "diediedie":
+			logInfo("(periodicUpdateFrontend) received 'diediedie' from frontend")
+		default:
+			logInfo("(periodicUpdateFrontend) received unknown message from frontend:",
+				inMsg.Message)
+		}
+
+		// shouldn't receive duplicate message from Backend - but we sanitycheck anyways
+		if reflect.DeepEqual(inMsg, inMsgOld) {
+			logInfo("(periodicUpdateBackend) received duplicate message from backend")
+		}
+
+		// instead of sending duplicate message we just send a special string
+		if reflect.DeepEqual(outMsg, outMsgOld) {
+			logDebug("(periodicUpdateBackend) outgoing info hasn't changed")
+			outMsg = outgoingMessageBackend{Message: "same_as_last_time"}
+		}
+
+		// now we send the JSON message message
+		err := conn.WriteJSON(outMsg)
+		if checkError("(periodicUpdateBackend) error sending message:", err) {
+			return
+		}
+
+		// check if we received the same message as last time
+		if inMsg.Message != "same_as_last_time" {
+			logInfo("(periodicUpdateFrontend) received 'same_as_last_time' from frontend")
+			inMsg = inMsgOld
+		} else {
+			inMsgOld = inMsg // used later to check if incomingMessage has changed
+		}
+
+		outMsgOld = outMsg // used later to check if outgoingMessage has changed
+
 	}
 
 }

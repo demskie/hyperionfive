@@ -34,9 +34,9 @@ var (
 	clientSessionCount      map[string]uint16
 	clientSessionCountMutex sync.RWMutex
 
-	randomSeed     *rand.Rand
-	currentGalaxy  Galaxy
-	futureGalaxy   Galaxy
+	sliceOfOtherFrontends []string
+	sliceOfOtherBackends  []string
+
 	loggingMutex   sync.Mutex
 	waitForLogging sync.WaitGroup
 )
@@ -70,6 +70,10 @@ func init() {
 
 	// initializing global IP session count
 	clientSessionCount = make(map[string]uint16)
+
+	// initializing data structures containing other server IPs
+	sliceOfOtherFrontends = []string{}
+	sliceOfOtherBackends = []string{}
 
 	// define commandline flags to parse for
 	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
@@ -125,6 +129,22 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+// The following structs "shadow" what has already been declared in protobuf.pb.go
+
+// Galaxy ...
+//type Galaxy struct {
+//	mutex sync.RWMutex
+//}
+//
+//// SolarSystem ...
+//type SolarSystem struct {
+//	mutex sync.RWMutex
+//}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////

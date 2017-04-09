@@ -385,6 +385,7 @@ var goog = jspb;
 var global = Function('return this')();
 
 goog.exportSymbol('proto.main.Galaxy', null, global);
+goog.exportSymbol('proto.main.OtherObject', null, global);
 goog.exportSymbol('proto.main.Planet', null, global);
 goog.exportSymbol('proto.main.SolarSystem', null, global);
 goog.exportSymbol('proto.main.Spaceship', null, global);
@@ -434,13 +435,14 @@ proto.main.Planet.prototype.toObject = function(opt_includeInstance) {
  */
 proto.main.Planet.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: msg.getName(),
-    localx: msg.getLocalx(),
-    localy: msg.getLocaly(),
-    owner: msg.getOwner(),
-    population: msg.getPopulation(),
-    type: msg.getType(),
-    food: msg.getFood()
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    localx: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    localy: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    owner: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    population: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    type: jspb.Message.getFieldWithDefault(msg, 6, 0),
+    food: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    health: jspb.Message.getFieldWithDefault(msg, 8, 0)
   };
 
   if (includeInstance) {
@@ -482,11 +484,11 @@ proto.main.Planet.deserializeBinaryFromReader = function(msg, reader) {
       msg.setName(value);
       break;
     case 2:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setLocalx(value);
       break;
     case 3:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setLocaly(value);
       break;
     case 4:
@@ -494,7 +496,7 @@ proto.main.Planet.deserializeBinaryFromReader = function(msg, reader) {
       msg.setOwner(value);
       break;
     case 5:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readUint64());
       msg.setPopulation(value);
       break;
     case 6:
@@ -504,6 +506,10 @@ proto.main.Planet.deserializeBinaryFromReader = function(msg, reader) {
     case 7:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setFood(value);
+      break;
+    case 8:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setHealth(value);
       break;
     default:
       reader.skipField();
@@ -515,92 +521,80 @@ proto.main.Planet.deserializeBinaryFromReader = function(msg, reader) {
 
 
 /**
- * Class method variant: serializes the given message to binary data
- * (in protobuf wire format), writing to the given BinaryWriter.
- * @param {!proto.main.Planet} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.main.Planet.serializeBinaryToWriter = function(message, writer) {
-  message.serializeBinaryToWriter(writer);
-};
-
-
-/**
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
 proto.main.Planet.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  this.serializeBinaryToWriter(writer);
+  proto.main.Planet.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
 
 /**
- * Serializes the message to binary data (in protobuf wire format),
- * writing to the given BinaryWriter.
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.main.Planet} message
  * @param {!jspb.BinaryWriter} writer
  */
-proto.main.Planet.prototype.serializeBinaryToWriter = function (writer) {
+proto.main.Planet.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = this.getName();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = this.getLocalx();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getLocalx();
+  if (f !== 0) {
+    writer.writeInt64(
       2,
       f
     );
   }
-  f = this.getLocaly();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getLocaly();
+  if (f !== 0) {
+    writer.writeInt64(
       3,
       f
     );
   }
-  f = this.getOwner();
+  f = message.getOwner();
   if (f.length > 0) {
     writer.writeString(
       4,
       f
     );
   }
-  f = this.getPopulation();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getPopulation();
+  if (f !== 0) {
+    writer.writeUint64(
       5,
       f
     );
   }
-  f = this.getType();
+  f = message.getType();
   if (f !== 0) {
     writer.writeInt32(
       6,
       f
     );
   }
-  f = this.getFood();
+  f = message.getFood();
   if (f !== 0) {
     writer.writeInt32(
       7,
       f
     );
   }
-};
-
-
-/**
- * Creates a deep clone of this proto. No data is shared with the original.
- * @return {!proto.main.Planet} The clone.
- */
-proto.main.Planet.prototype.cloneMessage = function() {
-  return /** @type {!proto.main.Planet} */ (jspb.Message.cloneMessage(this));
+  f = message.getHealth();
+  if (f !== 0) {
+    writer.writeInt32(
+      8,
+      f
+    );
+  }
 };
 
 
@@ -609,41 +603,41 @@ proto.main.Planet.prototype.cloneMessage = function() {
  * @return {string}
  */
 proto.main.Planet.prototype.getName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldProto3(this, 1, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
-/** @param {string} value  */
+/** @param {string} value */
 proto.main.Planet.prototype.setName = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
 
 /**
- * optional double localX = 2;
+ * optional int64 localX = 2;
  * @return {number}
  */
 proto.main.Planet.prototype.getLocalx = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 2, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Planet.prototype.setLocalx = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
 
 /**
- * optional double localY = 3;
+ * optional int64 localY = 3;
  * @return {number}
  */
 proto.main.Planet.prototype.getLocaly = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 3, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Planet.prototype.setLocaly = function(value) {
   jspb.Message.setField(this, 3, value);
 };
@@ -654,26 +648,26 @@ proto.main.Planet.prototype.setLocaly = function(value) {
  * @return {string}
  */
 proto.main.Planet.prototype.getOwner = function() {
-  return /** @type {string} */ (jspb.Message.getFieldProto3(this, 4, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
 
-/** @param {string} value  */
+/** @param {string} value */
 proto.main.Planet.prototype.setOwner = function(value) {
   jspb.Message.setField(this, 4, value);
 };
 
 
 /**
- * optional double population = 5;
+ * optional uint64 population = 5;
  * @return {number}
  */
 proto.main.Planet.prototype.getPopulation = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 5, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Planet.prototype.setPopulation = function(value) {
   jspb.Message.setField(this, 5, value);
 };
@@ -684,11 +678,11 @@ proto.main.Planet.prototype.setPopulation = function(value) {
  * @return {number}
  */
 proto.main.Planet.prototype.getType = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 6, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Planet.prototype.setType = function(value) {
   jspb.Message.setField(this, 6, value);
 };
@@ -699,13 +693,28 @@ proto.main.Planet.prototype.setType = function(value) {
  * @return {number}
  */
 proto.main.Planet.prototype.getFood = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 7, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Planet.prototype.setFood = function(value) {
   jspb.Message.setField(this, 7, value);
+};
+
+
+/**
+ * optional int32 health = 8;
+ * @return {number}
+ */
+proto.main.Planet.prototype.getHealth = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
+};
+
+
+/** @param {number} value */
+proto.main.Planet.prototype.setHealth = function(value) {
+  jspb.Message.setField(this, 8, value);
 };
 
 
@@ -755,16 +764,17 @@ proto.main.Spaceship.prototype.toObject = function(opt_includeInstance) {
  */
 proto.main.Spaceship.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: msg.getName(),
-    localx: msg.getLocalx(),
-    localy: msg.getLocaly(),
-    owner: msg.getOwner(),
-    population: msg.getPopulation(),
-    weapons: msg.getWeapons(),
-    engines: msg.getEngines(),
-    shields: msg.getShields(),
-    type: msg.getType(),
-    status: msg.getStatus()
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    localx: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    localy: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    owner: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    population: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    weapons: jspb.Message.getFieldWithDefault(msg, 6, 0),
+    engines: jspb.Message.getFieldWithDefault(msg, 7, 0),
+    shields: jspb.Message.getFieldWithDefault(msg, 8, 0),
+    special: jspb.Message.getFieldWithDefault(msg, 9, 0),
+    type: jspb.Message.getFieldWithDefault(msg, 10, 0),
+    health: jspb.Message.getFieldWithDefault(msg, 11, 0)
   };
 
   if (includeInstance) {
@@ -806,11 +816,11 @@ proto.main.Spaceship.deserializeBinaryFromReader = function(msg, reader) {
       msg.setName(value);
       break;
     case 2:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setLocalx(value);
       break;
     case 3:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setLocaly(value);
       break;
     case 4:
@@ -818,28 +828,32 @@ proto.main.Spaceship.deserializeBinaryFromReader = function(msg, reader) {
       msg.setOwner(value);
       break;
     case 5:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readUint64());
       msg.setPopulation(value);
       break;
     case 6:
-      var value = /** @type {boolean} */ (reader.readBool());
+      var value = /** @type {number} */ (reader.readInt32());
       msg.setWeapons(value);
       break;
     case 7:
-      var value = /** @type {boolean} */ (reader.readBool());
+      var value = /** @type {number} */ (reader.readInt32());
       msg.setEngines(value);
       break;
     case 8:
-      var value = /** @type {boolean} */ (reader.readBool());
+      var value = /** @type {number} */ (reader.readInt32());
       msg.setShields(value);
       break;
     case 9:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setType(value);
+      msg.setSpecial(value);
       break;
     case 10:
       var value = /** @type {number} */ (reader.readInt32());
-      msg.setStatus(value);
+      msg.setType(value);
+      break;
+    case 11:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setHealth(value);
       break;
     default:
       reader.skipField();
@@ -851,113 +865,101 @@ proto.main.Spaceship.deserializeBinaryFromReader = function(msg, reader) {
 
 
 /**
- * Class method variant: serializes the given message to binary data
- * (in protobuf wire format), writing to the given BinaryWriter.
- * @param {!proto.main.Spaceship} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.main.Spaceship.serializeBinaryToWriter = function(message, writer) {
-  message.serializeBinaryToWriter(writer);
-};
-
-
-/**
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
 proto.main.Spaceship.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  this.serializeBinaryToWriter(writer);
+  proto.main.Spaceship.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
 
 /**
- * Serializes the message to binary data (in protobuf wire format),
- * writing to the given BinaryWriter.
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.main.Spaceship} message
  * @param {!jspb.BinaryWriter} writer
  */
-proto.main.Spaceship.prototype.serializeBinaryToWriter = function (writer) {
+proto.main.Spaceship.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = this.getName();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = this.getLocalx();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getLocalx();
+  if (f !== 0) {
+    writer.writeInt64(
       2,
       f
     );
   }
-  f = this.getLocaly();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getLocaly();
+  if (f !== 0) {
+    writer.writeInt64(
       3,
       f
     );
   }
-  f = this.getOwner();
+  f = message.getOwner();
   if (f.length > 0) {
     writer.writeString(
       4,
       f
     );
   }
-  f = this.getPopulation();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getPopulation();
+  if (f !== 0) {
+    writer.writeUint64(
       5,
       f
     );
   }
-  f = this.getWeapons();
-  if (f) {
-    writer.writeBool(
+  f = message.getWeapons();
+  if (f !== 0) {
+    writer.writeInt32(
       6,
       f
     );
   }
-  f = this.getEngines();
-  if (f) {
-    writer.writeBool(
+  f = message.getEngines();
+  if (f !== 0) {
+    writer.writeInt32(
       7,
       f
     );
   }
-  f = this.getShields();
-  if (f) {
-    writer.writeBool(
+  f = message.getShields();
+  if (f !== 0) {
+    writer.writeInt32(
       8,
       f
     );
   }
-  f = this.getType();
+  f = message.getSpecial();
   if (f !== 0) {
     writer.writeInt32(
       9,
       f
     );
   }
-  f = this.getStatus();
+  f = message.getType();
   if (f !== 0) {
     writer.writeInt32(
       10,
       f
     );
   }
-};
-
-
-/**
- * Creates a deep clone of this proto. No data is shared with the original.
- * @return {!proto.main.Spaceship} The clone.
- */
-proto.main.Spaceship.prototype.cloneMessage = function() {
-  return /** @type {!proto.main.Spaceship} */ (jspb.Message.cloneMessage(this));
+  f = message.getHealth();
+  if (f !== 0) {
+    writer.writeInt32(
+      11,
+      f
+    );
+  }
 };
 
 
@@ -966,41 +968,41 @@ proto.main.Spaceship.prototype.cloneMessage = function() {
  * @return {string}
  */
 proto.main.Spaceship.prototype.getName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldProto3(this, 1, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
-/** @param {string} value  */
+/** @param {string} value */
 proto.main.Spaceship.prototype.setName = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
 
 /**
- * optional double localX = 2;
+ * optional int64 localX = 2;
  * @return {number}
  */
 proto.main.Spaceship.prototype.getLocalx = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 2, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Spaceship.prototype.setLocalx = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
 
 /**
- * optional double localY = 3;
+ * optional int64 localY = 3;
  * @return {number}
  */
 proto.main.Spaceship.prototype.getLocaly = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 3, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Spaceship.prototype.setLocaly = function(value) {
   jspb.Message.setField(this, 3, value);
 };
@@ -1011,109 +1013,420 @@ proto.main.Spaceship.prototype.setLocaly = function(value) {
  * @return {string}
  */
 proto.main.Spaceship.prototype.getOwner = function() {
-  return /** @type {string} */ (jspb.Message.getFieldProto3(this, 4, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
 
-/** @param {string} value  */
+/** @param {string} value */
 proto.main.Spaceship.prototype.setOwner = function(value) {
   jspb.Message.setField(this, 4, value);
 };
 
 
 /**
- * optional double population = 5;
+ * optional uint64 population = 5;
  * @return {number}
  */
 proto.main.Spaceship.prototype.getPopulation = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 5, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Spaceship.prototype.setPopulation = function(value) {
   jspb.Message.setField(this, 5, value);
 };
 
 
 /**
- * optional bool weapons = 6;
- * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
- * You should avoid comparisons like {@code val === true/false} in those cases.
- * @return {boolean}
+ * optional int32 weapons = 6;
+ * @return {number}
  */
 proto.main.Spaceship.prototype.getWeapons = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldProto3(this, 6, false));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
 };
 
 
-/** @param {boolean} value  */
+/** @param {number} value */
 proto.main.Spaceship.prototype.setWeapons = function(value) {
   jspb.Message.setField(this, 6, value);
 };
 
 
 /**
- * optional bool engines = 7;
- * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
- * You should avoid comparisons like {@code val === true/false} in those cases.
- * @return {boolean}
+ * optional int32 engines = 7;
+ * @return {number}
  */
 proto.main.Spaceship.prototype.getEngines = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldProto3(this, 7, false));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
 };
 
 
-/** @param {boolean} value  */
+/** @param {number} value */
 proto.main.Spaceship.prototype.setEngines = function(value) {
   jspb.Message.setField(this, 7, value);
 };
 
 
 /**
- * optional bool shields = 8;
- * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
- * You should avoid comparisons like {@code val === true/false} in those cases.
- * @return {boolean}
+ * optional int32 shields = 8;
+ * @return {number}
  */
 proto.main.Spaceship.prototype.getShields = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldProto3(this, 8, false));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 8, 0));
 };
 
 
-/** @param {boolean} value  */
+/** @param {number} value */
 proto.main.Spaceship.prototype.setShields = function(value) {
   jspb.Message.setField(this, 8, value);
 };
 
 
 /**
- * optional int32 type = 9;
+ * optional int32 special = 9;
  * @return {number}
  */
-proto.main.Spaceship.prototype.getType = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 9, 0));
+proto.main.Spaceship.prototype.getSpecial = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 9, 0));
 };
 
 
-/** @param {number} value  */
-proto.main.Spaceship.prototype.setType = function(value) {
+/** @param {number} value */
+proto.main.Spaceship.prototype.setSpecial = function(value) {
   jspb.Message.setField(this, 9, value);
 };
 
 
 /**
- * optional int32 status = 10;
+ * optional int32 type = 10;
  * @return {number}
  */
-proto.main.Spaceship.prototype.getStatus = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 10, 0));
+proto.main.Spaceship.prototype.getType = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 10, 0));
 };
 
 
-/** @param {number} value  */
-proto.main.Spaceship.prototype.setStatus = function(value) {
+/** @param {number} value */
+proto.main.Spaceship.prototype.setType = function(value) {
   jspb.Message.setField(this, 10, value);
+};
+
+
+/**
+ * optional int32 health = 11;
+ * @return {number}
+ */
+proto.main.Spaceship.prototype.getHealth = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 11, 0));
+};
+
+
+/** @param {number} value */
+proto.main.Spaceship.prototype.setHealth = function(value) {
+  jspb.Message.setField(this, 11, value);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.main.OtherObject = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.main.OtherObject, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.main.OtherObject.displayName = 'proto.main.OtherObject';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.main.OtherObject.prototype.toObject = function(opt_includeInstance) {
+  return proto.main.OtherObject.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.main.OtherObject} msg The msg instance to transform.
+ * @return {!Object}
+ */
+proto.main.OtherObject.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    localx: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    localy: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    owner: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    economicvalue: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    type: jspb.Message.getFieldWithDefault(msg, 6, 0),
+    health: jspb.Message.getFieldWithDefault(msg, 7, 0)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.main.OtherObject}
+ */
+proto.main.OtherObject.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.main.OtherObject;
+  return proto.main.OtherObject.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.main.OtherObject} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.main.OtherObject}
+ */
+proto.main.OtherObject.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
+    case 2:
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setLocalx(value);
+      break;
+    case 3:
+      var value = /** @type {number} */ (reader.readInt64());
+      msg.setLocaly(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setOwner(value);
+      break;
+    case 5:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setEconomicvalue(value);
+      break;
+    case 6:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setType(value);
+      break;
+    case 7:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setHealth(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.main.OtherObject.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.main.OtherObject.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.main.OtherObject} message
+ * @param {!jspb.BinaryWriter} writer
+ */
+proto.main.OtherObject.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getName();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getLocalx();
+  if (f !== 0) {
+    writer.writeInt64(
+      2,
+      f
+    );
+  }
+  f = message.getLocaly();
+  if (f !== 0) {
+    writer.writeInt64(
+      3,
+      f
+    );
+  }
+  f = message.getOwner();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
+  f = message.getEconomicvalue();
+  if (f !== 0) {
+    writer.writeInt32(
+      5,
+      f
+    );
+  }
+  f = message.getType();
+  if (f !== 0) {
+    writer.writeInt32(
+      6,
+      f
+    );
+  }
+  f = message.getHealth();
+  if (f !== 0) {
+    writer.writeInt32(
+      7,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string name = 1;
+ * @return {string}
+ */
+proto.main.OtherObject.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.main.OtherObject.prototype.setName = function(value) {
+  jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional int64 localX = 2;
+ * @return {number}
+ */
+proto.main.OtherObject.prototype.getLocalx = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
+};
+
+
+/** @param {number} value */
+proto.main.OtherObject.prototype.setLocalx = function(value) {
+  jspb.Message.setField(this, 2, value);
+};
+
+
+/**
+ * optional int64 localY = 3;
+ * @return {number}
+ */
+proto.main.OtherObject.prototype.getLocaly = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+};
+
+
+/** @param {number} value */
+proto.main.OtherObject.prototype.setLocaly = function(value) {
+  jspb.Message.setField(this, 3, value);
+};
+
+
+/**
+ * optional string owner = 4;
+ * @return {string}
+ */
+proto.main.OtherObject.prototype.getOwner = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.main.OtherObject.prototype.setOwner = function(value) {
+  jspb.Message.setField(this, 4, value);
+};
+
+
+/**
+ * optional int32 economicValue = 5;
+ * @return {number}
+ */
+proto.main.OtherObject.prototype.getEconomicvalue = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/** @param {number} value */
+proto.main.OtherObject.prototype.setEconomicvalue = function(value) {
+  jspb.Message.setField(this, 5, value);
+};
+
+
+/**
+ * optional int32 type = 6;
+ * @return {number}
+ */
+proto.main.OtherObject.prototype.getType = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
+};
+
+
+/** @param {number} value */
+proto.main.OtherObject.prototype.setType = function(value) {
+  jspb.Message.setField(this, 6, value);
+};
+
+
+/**
+ * optional int32 health = 7;
+ * @return {number}
+ */
+proto.main.OtherObject.prototype.getHealth = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
+};
+
+
+/** @param {number} value */
+proto.main.OtherObject.prototype.setHealth = function(value) {
+  jspb.Message.setField(this, 7, value);
 };
 
 
@@ -1170,14 +1483,14 @@ proto.main.SolarSystem.prototype.toObject = function(opt_includeInstance) {
  */
 proto.main.SolarSystem.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: msg.getName(),
-    interx: msg.getInterx(),
-    intery: msg.getIntery(),
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    interx: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    intery: jspb.Message.getFieldWithDefault(msg, 3, 0),
     planetsliceList: jspb.Message.toObjectList(msg.getPlanetsliceList(),
     proto.main.Planet.toObject, includeInstance),
     spaceshipsliceList: jspb.Message.toObjectList(msg.getSpaceshipsliceList(),
     proto.main.Spaceship.toObject, includeInstance),
-    type: msg.getType()
+    type: jspb.Message.getFieldWithDefault(msg, 6, 0)
   };
 
   if (includeInstance) {
@@ -1219,24 +1532,22 @@ proto.main.SolarSystem.deserializeBinaryFromReader = function(msg, reader) {
       msg.setName(value);
       break;
     case 2:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setInterx(value);
       break;
     case 3:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setIntery(value);
       break;
     case 4:
       var value = new proto.main.Planet;
       reader.readMessage(value,proto.main.Planet.deserializeBinaryFromReader);
-      msg.getPlanetsliceList().push(value);
-      msg.setPlanetsliceList(msg.getPlanetsliceList());
+      msg.addPlanetslice(value);
       break;
     case 5:
       var value = new proto.main.Spaceship;
       reader.readMessage(value,proto.main.Spaceship.deserializeBinaryFromReader);
-      msg.getSpaceshipsliceList().push(value);
-      msg.setSpaceshipsliceList(msg.getSpaceshipsliceList());
+      msg.addSpaceshipslice(value);
       break;
     case 6:
       var value = /** @type {number} */ (reader.readInt32());
@@ -1252,56 +1563,46 @@ proto.main.SolarSystem.deserializeBinaryFromReader = function(msg, reader) {
 
 
 /**
- * Class method variant: serializes the given message to binary data
- * (in protobuf wire format), writing to the given BinaryWriter.
- * @param {!proto.main.SolarSystem} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.main.SolarSystem.serializeBinaryToWriter = function(message, writer) {
-  message.serializeBinaryToWriter(writer);
-};
-
-
-/**
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
 proto.main.SolarSystem.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  this.serializeBinaryToWriter(writer);
+  proto.main.SolarSystem.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
 
 /**
- * Serializes the message to binary data (in protobuf wire format),
- * writing to the given BinaryWriter.
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.main.SolarSystem} message
  * @param {!jspb.BinaryWriter} writer
  */
-proto.main.SolarSystem.prototype.serializeBinaryToWriter = function (writer) {
+proto.main.SolarSystem.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = this.getName();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = this.getInterx();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getInterx();
+  if (f !== 0) {
+    writer.writeInt64(
       2,
       f
     );
   }
-  f = this.getIntery();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getIntery();
+  if (f !== 0) {
+    writer.writeInt64(
       3,
       f
     );
   }
-  f = this.getPlanetsliceList();
+  f = message.getPlanetsliceList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
       4,
@@ -1309,7 +1610,7 @@ proto.main.SolarSystem.prototype.serializeBinaryToWriter = function (writer) {
       proto.main.Planet.serializeBinaryToWriter
     );
   }
-  f = this.getSpaceshipsliceList();
+  f = message.getSpaceshipsliceList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
       5,
@@ -1317,7 +1618,7 @@ proto.main.SolarSystem.prototype.serializeBinaryToWriter = function (writer) {
       proto.main.Spaceship.serializeBinaryToWriter
     );
   }
-  f = this.getType();
+  f = message.getType();
   if (f !== 0) {
     writer.writeInt32(
       6,
@@ -1328,54 +1629,45 @@ proto.main.SolarSystem.prototype.serializeBinaryToWriter = function (writer) {
 
 
 /**
- * Creates a deep clone of this proto. No data is shared with the original.
- * @return {!proto.main.SolarSystem} The clone.
- */
-proto.main.SolarSystem.prototype.cloneMessage = function() {
-  return /** @type {!proto.main.SolarSystem} */ (jspb.Message.cloneMessage(this));
-};
-
-
-/**
  * optional string name = 1;
  * @return {string}
  */
 proto.main.SolarSystem.prototype.getName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldProto3(this, 1, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
-/** @param {string} value  */
+/** @param {string} value */
 proto.main.SolarSystem.prototype.setName = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
 
 /**
- * optional double interX = 2;
+ * optional int64 interX = 2;
  * @return {number}
  */
 proto.main.SolarSystem.prototype.getInterx = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 2, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.SolarSystem.prototype.setInterx = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
 
 /**
- * optional double interY = 3;
+ * optional int64 interY = 3;
  * @return {number}
  */
 proto.main.SolarSystem.prototype.getIntery = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 3, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.SolarSystem.prototype.setIntery = function(value) {
   jspb.Message.setField(this, 3, value);
 };
@@ -1393,9 +1685,19 @@ proto.main.SolarSystem.prototype.getPlanetsliceList = function() {
 };
 
 
-/** @param {Array.<!proto.main.Planet>} value  */
+/** @param {!Array.<!proto.main.Planet>} value */
 proto.main.SolarSystem.prototype.setPlanetsliceList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 4, value);
+};
+
+
+/**
+ * @param {!proto.main.Planet=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.main.Planet}
+ */
+proto.main.SolarSystem.prototype.addPlanetslice = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 4, opt_value, proto.main.Planet, opt_index);
 };
 
 
@@ -1416,9 +1718,19 @@ proto.main.SolarSystem.prototype.getSpaceshipsliceList = function() {
 };
 
 
-/** @param {Array.<!proto.main.Spaceship>} value  */
+/** @param {!Array.<!proto.main.Spaceship>} value */
 proto.main.SolarSystem.prototype.setSpaceshipsliceList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 5, value);
+};
+
+
+/**
+ * @param {!proto.main.Spaceship=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.main.Spaceship}
+ */
+proto.main.SolarSystem.prototype.addSpaceshipslice = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 5, opt_value, proto.main.Spaceship, opt_index);
 };
 
 
@@ -1432,11 +1744,11 @@ proto.main.SolarSystem.prototype.clearSpaceshipsliceList = function() {
  * @return {number}
  */
 proto.main.SolarSystem.prototype.getType = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 6, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.SolarSystem.prototype.setType = function(value) {
   jspb.Message.setField(this, 6, value);
 };
@@ -1495,12 +1807,12 @@ proto.main.Galaxy.prototype.toObject = function(opt_includeInstance) {
  */
 proto.main.Galaxy.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: msg.getName(),
-    globalx: msg.getGlobalx(),
-    globaly: msg.getGlobaly(),
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    globalx: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    globaly: jspb.Message.getFieldWithDefault(msg, 3, 0),
     solarsystemsliceList: jspb.Message.toObjectList(msg.getSolarsystemsliceList(),
     proto.main.SolarSystem.toObject, includeInstance),
-    type: msg.getType()
+    type: jspb.Message.getFieldWithDefault(msg, 5, 0)
   };
 
   if (includeInstance) {
@@ -1542,18 +1854,17 @@ proto.main.Galaxy.deserializeBinaryFromReader = function(msg, reader) {
       msg.setName(value);
       break;
     case 2:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setGlobalx(value);
       break;
     case 3:
-      var value = /** @type {number} */ (reader.readDouble());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setGlobaly(value);
       break;
     case 4:
       var value = new proto.main.SolarSystem;
       reader.readMessage(value,proto.main.SolarSystem.deserializeBinaryFromReader);
-      msg.getSolarsystemsliceList().push(value);
-      msg.setSolarsystemsliceList(msg.getSolarsystemsliceList());
+      msg.addSolarsystemslice(value);
       break;
     case 5:
       var value = /** @type {number} */ (reader.readInt32());
@@ -1569,56 +1880,46 @@ proto.main.Galaxy.deserializeBinaryFromReader = function(msg, reader) {
 
 
 /**
- * Class method variant: serializes the given message to binary data
- * (in protobuf wire format), writing to the given BinaryWriter.
- * @param {!proto.main.Galaxy} message
- * @param {!jspb.BinaryWriter} writer
- */
-proto.main.Galaxy.serializeBinaryToWriter = function(message, writer) {
-  message.serializeBinaryToWriter(writer);
-};
-
-
-/**
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
 proto.main.Galaxy.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  this.serializeBinaryToWriter(writer);
+  proto.main.Galaxy.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
 
 /**
- * Serializes the message to binary data (in protobuf wire format),
- * writing to the given BinaryWriter.
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.main.Galaxy} message
  * @param {!jspb.BinaryWriter} writer
  */
-proto.main.Galaxy.prototype.serializeBinaryToWriter = function (writer) {
+proto.main.Galaxy.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = this.getName();
+  f = message.getName();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = this.getGlobalx();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getGlobalx();
+  if (f !== 0) {
+    writer.writeInt64(
       2,
       f
     );
   }
-  f = this.getGlobaly();
-  if (f !== 0.0) {
-    writer.writeDouble(
+  f = message.getGlobaly();
+  if (f !== 0) {
+    writer.writeInt64(
       3,
       f
     );
   }
-  f = this.getSolarsystemsliceList();
+  f = message.getSolarsystemsliceList();
   if (f.length > 0) {
     writer.writeRepeatedMessage(
       4,
@@ -1626,7 +1927,7 @@ proto.main.Galaxy.prototype.serializeBinaryToWriter = function (writer) {
       proto.main.SolarSystem.serializeBinaryToWriter
     );
   }
-  f = this.getType();
+  f = message.getType();
   if (f !== 0) {
     writer.writeInt32(
       5,
@@ -1637,54 +1938,45 @@ proto.main.Galaxy.prototype.serializeBinaryToWriter = function (writer) {
 
 
 /**
- * Creates a deep clone of this proto. No data is shared with the original.
- * @return {!proto.main.Galaxy} The clone.
- */
-proto.main.Galaxy.prototype.cloneMessage = function() {
-  return /** @type {!proto.main.Galaxy} */ (jspb.Message.cloneMessage(this));
-};
-
-
-/**
  * optional string name = 1;
  * @return {string}
  */
 proto.main.Galaxy.prototype.getName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldProto3(this, 1, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
-/** @param {string} value  */
+/** @param {string} value */
 proto.main.Galaxy.prototype.setName = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
 
 /**
- * optional double globalX = 2;
+ * optional int64 globalX = 2;
  * @return {number}
  */
 proto.main.Galaxy.prototype.getGlobalx = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 2, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Galaxy.prototype.setGlobalx = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
 
 /**
- * optional double globalY = 3;
+ * optional int64 globalY = 3;
  * @return {number}
  */
 proto.main.Galaxy.prototype.getGlobaly = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 3, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Galaxy.prototype.setGlobaly = function(value) {
   jspb.Message.setField(this, 3, value);
 };
@@ -1702,9 +1994,19 @@ proto.main.Galaxy.prototype.getSolarsystemsliceList = function() {
 };
 
 
-/** @param {Array.<!proto.main.SolarSystem>} value  */
+/** @param {!Array.<!proto.main.SolarSystem>} value */
 proto.main.Galaxy.prototype.setSolarsystemsliceList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 4, value);
+};
+
+
+/**
+ * @param {!proto.main.SolarSystem=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.main.SolarSystem}
+ */
+proto.main.Galaxy.prototype.addSolarsystemslice = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 4, opt_value, proto.main.SolarSystem, opt_index);
 };
 
 
@@ -1718,11 +2020,11 @@ proto.main.Galaxy.prototype.clearSolarsystemsliceList = function() {
  * @return {number}
  */
 proto.main.Galaxy.prototype.getType = function() {
-  return /** @type {number} */ (jspb.Message.getFieldProto3(this, 5, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
 };
 
 
-/** @param {number} value  */
+/** @param {number} value */
 proto.main.Galaxy.prototype.setType = function(value) {
   jspb.Message.setField(this, 5, value);
 };

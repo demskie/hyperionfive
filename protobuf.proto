@@ -1,7 +1,5 @@
 // protobuf.proto
-// cd D:\OneDrive\GoPrototypes\src\ProtobufTest
-// D:\OneDrive\GoPrototypes\bin\protoc --go_out=D:\OneDrive\GoPrototypes\src\ProtobufTest\ protobuf.proto
-// cd D:\OneDrive\GoPrototypes\bin\
+
 
 syntax = "proto3";
 package main;
@@ -9,33 +7,46 @@ package main;
 
 message Planet {
     string name = 1;
-    double localX = 2;
-    double localY = 3;
+    int64 localX = 2;
+    int64 localY = 3;
     string owner = 4;
-    double population = 5;
+    uint64 population = 5;
     int32 type = 6;
     int32 food = 7;
+	int32 health = 8;
 }
 
 
 message Spaceship {
     string name = 1;
-    double localX = 2;
-    double localY = 3;
+    int64 localX = 2;
+    int64 localY = 3;
     string owner = 4;
-    double population = 5;
-    bool weapons = 6;
-    bool engines = 7;
-    bool shields = 8;
-    int32 type = 9;
-    int32 status = 10;
+    uint64 population = 5;
+    int32 weapons = 6;
+    int32 engines = 7;
+    int32 shields = 8;
+	int32 special = 9;
+    int32 type = 10;
+    int32 health = 11;
+}
+
+
+message OtherObject {
+	string name = 1;
+	int64 localX = 2;
+	int64 localY = 3;
+	string owner = 4;
+	int32 economicValue = 5;
+	int32 type = 6;
+	int32 health = 7;
 }
 
 
 message SolarSystem {
     string name = 1;
-    double interX = 2;
-    double interY = 3;
+    int64 interX = 2;
+    int64 interY = 3;
     repeated Planet planetslice = 4;
     repeated Spaceship spaceshipslice = 5;
     int32 type = 6;
@@ -44,8 +55,23 @@ message SolarSystem {
 
 message Galaxy {
     string name = 1;
-    double globalX = 2;
-    double globalY = 3;
+    int64 globalX = 2;
+    int64 globalY = 3;
     repeated SolarSystem solarsystemslice = 4;
     int32 type = 5;
 }
+
+
+// go get github.com/golang/protobuf/proto
+// go get github.com/golang/protobuf/protoc-gen-go
+// go install github.com\golang\protobuf\protoc-gen-go
+// https://github.com/google/protobuf/releases
+// **extract_protoc.exe_here**-->   D:\OneDrive\GoPrototypes\bin
+// D:
+// cd D:\OneDrive\GoPrototypes\src\GOSERVER
+// D:\OneDrive\GoPrototypes\bin\protoc --go_out=D:\OneDrive\GoPrototypes\src\GOSERVER\ protobuf.proto
+// D:\OneDrive\GoPrototypes\bin\protoc --js_out=import_style=commonjs,binary:D:\OneDrive\GoPrototypes\src\GOSERVER protobuf.proto
+// npm update
+// npm install --save protobuf
+// npm install --global browserify
+// browserify protobuf_pb.js -o websiteroot\protobuf.js

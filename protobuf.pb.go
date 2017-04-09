@@ -11,6 +11,7 @@ It is generated from these files:
 It has these top-level messages:
 	Planet
 	Spaceship
+	OtherObject
 	SolarSystem
 	Galaxy
 */
@@ -32,13 +33,14 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Planet struct {
-	Name       string  `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	LocalX     float64 `protobuf:"fixed64,2,opt,name=localX" json:"localX,omitempty"`
-	LocalY     float64 `protobuf:"fixed64,3,opt,name=localY" json:"localY,omitempty"`
-	Owner      string  `protobuf:"bytes,4,opt,name=owner" json:"owner,omitempty"`
-	Population float64 `protobuf:"fixed64,5,opt,name=population" json:"population,omitempty"`
-	Type       int32   `protobuf:"varint,6,opt,name=type" json:"type,omitempty"`
-	Food       int32   `protobuf:"varint,7,opt,name=food" json:"food,omitempty"`
+	Name       string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	LocalX     int64  `protobuf:"varint,2,opt,name=localX" json:"localX,omitempty"`
+	LocalY     int64  `protobuf:"varint,3,opt,name=localY" json:"localY,omitempty"`
+	Owner      string `protobuf:"bytes,4,opt,name=owner" json:"owner,omitempty"`
+	Population uint64 `protobuf:"varint,5,opt,name=population" json:"population,omitempty"`
+	Type       int32  `protobuf:"varint,6,opt,name=type" json:"type,omitempty"`
+	Food       int32  `protobuf:"varint,7,opt,name=food" json:"food,omitempty"`
+	Health     int32  `protobuf:"varint,8,opt,name=health" json:"health,omitempty"`
 }
 
 func (m *Planet) Reset()                    { *m = Planet{} }
@@ -53,14 +55,14 @@ func (m *Planet) GetName() string {
 	return ""
 }
 
-func (m *Planet) GetLocalX() float64 {
+func (m *Planet) GetLocalX() int64 {
 	if m != nil {
 		return m.LocalX
 	}
 	return 0
 }
 
-func (m *Planet) GetLocalY() float64 {
+func (m *Planet) GetLocalY() int64 {
 	if m != nil {
 		return m.LocalY
 	}
@@ -74,7 +76,7 @@ func (m *Planet) GetOwner() string {
 	return ""
 }
 
-func (m *Planet) GetPopulation() float64 {
+func (m *Planet) GetPopulation() uint64 {
 	if m != nil {
 		return m.Population
 	}
@@ -95,17 +97,25 @@ func (m *Planet) GetFood() int32 {
 	return 0
 }
 
+func (m *Planet) GetHealth() int32 {
+	if m != nil {
+		return m.Health
+	}
+	return 0
+}
+
 type Spaceship struct {
-	Name       string  `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	LocalX     float64 `protobuf:"fixed64,2,opt,name=localX" json:"localX,omitempty"`
-	LocalY     float64 `protobuf:"fixed64,3,opt,name=localY" json:"localY,omitempty"`
-	Owner      string  `protobuf:"bytes,4,opt,name=owner" json:"owner,omitempty"`
-	Population float64 `protobuf:"fixed64,5,opt,name=population" json:"population,omitempty"`
-	Weapons    bool    `protobuf:"varint,6,opt,name=weapons" json:"weapons,omitempty"`
-	Engines    bool    `protobuf:"varint,7,opt,name=engines" json:"engines,omitempty"`
-	Shields    bool    `protobuf:"varint,8,opt,name=shields" json:"shields,omitempty"`
-	Type       int32   `protobuf:"varint,9,opt,name=type" json:"type,omitempty"`
-	Status     int32   `protobuf:"varint,10,opt,name=status" json:"status,omitempty"`
+	Name       string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	LocalX     int64  `protobuf:"varint,2,opt,name=localX" json:"localX,omitempty"`
+	LocalY     int64  `protobuf:"varint,3,opt,name=localY" json:"localY,omitempty"`
+	Owner      string `protobuf:"bytes,4,opt,name=owner" json:"owner,omitempty"`
+	Population uint64 `protobuf:"varint,5,opt,name=population" json:"population,omitempty"`
+	Weapons    int32  `protobuf:"varint,6,opt,name=weapons" json:"weapons,omitempty"`
+	Engines    int32  `protobuf:"varint,7,opt,name=engines" json:"engines,omitempty"`
+	Shields    int32  `protobuf:"varint,8,opt,name=shields" json:"shields,omitempty"`
+	Special    int32  `protobuf:"varint,9,opt,name=special" json:"special,omitempty"`
+	Type       int32  `protobuf:"varint,10,opt,name=type" json:"type,omitempty"`
+	Health     int32  `protobuf:"varint,11,opt,name=health" json:"health,omitempty"`
 }
 
 func (m *Spaceship) Reset()                    { *m = Spaceship{} }
@@ -120,14 +130,14 @@ func (m *Spaceship) GetName() string {
 	return ""
 }
 
-func (m *Spaceship) GetLocalX() float64 {
+func (m *Spaceship) GetLocalX() int64 {
 	if m != nil {
 		return m.LocalX
 	}
 	return 0
 }
 
-func (m *Spaceship) GetLocalY() float64 {
+func (m *Spaceship) GetLocalY() int64 {
 	if m != nil {
 		return m.LocalY
 	}
@@ -141,32 +151,39 @@ func (m *Spaceship) GetOwner() string {
 	return ""
 }
 
-func (m *Spaceship) GetPopulation() float64 {
+func (m *Spaceship) GetPopulation() uint64 {
 	if m != nil {
 		return m.Population
 	}
 	return 0
 }
 
-func (m *Spaceship) GetWeapons() bool {
+func (m *Spaceship) GetWeapons() int32 {
 	if m != nil {
 		return m.Weapons
 	}
-	return false
+	return 0
 }
 
-func (m *Spaceship) GetEngines() bool {
+func (m *Spaceship) GetEngines() int32 {
 	if m != nil {
 		return m.Engines
 	}
-	return false
+	return 0
 }
 
-func (m *Spaceship) GetShields() bool {
+func (m *Spaceship) GetShields() int32 {
 	if m != nil {
 		return m.Shields
 	}
-	return false
+	return 0
+}
+
+func (m *Spaceship) GetSpecial() int32 {
+	if m != nil {
+		return m.Special
+	}
+	return 0
 }
 
 func (m *Spaceship) GetType() int32 {
@@ -176,17 +193,81 @@ func (m *Spaceship) GetType() int32 {
 	return 0
 }
 
-func (m *Spaceship) GetStatus() int32 {
+func (m *Spaceship) GetHealth() int32 {
 	if m != nil {
-		return m.Status
+		return m.Health
+	}
+	return 0
+}
+
+type OtherObject struct {
+	Name          string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	LocalX        int64  `protobuf:"varint,2,opt,name=localX" json:"localX,omitempty"`
+	LocalY        int64  `protobuf:"varint,3,opt,name=localY" json:"localY,omitempty"`
+	Owner         string `protobuf:"bytes,4,opt,name=owner" json:"owner,omitempty"`
+	EconomicValue int32  `protobuf:"varint,5,opt,name=economicValue" json:"economicValue,omitempty"`
+	Type          int32  `protobuf:"varint,6,opt,name=type" json:"type,omitempty"`
+	Health        int32  `protobuf:"varint,7,opt,name=health" json:"health,omitempty"`
+}
+
+func (m *OtherObject) Reset()                    { *m = OtherObject{} }
+func (m *OtherObject) String() string            { return proto.CompactTextString(m) }
+func (*OtherObject) ProtoMessage()               {}
+func (*OtherObject) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *OtherObject) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *OtherObject) GetLocalX() int64 {
+	if m != nil {
+		return m.LocalX
+	}
+	return 0
+}
+
+func (m *OtherObject) GetLocalY() int64 {
+	if m != nil {
+		return m.LocalY
+	}
+	return 0
+}
+
+func (m *OtherObject) GetOwner() string {
+	if m != nil {
+		return m.Owner
+	}
+	return ""
+}
+
+func (m *OtherObject) GetEconomicValue() int32 {
+	if m != nil {
+		return m.EconomicValue
+	}
+	return 0
+}
+
+func (m *OtherObject) GetType() int32 {
+	if m != nil {
+		return m.Type
+	}
+	return 0
+}
+
+func (m *OtherObject) GetHealth() int32 {
+	if m != nil {
+		return m.Health
 	}
 	return 0
 }
 
 type SolarSystem struct {
 	Name           string       `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	InterX         float64      `protobuf:"fixed64,2,opt,name=interX" json:"interX,omitempty"`
-	InterY         float64      `protobuf:"fixed64,3,opt,name=interY" json:"interY,omitempty"`
+	InterX         int64        `protobuf:"varint,2,opt,name=interX" json:"interX,omitempty"`
+	InterY         int64        `protobuf:"varint,3,opt,name=interY" json:"interY,omitempty"`
 	Planetslice    []*Planet    `protobuf:"bytes,4,rep,name=planetslice" json:"planetslice,omitempty"`
 	Spaceshipslice []*Spaceship `protobuf:"bytes,5,rep,name=spaceshipslice" json:"spaceshipslice,omitempty"`
 	Type           int32        `protobuf:"varint,6,opt,name=type" json:"type,omitempty"`
@@ -195,7 +276,7 @@ type SolarSystem struct {
 func (m *SolarSystem) Reset()                    { *m = SolarSystem{} }
 func (m *SolarSystem) String() string            { return proto.CompactTextString(m) }
 func (*SolarSystem) ProtoMessage()               {}
-func (*SolarSystem) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*SolarSystem) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 func (m *SolarSystem) GetName() string {
 	if m != nil {
@@ -204,14 +285,14 @@ func (m *SolarSystem) GetName() string {
 	return ""
 }
 
-func (m *SolarSystem) GetInterX() float64 {
+func (m *SolarSystem) GetInterX() int64 {
 	if m != nil {
 		return m.InterX
 	}
 	return 0
 }
 
-func (m *SolarSystem) GetInterY() float64 {
+func (m *SolarSystem) GetInterY() int64 {
 	if m != nil {
 		return m.InterY
 	}
@@ -241,8 +322,8 @@ func (m *SolarSystem) GetType() int32 {
 
 type Galaxy struct {
 	Name             string         `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
-	GlobalX          float64        `protobuf:"fixed64,2,opt,name=globalX" json:"globalX,omitempty"`
-	GlobalY          float64        `protobuf:"fixed64,3,opt,name=globalY" json:"globalY,omitempty"`
+	GlobalX          int64          `protobuf:"varint,2,opt,name=globalX" json:"globalX,omitempty"`
+	GlobalY          int64          `protobuf:"varint,3,opt,name=globalY" json:"globalY,omitempty"`
 	Solarsystemslice []*SolarSystem `protobuf:"bytes,4,rep,name=solarsystemslice" json:"solarsystemslice,omitempty"`
 	Type             int32          `protobuf:"varint,5,opt,name=type" json:"type,omitempty"`
 }
@@ -250,7 +331,7 @@ type Galaxy struct {
 func (m *Galaxy) Reset()                    { *m = Galaxy{} }
 func (m *Galaxy) String() string            { return proto.CompactTextString(m) }
 func (*Galaxy) ProtoMessage()               {}
-func (*Galaxy) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (*Galaxy) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 func (m *Galaxy) GetName() string {
 	if m != nil {
@@ -259,14 +340,14 @@ func (m *Galaxy) GetName() string {
 	return ""
 }
 
-func (m *Galaxy) GetGlobalX() float64 {
+func (m *Galaxy) GetGlobalX() int64 {
 	if m != nil {
 		return m.GlobalX
 	}
 	return 0
 }
 
-func (m *Galaxy) GetGlobalY() float64 {
+func (m *Galaxy) GetGlobalY() int64 {
 	if m != nil {
 		return m.GlobalY
 	}
@@ -290,6 +371,7 @@ func (m *Galaxy) GetType() int32 {
 func init() {
 	proto.RegisterType((*Planet)(nil), "main.Planet")
 	proto.RegisterType((*Spaceship)(nil), "main.Spaceship")
+	proto.RegisterType((*OtherObject)(nil), "main.OtherObject")
 	proto.RegisterType((*SolarSystem)(nil), "main.SolarSystem")
 	proto.RegisterType((*Galaxy)(nil), "main.Galaxy")
 }
@@ -297,28 +379,32 @@ func init() {
 func init() { proto.RegisterFile("protobuf.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 362 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xc4, 0x53, 0xb1, 0x4e, 0xc3, 0x30,
-	0x10, 0x95, 0x69, 0x92, 0xb6, 0x57, 0x54, 0xc0, 0x42, 0x95, 0x27, 0x14, 0x65, 0xca, 0x94, 0x01,
-	0x06, 0x26, 0x66, 0x56, 0xe4, 0x2e, 0x74, 0x74, 0x5b, 0xb7, 0x8d, 0xe4, 0xda, 0x56, 0xec, 0xaa,
-	0xf4, 0x7b, 0xd8, 0xf8, 0x18, 0x7e, 0x09, 0x14, 0x3b, 0x71, 0x22, 0x28, 0x33, 0xdb, 0xbd, 0x77,
-	0x77, 0xc9, 0xbb, 0x77, 0x67, 0x98, 0xea, 0x4a, 0x59, 0xb5, 0x3c, 0x6c, 0x0a, 0x17, 0xe0, 0x68,
-	0xcf, 0x4a, 0x99, 0x7d, 0x20, 0x48, 0x5e, 0x04, 0x93, 0xdc, 0x62, 0x0c, 0x91, 0x64, 0x7b, 0x4e,
-	0x50, 0x8a, 0xf2, 0x31, 0x75, 0x31, 0x9e, 0x41, 0x22, 0xd4, 0x8a, 0x89, 0x57, 0x72, 0x91, 0xa2,
-	0x1c, 0xd1, 0x06, 0x05, 0x7e, 0x41, 0x06, 0x3d, 0x7e, 0x81, 0x6f, 0x21, 0x56, 0x47, 0xc9, 0x2b,
-	0x12, 0xb9, 0x8f, 0x78, 0x80, 0xef, 0x00, 0xb4, 0xd2, 0x07, 0xc1, 0x6c, 0xa9, 0x24, 0x89, 0x5d,
-	0x47, 0x8f, 0xa9, 0xff, 0x6c, 0x4f, 0x9a, 0x93, 0x24, 0x45, 0x79, 0x4c, 0x5d, 0x5c, 0x73, 0x1b,
-	0xa5, 0xd6, 0x64, 0xe8, 0xb9, 0x3a, 0xce, 0xbe, 0x10, 0x8c, 0xe7, 0x9a, 0xad, 0xb8, 0xd9, 0x95,
-	0xfa, 0x1f, 0xf5, 0x12, 0x18, 0x1e, 0x39, 0xd3, 0x4a, 0x1a, 0x27, 0x79, 0x44, 0x5b, 0x58, 0x67,
-	0xb8, 0xdc, 0x96, 0x92, 0x1b, 0x27, 0x7c, 0x44, 0x5b, 0x58, 0x67, 0xcc, 0xae, 0xe4, 0x62, 0x6d,
-	0xc8, 0xc8, 0x67, 0x1a, 0x18, 0xa6, 0x1f, 0xf7, 0xa6, 0x9f, 0x41, 0x62, 0x2c, 0xb3, 0x07, 0x43,
-	0xc0, 0xb1, 0x0d, 0xca, 0x3e, 0x11, 0x4c, 0xe6, 0x4a, 0xb0, 0x6a, 0x7e, 0x32, 0x96, 0xef, 0xff,
-	0xf2, 0xa0, 0x94, 0x96, 0x57, 0xc1, 0x03, 0x8f, 0x02, 0x1f, 0x3c, 0xf0, 0x08, 0x17, 0x30, 0xd1,
-	0xee, 0x02, 0x8c, 0x28, 0x57, 0x9c, 0x44, 0xe9, 0x20, 0x9f, 0xdc, 0x5f, 0x16, 0xf5, 0x79, 0x14,
-	0xfe, 0x34, 0x68, 0xbf, 0x00, 0x3f, 0xc2, 0xd4, 0xb4, 0x4b, 0xf0, 0x2d, 0xb1, 0x6b, 0xb9, 0xf2,
-	0x2d, 0x61, 0x41, 0xf4, 0x47, 0xd9, 0xb9, 0x35, 0x67, 0xef, 0x08, 0x92, 0x67, 0x26, 0xd8, 0xdb,
-	0xe9, 0xec, 0x2c, 0x04, 0x86, 0x5b, 0xa1, 0x96, 0xdd, 0x42, 0x5b, 0xd8, 0x65, 0xda, 0x71, 0x5a,
-	0x88, 0x9f, 0xe0, 0xda, 0xd4, 0x16, 0x19, 0x67, 0x51, 0x7f, 0xa8, 0x9b, 0x46, 0x61, 0x67, 0x20,
-	0xfd, 0x55, 0x1a, 0x54, 0xc6, 0x9d, 0xca, 0x65, 0xe2, 0x9e, 0xcc, 0xc3, 0x77, 0x00, 0x00, 0x00,
-	0xff, 0xff, 0xc9, 0x59, 0x89, 0x82, 0x44, 0x03, 0x00, 0x00,
+	// 422 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x54, 0x3d, 0x8f, 0x13, 0x31,
+	0x10, 0x95, 0x2f, 0xbb, 0x1b, 0x32, 0x0b, 0x07, 0x58, 0x08, 0xb9, 0x42, 0xab, 0x88, 0x62, 0xab,
+	0x14, 0x50, 0x50, 0x51, 0x53, 0x1e, 0x72, 0x24, 0xc4, 0x95, 0xce, 0xde, 0xdc, 0xad, 0x91, 0x63,
+	0x5b, 0x6b, 0x47, 0x47, 0x7e, 0x0a, 0x35, 0xbf, 0x82, 0x96, 0x1f, 0xc0, 0x6f, 0x42, 0xb6, 0xf7,
+	0x2b, 0x10, 0x4a, 0x74, 0xdd, 0xbc, 0x37, 0xf6, 0xfa, 0xbd, 0xe7, 0xf1, 0xc2, 0xa5, 0xed, 0x8c,
+	0x37, 0xbb, 0xc3, 0xed, 0x26, 0x16, 0x34, 0xdb, 0x0b, 0xa9, 0xd7, 0x3f, 0x09, 0x14, 0x1f, 0x95,
+	0xd0, 0xe8, 0x29, 0x85, 0x4c, 0x8b, 0x3d, 0x32, 0x52, 0x91, 0x7a, 0xc5, 0x63, 0x4d, 0x5f, 0x42,
+	0xa1, 0x4c, 0x23, 0xd4, 0x67, 0x76, 0x51, 0x91, 0x7a, 0xc1, 0x7b, 0x34, 0xf2, 0xd7, 0x6c, 0x31,
+	0xe3, 0xaf, 0xe9, 0x0b, 0xc8, 0xcd, 0xbd, 0xc6, 0x8e, 0x65, 0xf1, 0x23, 0x09, 0xd0, 0x57, 0x00,
+	0xd6, 0xd8, 0x83, 0x12, 0x5e, 0x1a, 0xcd, 0xf2, 0x8a, 0xd4, 0x19, 0x9f, 0x31, 0xe1, 0x64, 0x7f,
+	0xb4, 0xc8, 0x8a, 0x8a, 0xd4, 0x39, 0x8f, 0x75, 0xe0, 0x6e, 0x8d, 0xb9, 0x61, 0xcb, 0xc4, 0x85,
+	0x3a, 0x9c, 0xda, 0xa2, 0x50, 0xbe, 0x65, 0x8f, 0x22, 0xdb, 0xa3, 0xf5, 0xb7, 0x0b, 0x58, 0x6d,
+	0xad, 0x68, 0xd0, 0xb5, 0xd2, 0x3e, 0xa0, 0x0f, 0x06, 0xcb, 0x7b, 0x14, 0xd6, 0x68, 0xd7, 0x5b,
+	0x19, 0x60, 0xe8, 0xa0, 0xbe, 0x93, 0x1a, 0x5d, 0x6f, 0x68, 0x80, 0xa1, 0xe3, 0x5a, 0x89, 0xea,
+	0xc6, 0xf5, 0xa6, 0x06, 0x18, 0x3b, 0x16, 0x1b, 0x29, 0x14, 0x5b, 0xf5, 0x9d, 0x04, 0xc7, 0xbc,
+	0x60, 0x96, 0xd7, 0x94, 0x4d, 0x79, 0x92, 0xcd, 0x0f, 0x02, 0xe5, 0x95, 0x6f, 0xb1, 0xbb, 0xda,
+	0x7d, 0xc1, 0xe6, 0x7f, 0xde, 0xf2, 0x6b, 0x78, 0x82, 0x8d, 0xd1, 0x66, 0x2f, 0x9b, 0x4f, 0x42,
+	0x1d, 0x30, 0x06, 0x94, 0xf3, 0x53, 0xf2, 0xec, 0x5d, 0x4f, 0xda, 0x97, 0x27, 0xda, 0x7f, 0x11,
+	0x28, 0xb7, 0x46, 0x89, 0x6e, 0x7b, 0x74, 0x1e, 0xf7, 0xff, 0xd2, 0x2e, 0xb5, 0xc7, 0x6e, 0xd4,
+	0x9e, 0xd0, 0xc8, 0x8f, 0xda, 0x13, 0xa2, 0x1b, 0x28, 0x6d, 0x9c, 0x77, 0xa7, 0x64, 0x83, 0x2c,
+	0xab, 0x16, 0x75, 0xf9, 0xe6, 0xf1, 0x26, 0x3c, 0x86, 0x4d, 0x7a, 0x08, 0x7c, 0xbe, 0x80, 0xbe,
+	0x83, 0x4b, 0x37, 0x8c, 0x56, 0xda, 0x92, 0xc7, 0x2d, 0x4f, 0xd3, 0x96, 0x71, 0xec, 0xf8, 0x1f,
+	0xcb, 0xce, 0x19, 0x5d, 0x7f, 0x27, 0x50, 0x7c, 0x10, 0x4a, 0x7c, 0x3d, 0x9e, 0xf5, 0xc2, 0x60,
+	0x79, 0xa7, 0xcc, 0x6e, 0xba, 0x88, 0x01, 0x4e, 0x9d, 0xc1, 0xce, 0x00, 0xe9, 0x7b, 0x78, 0xe6,
+	0x42, 0x44, 0x2e, 0x46, 0x34, 0x37, 0xf5, 0xbc, 0x57, 0x38, 0x05, 0xc8, 0xff, 0x5a, 0x3a, 0xaa,
+	0xcc, 0x27, 0x95, 0xbb, 0x22, 0xfe, 0x20, 0xde, 0xfe, 0x0e, 0x00, 0x00, 0xff, 0xff, 0xfe, 0xef,
+	0x24, 0xb0, 0x32, 0x04, 0x00, 0x00,
 }
