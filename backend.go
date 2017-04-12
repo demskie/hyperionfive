@@ -111,38 +111,50 @@ func startBackendMode() {
 	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://hyperion5.com/backend", nil)
-	defer conn.Close()
-	defer logDebug("(handshakeFrontend) closing connection:", conn.RemoteAddr().String())
 	if checkError("(handshakeFrontend) unable to open websocket"+
 		"with frontend loadbalancer:", err) {
 		return
 	}
+	defer conn.Close()
 
-	for iter := 0; true; iter++ {
-		if iter > 1 {
+	// log client IP address when connection terminates
+	defer logDebug("(handshakeFrontend) closing connection:", conn.RemoteAddr().String())
+
+	// start handshake process
+	for failedHandshakes := 0; true; failedHandshakes++ {
+
+		// ensure that we only fail up to three handshakes in a row
+		if failedHandshakes > 3 {
 			logDebug("(handshakeFrontend) just failed three handshakes!!!")
 			waitForLogging.Wait()
 			os.Exit(1)
 		}
 
+		// begin challenge/response handshake
 		if handshakeWithFrontend(conn) != true {
 			logDebug("(handshakeFrontend) initial handshake with loadbalancer failed")
 			continue
 		} else {
+			failedHandshakes = 0 // if handshake is successful, we'll want to reset counter
+
 			var (
 				inMsgTemp       = incomingMessageFrontend{}
 				inMsgReference  = incomingMessageFrontend{}
 				outMsgTemp      = outgoingMessageFrontend{}
 				outMsgReference = outgoingMessageFrontend{}
 			)
+
 			for {
 				time.Sleep(1 * time.Second)
+
+				// start to send and receive data with loadbalancer
 				if periodicUpdate(conn, &inMsgTemp, &inMsgReference,
 					&outMsgTemp, &outMsgReference) != true {
 					logDebug("(periodicUpdateFrontend) failed to periodicly receive",
 						"or send data with loadbalancer")
 					break // fall back to handshake
 				}
+
 				inMsgReference = inMsgTemp   // used later to check if incomingMessage has changed
 				outMsgReference = outMsgTemp // used later to check if outgoingMessage has changed
 			}
