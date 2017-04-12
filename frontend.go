@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -370,8 +371,8 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 			clientSessionCount[client]++
 		} else {
 			clientSessionCount[client] = 1
-			logInfo("(handshakeBackend) unsuccessfully tried to increment",
-				"'clientSessionCount' for this client:", client)
+			logDebug("(handshakeBackend) setting 'clientSessionCount' to ONE",
+				"for this client:", client)
 		}
 		clientSessionCountMutex.Unlock()
 	}()
@@ -383,8 +384,8 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 			clientSessionCount[client]--
 		} else {
 			clientSessionCount[client] = 0
-			logInfo("(handshakeBackend) unsuccessfully tried to decrement",
-				"'clientSessionCount' for this client:", client)
+			logDebug("(handshakeBackend) setting 'clientSessionCount' to ZERO",
+				"for this client:", client)
 		}
 		clientSessionCountMutex.Unlock()
 	}()
@@ -397,7 +398,18 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 	if checkError("(handshakeBackend) error receiving challenge from backend:", err) {
 		return
 	}
-	if len(dataChallenge) != 256 {
+	logDebug("(handshakeBackend) received the following challenge:",
+		"\n", base64.StdEncoding.EncodeToString(dataChallenge))
+
+	////////////////////////////////////////////////////////////
+	// ensure that challenge is 256bits and cast to array if so
+	////////////////////////////////////////////////////////////
+
+	var dataChallengeArray [32]byte
+
+	if len(dataChallenge) == 32 {
+		copy(dataChallengeArray[:], dataChallenge)
+	} else {
 		logDebug("(handshakeBackend) received a challenge with invalid length:",
 			string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
@@ -407,41 +419,54 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		clientFirewallValues.mutex.Unlock()
 		return
 	}
-	logDebug("(handshakeBackend) received the following challenge:\n",
-		fmt.Sprintf("%s", dataChallenge))
 
 	////////////////////////////////////////////////////////////
-	// compute response and create a challenge of our own
+	// compute our response
 	////////////////////////////////////////////////////////////
 
-	// create local hash to compare with Response
-	hash := hmac.New(sha512.New512_256, []byte(authPassword))
-	hash.Write(dataChallenge)
-	expectedHash := hash.Sum(nil)
-	logDebug("(handshakeBackend) computed the following response:\n",
-		fmt.Sprintf("%s", expectedHash))
-
-	// generate 256 random bytes
-	randomBytes := make([]byte, 256)
-	_, err = cryptorand.Read(randomBytes)
-	if checkError("(handshakeBackend) error while generating bytes:", err) {
-		return
+	// define function to produce symmetric signature using a shared secret key
+	generateHMAC := func(data []byte, key [32]byte) []byte {
+		h := hmac.New(sha512.New512_256, key[:])
+		h.Write(data)
+		return h.Sum(nil)
 	}
-	logDebug("(handshakeBackend) generated the following challenge:\n",
-		fmt.Sprintf("%s", randomBytes))
+
+	// generate response hash based on challenge and our secret password
+	response := generateHMAC([]byte(authPassword), dataChallengeArray)
+	logDebug("(handshakeBackend) computed the following response:",
+		"\n", base64.StdEncoding.EncodeToString(response))
 
 	////////////////////////////////////////////////////////////
-	// send the response in addition to own challenge
+	// create a challenge
+	////////////////////////////////////////////////////////////
+
+	// define function to generate 256 bits of randomness
+	newHMACKey := func() [32]byte {
+		key := [32]byte{}
+		_, err = io.ReadFull(cryptorand.Reader, key[:])
+		if checkError("(handshakeBackend) error while generating key", err) {
+			conn.Close()
+		}
+		return key
+	}
+
+	// call above function and store value
+	randomBytes := newHMACKey()
+	logDebug("(handshakeBackend) generated the following challenge:",
+		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
+
+	////////////////////////////////////////////////////////////
+	// send the response we computed and the challenge we just created
 	////////////////////////////////////////////////////////////
 
 	type outgoingMessage struct {
-		Response  string `json:"response"`
 		Challenge string `json:"challenge"`
+		Response  string `json:"response"`
 	}
 
 	var outMsgResponse outgoingMessage
-	outMsgResponse.Response = base64.StdEncoding.EncodeToString(expectedHash)
-	outMsgResponse.Challenge = base64.StdEncoding.EncodeToString(randomBytes)
+	outMsgResponse.Challenge = base64.StdEncoding.EncodeToString(randomBytes[:])
+	outMsgResponse.Response = base64.StdEncoding.EncodeToString(response)
 	err = conn.WriteJSON(outMsgResponse)
 	if checkError("(handshakeBackend) error sending response to backend:", err) {
 		return
@@ -457,18 +482,19 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// convert data to array
+	var remoteHashArray [32]byte
+	copy(remoteHashArray[:], randomBytes[:])
+
+	// generate localHash to compare
+	var correctResponse []byte
+	correctResponse = generateHMAC([]byte(authPassword), remoteHashArray)
+
 	// check for equality
-	if hmac.Equal(expectedHash, remoteHash) != true {
-		logInfo("(handshakeBackend) initial challenge-response failed:")
-		return
-	}
-
-	////////////////////////////////////////////////////////////
-	// say hello
-	////////////////////////////////////////////////////////////
-
-	err = conn.WriteMessage(websocket.TextMessage, []byte("hellothere"))
-	if checkError("(handshakeBackend) error sending hellothere to backend:", err) {
+	if hmac.Equal(correctResponse, remoteHash) != true {
+		logInfo("(handshakeBackend) initial challenge-response failed",
+			"\n", base64.StdEncoding.EncodeToString(correctResponse),
+			"\n", base64.StdEncoding.EncodeToString(remoteHash))
 		return
 	}
 
@@ -485,72 +511,106 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		OtherBackends     []string `json:"OtherBackends"`
 		Message           string   `json:"Message"`
 	}
+
+	type galaxyInfo struct {
+		GalaxyName string `json:"GalaxyName"`
+		GlobalX    int64  `json:"GlobalX"`
+		GlobalY    int64  `json:"GlobalY"`
+		Diameter   int32  `json:"Diameter"`
+	}
 	type outgoingMessageBackend struct {
-		ListOfGalaxies []struct {
-			GalaxyName string  `json:"GalaxyName"`
-			GlobalX    float64 `json:"GlobalX"`
-			GlobalY    float64 `json:"GlobalY"`
-			Diameter   int32   `json:"Diameter"`
-		} `json:"ListOfGalaxies"`
-		OtherFrontends []string `json:"OtherFrontends"`
-		OtherBackends  []string `json:"OtherBackends"`
-		Message        string   `json:"Message"`
+		ListOfGalaxies []galaxyInfo `json:"ListOfGalaxies"`
+		OtherFrontends []string     `json:"OtherFrontends"`
+		OtherBackends  []string     `json:"OtherBackends"`
+		Message        string       `json:"Message"`
 	}
 
 	var (
-		inMsg     = incomingMessageBackend{}
-		inMsgOld  = incomingMessageBackend{}
-		outMsg    = outgoingMessageBackend{}
-		outMsgOld = outgoingMessageBackend{}
+		inMsgTemp       = incomingMessageBackend{}
+		inMsgReference  = incomingMessageBackend{}
+		outMsgTemp      = outgoingMessageBackend{}
+		outMsgReference = outgoingMessageBackend{}
 	)
 
 	////////////////////////////////////////////////////////////
 	// start communication with backend
 	////////////////////////////////////////////////////////////
 
+	// defining constants to satisfy my linter (premature optimization)
+	const (
+		sameAsLastTime = "same_as_last_time"
+		diediedie      = "diediedie"
+	)
+
 	for {
 
+		////////////////////////////////////////////////////////////
 		// wait for JSON message from Backend
-		err = conn.ReadJSON(&inMsg)
+		////////////////////////////////////////////////////////////
+		err = conn.ReadJSON(&inMsgTemp)
 		if checkError("(periodicUpdateBackend) error receiving message:", err) {
 			return
 		}
 
 		// look at the value of 'message' sent from Backend
-		switch inMsg.Message {
-		case "diediedie":
+		switch inMsgTemp.Message {
+		case diediedie:
 			logInfo("(periodicUpdateFrontend) received 'diediedie' from frontend")
+		case sameAsLastTime:
+			logDebug("(periodicUpdateFrontend) received 'same_as_last_time'")
+		case "":
+			// do nothing
 		default:
 			logInfo("(periodicUpdateFrontend) received unknown message from frontend:",
-				inMsg.Message)
+				inMsgTemp.Message)
 		}
 
 		// shouldn't receive duplicate message from Backend - but we sanitycheck anyways
-		if reflect.DeepEqual(inMsg, inMsgOld) {
-			logInfo("(periodicUpdateBackend) received duplicate message from backend")
+		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != sameAsLastTime {
+			logInfo("(periodicUpdateBackend) received duplicate message")
 		}
 
+		// check if we sent the same message as last time
+		if outMsgTemp.Message == sameAsLastTime {
+			outMsgTemp = outMsgReference // probably unnecessary
+		} else {
+			outMsgReference = outMsgTemp
+		}
+
+		////////////////////////////////////////////////////////////
+		// sending JSON message to Backend
+		////////////////////////////////////////////////////////////
+		outMsgTemp.ListOfGalaxies = []galaxyInfo{
+			{GalaxyName: "Andromeda", GlobalX: 987654321, GlobalY: -98765},
+			{GalaxyName: "Milky Way", GlobalX: 1234, GlobalY: 4321},
+		}
+
+		sliceOfOtherFrontendsMutex.RLock()
+		outMsgTemp.OtherFrontends = sliceOfOtherFrontends
+		sliceOfOtherFrontendsMutex.RUnlock()
+
+		sliceOfOtherBackendsMutex.RLock()
+		outMsgTemp.OtherBackends = sliceOfOtherBackends
+		sliceOfOtherBackendsMutex.RUnlock()
+
 		// instead of sending duplicate message we just send a special string
-		if reflect.DeepEqual(outMsg, outMsgOld) {
+		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
 			logDebug("(periodicUpdateBackend) outgoing info hasn't changed")
-			outMsg = outgoingMessageBackend{Message: "same_as_last_time"}
+			outMsgTemp = outgoingMessageBackend{Message: "same_as_last_time"}
 		}
 
 		// now we send the JSON message message
-		err := conn.WriteJSON(outMsg)
+		err := conn.WriteJSON(outMsgTemp)
 		if checkError("(periodicUpdateBackend) error sending message:", err) {
 			return
 		}
 
 		// check if we received the same message as last time
-		if inMsg.Message != "same_as_last_time" {
-			logInfo("(periodicUpdateFrontend) received 'same_as_last_time' from frontend")
-			inMsg = inMsgOld
+		if inMsgTemp.Message == sameAsLastTime {
+			inMsgTemp = inMsgReference // probably unnecessary
 		} else {
-			inMsgOld = inMsg // used later to check if incomingMessage has changed
+			inMsgReference = inMsgTemp
 		}
-
-		outMsgOld = outMsg // used later to check if outgoingMessage has changed
 
 	}
 

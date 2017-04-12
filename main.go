@@ -34,8 +34,10 @@ var (
 	clientSessionCount      map[string]uint16
 	clientSessionCountMutex sync.RWMutex
 
-	sliceOfOtherFrontends []string
-	sliceOfOtherBackends  []string
+	sliceOfOtherFrontends      []string
+	sliceOfOtherFrontendsMutex sync.RWMutex
+	sliceOfOtherBackends       []string
+	sliceOfOtherBackendsMutex  sync.RWMutex
 
 	loggingMutex   sync.Mutex
 	waitForLogging sync.WaitGroup
