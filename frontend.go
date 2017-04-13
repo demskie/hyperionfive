@@ -353,12 +353,14 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
-	defer conn.Close()
-	defer logDebug("(handshakeBackend) closing connection:", client)
 	if checkError("(handshakeBackend) upgrade error:", err) {
 		return
 	}
+	defer conn.Close()
+
+	// log client IP address
 	logDebug("(handshakeBackend) opening socket:", string(r.RemoteAddr))
+	defer logDebug("(handshakeBackend) closing connection:", client)
 
 	////////////////////////////////////////////////////////////
 	// modify sessionCount accordingly

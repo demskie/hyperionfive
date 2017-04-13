@@ -108,62 +108,38 @@ func startBackendMode() {
 	// start communication with frontend
 	////////////////////////////////////////////////////////////
 
+	var tempWaitgroup sync.WaitGroup
+
+	tempWaitgroup.Add(1)
+
+	go kickoffFrontendCommuncation("hyperion5.com")
+
+	tempWaitgroup.Wait()
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func kickoffFrontendCommuncation(host string) {
+
+	////////////////////////////////////////////////////////////
+	// start communication with frontend
+	////////////////////////////////////////////////////////////
+
 	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://hyperion5.com/backend", nil)
+	conn, _, err := dialer.Dial("wss://"+host+"/backend", nil)
 	if checkError("(handshakeFrontend) unable to open websocket"+
 		"with frontend loadbalancer:", err) {
 		return
 	}
 	defer conn.Close()
 
-	// log client IP address when connection terminates
+	// log client IP address
+	logDebug("(handshakeFrontend) opening connection:", conn.RemoteAddr().String())
 	defer logDebug("(handshakeFrontend) closing connection:", conn.RemoteAddr().String())
-
-	// start handshake process
-	for failedHandshakes := 0; true; failedHandshakes++ {
-
-		// ensure that we only fail up to three handshakes in a row
-		if failedHandshakes > 3 {
-			logDebug("(handshakeFrontend) just failed three handshakes!!!")
-			waitForLogging.Wait()
-			os.Exit(1)
-		}
-
-		// begin challenge/response handshake
-		if handshakeWithFrontend(conn) != true {
-			logDebug("(handshakeFrontend) initial handshake with loadbalancer failed")
-			continue
-		} else {
-			failedHandshakes = 0 // if handshake is successful, we'll want to reset counter
-
-			var (
-				inMsgTemp       = incomingMessageFrontend{}
-				inMsgReference  = incomingMessageFrontend{}
-				outMsgTemp      = outgoingMessageFrontend{}
-				outMsgReference = outgoingMessageFrontend{}
-			)
-
-			for {
-				time.Sleep(1 * time.Second)
-
-				// start to send and receive data with loadbalancer
-				if periodicUpdate(conn, &inMsgTemp, &inMsgReference,
-					&outMsgTemp, &outMsgReference) != true {
-					logDebug("(periodicUpdateFrontend) failed to periodicly receive",
-						"or send data with loadbalancer")
-					break // fall back to handshake
-				}
-
-				inMsgReference = inMsgTemp   // used later to check if incomingMessage has changed
-				outMsgReference = outMsgTemp // used later to check if outgoingMessage has changed
-			}
-		}
-	}
-
-}
-
-func handshakeWithFrontend(conn *websocket.Conn) bool {
 
 	////////////////////////////////////////////////////////////
 	// initiate two-way challenge-response authentication
@@ -172,7 +148,7 @@ func handshakeWithFrontend(conn *websocket.Conn) bool {
 	// define function to generate 256 bits of randomness
 	newHMACKey := func() [32]byte {
 		key := [32]byte{}
-		_, err := io.ReadFull(cryptorand.Reader, key[:])
+		_, err = io.ReadFull(cryptorand.Reader, key[:])
 		if checkError("(handshakeFrontend) error while generating key", err) {
 			conn.Close()
 		}
@@ -185,10 +161,10 @@ func handshakeWithFrontend(conn *websocket.Conn) bool {
 		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
 
 	// send random string to frontend
-	err := conn.WriteMessage(websocket.BinaryMessage, randomBytes[:])
+	err = conn.WriteMessage(websocket.BinaryMessage, randomBytes[:])
 	if checkError("(handshakeFrontend) error sending"+
 		" message to frontend loadbalancer:", err) {
-		return false
+		return
 	}
 
 	////////////////////////////////////////////////////////////
@@ -204,7 +180,7 @@ func handshakeWithFrontend(conn *websocket.Conn) bool {
 	err = conn.ReadJSON(&inMsg)
 	if checkError("(handshakeFrontend) error receiving initial"+
 		"response from frontend loadbalancer:", err) {
-		return false
+		return
 	}
 
 	logDebug("(handshakeFrontend) received the following JSON challenge/response:\n",
@@ -235,7 +211,7 @@ func handshakeWithFrontend(conn *websocket.Conn) bool {
 		logInfo("(handshakeFrontend) initial challenge-response failed:",
 			"\n", base64.StdEncoding.EncodeToString(correctResponse),
 			"\n", base64.StdEncoding.EncodeToString(remoteHash))
-		return false
+		return
 	}
 
 	////////////////////////////////////////////////////////////
@@ -258,103 +234,130 @@ func handshakeWithFrontend(conn *websocket.Conn) bool {
 	err = conn.WriteMessage(websocket.BinaryMessage, ourResponse)
 	if checkError("(handshakeFrontend) error sending message"+
 		"to frontend loadbalancer:", err) {
-		return false
-	}
-
-	return true
-}
-
-type incomingMessageFrontend struct {
-	ListOfGalaxies []struct {
-		GalaxyName string `json:"GalaxyName"`
-		GlobalX    int64  `json:"GlobalX"`
-		GlobalY    int64  `json:"GlobalY"`
-		Diameter   int32  `json:"Diameter"`
-	} `json:"ListOfGalaxies"`
-	OtherFrontends []string `json:"OtherFrontends"`
-	OtherBackends  []string `json:"OtherBackends"`
-	Message        string   `json:"Message"`
-}
-type outgoingMessageFrontend struct {
-	ServerAddress     string   `json:"ServerAddress"`
-	GalaxyName        string   `json:"GalaxyName"`
-	ActiveClientCount int      `json:"ActiveClientCount"`
-	TotalClientCount  int      `json:"TotalClientCount"`
-	OtherFrontends    []string `json:"OtherFrontends"`
-	OtherBackends     []string `json:"OtherBackends"`
-	Message           string   `json:"Message"`
-}
-
-func periodicUpdate(myConn *websocket.Conn,
-	inMsgTemp *incomingMessageFrontend, inMsgReference *incomingMessageFrontend,
-	outMsgTemp *outgoingMessageFrontend, outMsgReference *outgoingMessageFrontend) bool {
-
-	////////////////////////////////////////////////////////////
-	// put together the pending outgoingMessage
-	////////////////////////////////////////////////////////////
-
-	netAddr := myConn.LocalAddr()
-	ipAddress, _, _ := net.SplitHostPort(netAddr.String())
-	outMsgTemp.ServerAddress = ipAddress
-
-	outMsgTemp.GalaxyName = currentGalaxy.GetName()
-
-	clientSessionCountMutex.RLock()
-	outMsgTemp.ActiveClientCount = len(clientSessionCount)
-	clientSessionCountMutex.RUnlock()
-
-	outMsgTemp.TotalClientCount = len(sliceOfLocalPlayers)
-
-	outMsgTemp.OtherFrontends = sliceOfOtherFrontends
-
-	outMsgTemp.OtherBackends = sliceOfOtherFrontends
-
-	////////////////////////////////////////////////////////////
-	// if outMsgTemp is the same as last time - send only message
-	////////////////////////////////////////////////////////////
-
-	if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-		logDebug("(periodicUpdateFrontend) outgoing info hasn't changed")
-		outMsgTemp = &outgoingMessageFrontend{Message: "same_as_last_time"}
+		return
 	}
 
 	////////////////////////////////////////////////////////////
-	// send outgoingMessage
+	// initialize messages we'll be sending/receiving with frontend
 	////////////////////////////////////////////////////////////
 
-	err := myConn.WriteJSON(outMsgTemp)
-	if checkError("(periodicUpdateFrontend) error sending message:", err) {
-		return false
+	type incomingMessageFrontend struct {
+		ListOfGalaxies []struct {
+			GalaxyName string `json:"GalaxyName"`
+			GlobalX    int64  `json:"GlobalX"`
+			GlobalY    int64  `json:"GlobalY"`
+			Diameter   int32  `json:"Diameter"`
+		} `json:"ListOfGalaxies"`
+		OtherFrontends []string `json:"OtherFrontends"`
+		OtherBackends  []string `json:"OtherBackends"`
+		Message        string   `json:"Message"`
+	}
+	type outgoingMessageFrontend struct {
+		ServerAddress     string   `json:"ServerAddress"`
+		GalaxyName        string   `json:"GalaxyName"`
+		ActiveClientCount int      `json:"ActiveClientCount"`
+		TotalClientCount  int      `json:"TotalClientCount"`
+		OtherFrontends    []string `json:"OtherFrontends"`
+		OtherBackends     []string `json:"OtherBackends"`
+		Message           string   `json:"Message"`
+	}
+
+	var (
+		inMsgTemp       = incomingMessageFrontend{}
+		inMsgReference  = incomingMessageFrontend{}
+		outMsgTemp      = outgoingMessageFrontend{}
+		outMsgReference = outgoingMessageFrontend{}
+	)
+
+	////////////////////////////////////////////////////////////
+	// define function that will be responsible for sending/receiving
+	////////////////////////////////////////////////////////////
+
+	periodicUpdate := func() bool {
+
+		// put together the pending outgoingMessage
+		netAddr := conn.LocalAddr()
+		ipAddress, _, _ := net.SplitHostPort(netAddr.String())
+		outMsgTemp.ServerAddress = ipAddress
+
+		outMsgTemp.GalaxyName = currentGalaxy.GetName()
+
+		clientSessionCountMutex.RLock()
+		outMsgTemp.ActiveClientCount = len(clientSessionCount)
+		clientSessionCountMutex.RUnlock()
+
+		outMsgTemp.TotalClientCount = len(sliceOfLocalPlayers)
+
+		outMsgTemp.OtherFrontends = sliceOfOtherFrontends
+
+		outMsgTemp.OtherBackends = sliceOfOtherFrontends
+
+		////////////////////////////////////////////////////////////
+		// if outMsgTemp is the same as last time - send only message
+		////////////////////////////////////////////////////////////
+
+		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
+			logDebug("(periodicUpdateFrontend) outgoing info hasn't changed")
+			outMsgTemp = outgoingMessageFrontend{Message: "same_as_last_time"}
+		}
+
+		////////////////////////////////////////////////////////////
+		// send outgoingMessage
+		////////////////////////////////////////////////////////////
+
+		err := conn.WriteJSON(outMsgTemp)
+		if checkError("(periodicUpdateFrontend) error sending message:", err) {
+			return false
+		}
+
+		////////////////////////////////////////////////////////////
+		// receive and process incomingMessage
+		////////////////////////////////////////////////////////////
+
+		err = conn.ReadJSON(&inMsgTemp)
+		if checkError("(periodicUpdateFrontend) error receiving message:", err) {
+			return false
+		}
+
+		switch inMsgTemp.Message {
+		case "diediedie":
+			logInfo("(periodicUpdateFrontend) received 'diediedie'")
+			gracefullyCloseBackend()
+		case "same_as_last_time":
+			logDebug("(periodicUpdateFrontend) received 'same_as_last_time'")
+		case "":
+			// do nothing
+		default:
+			logInfo("(periodicUpdateFrontend) received unknown message:",
+				inMsgTemp.Message)
+		}
+
+		// shouldn't receive duplicate message from Frontend - but we sanitycheck anyways
+		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != "same_as_last_time" {
+			logInfo("(periodicUpdateFrontend) received duplicate message")
+		}
+
+		// used later to check if incomingMessage has changed
+		inMsgReference = inMsgTemp
+		outMsgReference = outMsgTemp
+
+		return true
 	}
 
 	////////////////////////////////////////////////////////////
-	// receive and process incomingMessage
+	// loop periodicUpdate and fallback to main if failure occurs
 	////////////////////////////////////////////////////////////
-
-	err = myConn.ReadJSON(&inMsgTemp)
-	if checkError("(periodicUpdateFrontend) error receiving message:", err) {
-		return false
+	for {
+		if periodicUpdate() == true {
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
 	}
 
-	switch inMsgTemp.Message {
-	case "diediedie":
-		logInfo("(periodicUpdateFrontend) received 'diediedie'")
-		gracefullyCloseBackend()
-	case "same_as_last_time":
-		logDebug("(periodicUpdateFrontend) received 'same_as_last_time'")
-	case "":
-		// do nothing
-	default:
-		logInfo("(periodicUpdateFrontend) received unknown message:",
-			inMsgTemp.Message)
-	}
-
-	// shouldn't receive duplicate message from Frontend - but we sanitycheck anyways
-	if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != "same_as_last_time" {
-		logInfo("(periodicUpdateFrontend) received duplicate message")
-	}
-
-	return true
+	// fallback to main
+	time.Sleep(1 * time.Second)
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -398,6 +401,7 @@ func gracefullyCloseBackend() {
 	}
 
 	// wait for logging to complete
+	logInfo("PROGRAM EXITING GRACEFULLY")
 	waitForLogging.Wait()
 
 	// halt all further execution
