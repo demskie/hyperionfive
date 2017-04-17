@@ -49,7 +49,8 @@ message SolarSystem {
     int64 interY = 3;
     repeated Planet planetslice = 4;
     repeated Spaceship spaceshipslice = 5;
-    int32 type = 6;
+	repeated OtherObject otherobjectslice = 6;
+    int32 type = 7;
 }
 
 

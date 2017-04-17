@@ -26,9 +26,6 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// defining specific global variables
-var ()
-
 func startFrontendMode() {
 
 	// setup httpMux to avoid leaking default handlers
@@ -557,13 +554,13 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		// look at the value of 'message' sent from Backend
 		switch inMsgTemp.Message {
 		case diediedie:
-			logInfo("(periodicUpdateFrontend) received 'diediedie' from frontend")
+			logInfo("(periodicUpdateBackend) received 'diediedie' from frontend")
 		case sameAsLastTime:
-			logDebug("(periodicUpdateFrontend) received 'same_as_last_time'")
+			//logDebug("(periodicUpdateBackend) received 'same_as_last_time'")
 		case "":
 			// do nothing
 		default:
-			logInfo("(periodicUpdateFrontend) received unknown message from frontend:",
+			logInfo("(periodicUpdateBackend) received unknown message from frontend:",
 				inMsgTemp.Message)
 		}
 

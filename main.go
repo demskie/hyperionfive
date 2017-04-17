@@ -1,10 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"runtime"
 	"sync"
 
 	"flag"
-	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -18,7 +19,7 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// defining various global variables
+// defining various global variables (yes I know - ugly)
 var (
 	inputFilename    string
 	outputFilename   string
@@ -28,6 +29,8 @@ var (
 	loadBalanceBool  bool
 	createGalaxyBool bool
 	debugModeBool    bool
+
+	numberOfCores int
 
 	clientBlacklist         map[string]FirewallClientValues
 	clientBlacklistMutex    sync.RWMutex
@@ -66,6 +69,14 @@ type FirewallClientValues struct {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func init() {
+
+	// start logging routine
+	logInfoChan = make(chan string)
+	go handleLogging()
+	logInfo("(initLogInfo) - init completed")
+
+	// fetching/storing initial number of cores (likely an unnecessary premature optimization)
+	numberOfCores = runtime.NumCPU()
 
 	// initializing global IP blacklist
 	clientBlacklist = map[string]FirewallClientValues{}
@@ -121,13 +132,25 @@ func main() {
 	// branch here based on command line invocation
 	if loadBalanceBool == true {
 		startFrontendMode()
-		log.Fatalln("PROGRAM: FrontendMode is finished executing")
-		waitForLogging.Wait()
+		loggingMutex.Lock()
+		fmt.Println("")
+		fmt.Println("##############################################")
+		fmt.Println("#     Frontend has finished executing!!!     #")
+		fmt.Println("##############################################")
+		fmt.Println("")
+		loggingMutex.Unlock()
+		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	} else {
 		startBackendMode()
-		log.Fatalln("PROGRAM: BackendMode is finished executing")
-		waitForLogging.Wait()
+		loggingMutex.Lock()
+		fmt.Println("")
+		fmt.Println("##############################################")
+		fmt.Println("#     Backend has finished executing!!!      #")
+		fmt.Println("##############################################")
+		fmt.Println("")
+		loggingMutex.Unlock()
+		time.Sleep(5 * time.Second)
 		os.Exit(1)
 	}
 }
@@ -199,8 +222,44 @@ func signedMulOverflows(a, b int64) bool {
 	return c/b != a
 }
 
+var logInfoChan chan string
+
+func handleLogging() {
+	for {
+		var singleMessage string
+		singleMessage = <-logInfoChan
+
+		for i := 0; i < 10000; i++ {
+			select {
+			case anotherMessage, doesExist := <-logInfoChan:
+				if doesExist {
+					singleMessage += "\n" + anotherMessage
+				}
+			default:
+				break
+			}
+		}
+		loggingMutex.Lock()
+		color.White(singleMessage)
+		loggingMutex.Unlock()
+	}
+}
+
+func logInfo(arrayOfStrings ...string) {
+	var message string
+	for i := range arrayOfStrings {
+		if i > 0 {
+			message += " "
+		}
+		message += arrayOfStrings[i]
+	}
+	go func() {
+		t := time.Now().UTC().Format("2006-01-02 15:04:05")
+		logInfoChan <- string(t + " " + message)
+	}()
+}
+
 func checkError(message string, err error) bool {
-	waitForLogging.Add(1)
 	var errorFound bool
 	if err != nil {
 		errorFound = true
@@ -210,7 +269,6 @@ func checkError(message string, err error) bool {
 			loggingMutex.Lock()
 			color.Red(t + " " + message + err)
 			loggingMutex.Unlock()
-			waitForLogging.Done()
 		}()
 	} else {
 		errorFound = false
@@ -219,28 +277,7 @@ func checkError(message string, err error) bool {
 }
 
 func logDebug(arrayOfStrings ...string) {
-	waitForLogging.Add(1)
-	go func() {
-		var message string
-		for i := range arrayOfStrings {
-			if i > 0 {
-				message += " "
-			}
-			message += arrayOfStrings[i]
-		}
-		if debugModeBool == true {
-			t := time.Now().UTC().Format("2006-01-02 15:04:05")
-			loggingMutex.Lock()
-			color.Cyan(t + " " + message)
-			loggingMutex.Unlock()
-			waitForLogging.Done()
-		}
-	}()
-}
-
-func logInfo(arrayOfStrings ...string) {
-	waitForLogging.Add(1)
-	go func() {
+	if debugModeBool == true {
 		var message string
 		for i := range arrayOfStrings {
 			if i > 0 {
@@ -250,10 +287,9 @@ func logInfo(arrayOfStrings ...string) {
 		}
 		t := time.Now().UTC().Format("2006-01-02 15:04:05")
 		loggingMutex.Lock()
-		color.White(t + " " + message)
+		color.Cyan(t + " " + message)
 		loggingMutex.Unlock()
-		waitForLogging.Done()
-	}()
+	}
 }
 
 func growPopulation(currentPopulation float64, foodSupply int32) float64 {

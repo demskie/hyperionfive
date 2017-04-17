@@ -108,13 +108,43 @@ func startBackendMode() {
 	// start communication with frontend
 	////////////////////////////////////////////////////////////
 
-	var tempWaitgroup sync.WaitGroup
+	//var tempWaitgroup sync.WaitGroup
 
-	tempWaitgroup.Add(1)
+	//tempWaitgroup.Add(1)
 
-	go kickoffFrontendCommuncation("hyperion5.com")
+	//go func() {
+	//	for {
+	//		kickoffFrontendCommunication("hyperion5.com")
+	//	}
+	//}()
 
-	tempWaitgroup.Wait()
+	////////////////////////////////////////////////////////////
+	// generate Galaxy
+	////////////////////////////////////////////////////////////
+
+	generateGalaxy()
+
+	logInfo(fmt.Sprintf("There are %v solarSystems", len(currentGalaxy.GetSolarsystemslice())))
+
+	getSystemIndex := func(myName string) (int, bool) {
+		for i, elem := range currentGalaxy.Solarsystemslice {
+			if elem.GetName() == myName {
+				return i, true
+			}
+		}
+		return -1, false
+	}
+
+	testSystem, ok := getSystemIndex("xyz9999")
+	if ok {
+		fmt.Printf("Printing name of 9999th system: %s\n",
+			currentGalaxy.Solarsystemslice[testSystem].GetName())
+	}
+
+	//time.Sleep(30 * time.Second)
+	//waitForLogging.Wait()
+
+	//tempWaitgroup.Wait()
 
 }
 
@@ -122,7 +152,7 @@ func startBackendMode() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func kickoffFrontendCommuncation(host string) {
+func kickoffFrontendCommunication(host string) {
 
 	////////////////////////////////////////////////////////////
 	// start communication with frontend
@@ -297,7 +327,7 @@ func kickoffFrontendCommuncation(host string) {
 		////////////////////////////////////////////////////////////
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			logDebug("(periodicUpdateFrontend) outgoing info hasn't changed")
+			//logDebug("(periodicUpdateFrontend) outgoing info hasn't changed")
 			outMsgTemp = outgoingMessageFrontend{Message: "same_as_last_time"}
 		}
 
@@ -324,7 +354,7 @@ func kickoffFrontendCommuncation(host string) {
 			logInfo("(periodicUpdateFrontend) received 'diediedie'")
 			gracefullyCloseBackend()
 		case "same_as_last_time":
-			logDebug("(periodicUpdateFrontend) received 'same_as_last_time'")
+			//logDebug("(periodicUpdateFrontend) received 'same_as_last_time'")
 		case "":
 			// do nothing
 		default:
