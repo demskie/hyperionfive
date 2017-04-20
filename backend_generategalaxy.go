@@ -7,6 +7,8 @@ import (
 	"math"
 	"sync"
 
+	"github.com/dhconnelly/rtreego"
+
 	cryptorand "crypto/rand"
 )
 
@@ -18,13 +20,50 @@ const (
 	maxDistanceFromCenter         = math.MaxInt64
 	minimumDistanceBetweenObjects = 1000
 	minimumDistanceBetweenSystems = 1000
+	oneMillion                    = 1000000
+	oneBillion                    = 1000000000
 )
 
 var (
-	waitForGen  sync.WaitGroup
-	systemMutex []sync.RWMutex
-	systemIndex map[string]int
+	waitForCores sync.WaitGroup
+	systemMutex  []sync.RWMutex
+	systemIndex  map[string]int
 )
+
+var (
+	rtree        *rtreego.Rtree
+	rtreeObjects []rtreego.Spatial
+)
+
+const (
+	numDimensions   = 2
+	minBranchFactor = 5
+	maxBranchFactor = 25
+)
+
+// galaxytype
+const (
+	ELLIPTICAL int32 = iota
+	SPIRAL
+	BARREDSPIRAL
+	IRREGULAR
+)
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+// SystemBox ...
+type SystemBox struct {
+	location rtreego.Point
+	index    int
+}
+
+// Bounds ...
+func (sb *SystemBox) Bounds() *rtreego.Rect {
+	tol := 0.01
+	return sb.location.ToRect(tol)
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,38 +87,64 @@ func generateGalaxy() {
 
 	systemsPerCore := totalNumSystems / numberOfCores
 
-	waitForGen.Add(numberOfCores)
+	waitForCores.Add(numberOfCores)
 	for i := 1; i <= numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
 		go generateSystemNames(i, startIndex, stopIndex)
 	}
-	waitForGen.Wait()
+	waitForCores.Wait()
 
 	////////////////////////////////////////////////////////////
 	// spawn goroutines to generate all X,Y coordinates
 	////////////////////////////////////////////////////////////
 
-	waitForGen.Add(numberOfCores)
+	waitForCores.Add(numberOfCores)
 	for i := 1; i <= numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
 		go generateSystemCoordinates(i, startIndex, stopIndex)
 	}
-	waitForGen.Wait()
-
-	//fmt.Printf("\nThere are %v solarSystems\n", len(currentGalaxy.GetSolarsystemslice()))
-
-	//fmt.Printf("\nFirst Galaxy Name: %s", currentGalaxy.Solarsystemslice[0].GetName())
-	//fmt.Printf("\nRandom Galaxy Name: %s", currentGalaxy.Solarsystemslice[9183].Name)
-
-	//os.Exit(1)
+	waitForCores.Wait()
 
 	////////////////////////////////////////////////////////////
-	// ensure coordinates meet constraints (singlethreaded)
+	// load coordinates into R* tree data structure (global variable)
 	////////////////////////////////////////////////////////////
 
-	//fixSystemCoordinates()
+	rtreeObjects = make([]rtreego.Spatial, totalNumSystems)
+	for i := 0; i < totalNumSystems; i++ {
+		mySystem := currentGalaxy.Solarsystemslice[i]
+		x := float64(mySystem.InterX)
+		y := float64(mySystem.InterY)
+		rtreeObjects[i] = &SystemBox{rtreego.Point{x, y}, i}
+	}
+	rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
+
+	////////////////////////////////////////////////////////////
+	// check (and fix) systems that aren't far enough apart
+	////////////////////////////////////////////////////////////
+
+	waitForCores.Add(numberOfCores)
+	for i := 1; i <= numberOfCores; i++ {
+		stopIndex := systemsPerCore * i
+		startIndex := stopIndex - systemsPerCore
+		go func() {
+			for {
+				myBadSystems := findBadSystemCoordinates(-1, startIndex, stopIndex)
+				if len(myBadSystems) == 0 {
+					break
+				}
+				for idx := range myBadSystems {
+					systemMutex[idx].Lock()
+					generateSystemCoordinates(-1, idx, idx+1)
+					updateRtreeSystemCoordinates(-1, idx, idx+1)
+					systemMutex[idx].Unlock()
+				}
+			}
+			waitForCores.Done()
+		}()
+	}
+	waitForCores.Wait()
 
 }
 
@@ -99,24 +164,24 @@ func generateSystemNames(coreID int, startIndex int, stopIndex int) {
 		// assign name to this system
 		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
 		mySystem.Name = sysName
-
 	}
 
 	// decrementing waitgroup and printing completion status
 	logInfo(fmt.Sprintf("(backend_init) Thread %d has finished generating system names",
 		coreID))
 
-	waitForGen.Done()
+	if coreID != -1 {
+		waitForCores.Done()
+	}
 }
 
 func generateSystemCoordinates(coreID int, startIndex int, stopIndex int) {
-
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
-
-		if currentIndex%maxNumberOfPlayers == 0 {
-			logInfo(fmt.Sprintf("(backend_init) Thread %d is %.2f%% complete generating system coordinates",
-				coreID, float64(currentIndex-startIndex)/float64(stopIndex)))
-		}
+		// not necessary at the moment
+		//if currentIndex%maxNumberOfPlayers == 0 && coreID != -1 {
+		//	logInfo(fmt.Sprintf("(backend_init) Thread %d is %.2f%% complete generating"+
+		//		"system coordinates", coreID, float64(currentIndex-startIndex)/float64(stopIndex)))
+		//}
 
 		// generating a single pair of x and y coordinates
 		var interX int64
@@ -141,18 +206,13 @@ func generateSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 			if C >= maxDistanceFromCenter {
 				continue // try again
 			}
-			if checkSystemCoordinates(currentIndex, interX, interY) == false {
-				continue // try again
-			}
 			break
 		}
 
 		// assigning coordinates and name
 		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
-		systemMutex[currentIndex].Lock()
 		mySystem.InterX = interX
 		mySystem.InterY = interY
-		systemMutex[currentIndex].Unlock()
 		//v := reflect.ValueOf(tmp)
 		//fmt.Printf("Kind: %v\t Type: %v\t\tNumFields: %v\n",
 		//	v.Kind(), v.Type(), v.NumField())
@@ -163,16 +223,92 @@ func generateSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 	logInfo(fmt.Sprintf("(backend_init) Thread %d has finished generating system coordinates",
 		coreID))
 
-	waitForGen.Done()
+	if coreID != -1 {
+		waitForCores.Done()
+	}
 }
 
-func checkSystemCoordinates(myIndex int, myInterX int64, myInterY int64) bool {
+func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int) (badSystems []int) {
+	badSystems = []int{}
+	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
+		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
+		x := float64(mySystem.InterX)
+		y := float64(mySystem.InterY)
+		nearestNeighbors := rtree.NearestNeighbors(2, rtreego.Point{x, y})
+
+		var validNeighborX int64
+		var validNeighborY int64
+		var distanceBetweenSystems int64
+
+		if nearestNeighbors[0].(*SystemBox).index == currentIndex {
+			validNeighborX = int64(nearestNeighbors[1].Bounds().PointCoord(0))
+			validNeighborY = int64(nearestNeighbors[1].Bounds().PointCoord(1))
+		} else {
+			validNeighborX = int64(nearestNeighbors[0].Bounds().PointCoord(0))
+			validNeighborY = int64(nearestNeighbors[0].Bounds().PointCoord(1))
+		}
+
+		value := mySystem.InterX - validNeighborX
+		if value < 0 {
+			distanceBetweenSystems = -value
+		} else {
+			distanceBetweenSystems = value
+		}
+		if distanceBetweenSystems <= minimumDistanceBetweenSystems {
+			badSystems = append(badSystems, currentIndex)
+			logInfo(fmt.Sprintf("(backend_init) Detected bad system coordinates for %s",
+				mySystem.Name))
+			logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
+				mySystem.Name,
+				mySystem.InterX,
+				validNeighborX,
+				value))
+		}
+
+		value = mySystem.InterY - validNeighborY
+		if value < 0 {
+			distanceBetweenSystems = -value
+		} else {
+			distanceBetweenSystems = value
+		}
+		if distanceBetweenSystems <= minimumDistanceBetweenSystems {
+			logInfo(fmt.Sprintf("(backend_init) Detected bad system coordinates for %s",
+				mySystem.Name))
+			logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
+				mySystem.Name,
+				mySystem.InterY,
+				validNeighborY,
+				value))
+		}
+	}
+
+	if coreID != -1 {
+		waitForCores.Done()
+	}
+	return badSystems
+}
+
+func updateRtreeSystemCoordinates(coreID int, startIndex int, stopIndex int) {
+	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
+		if rtree.Delete(rtreeObjects[currentIndex]) != true {
+			logInfo("(backend_init) Rtree failed to delete a record for an unknown reason")
+		}
+		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
+		x := float64(mySystem.InterX)
+		y := float64(mySystem.InterY)
+		rtree.Insert(&SystemBox{rtreego.Point{x, y}, currentIndex})
+	}
+	if coreID != -1 {
+		waitForCores.Done()
+	}
+}
+
+func slowlyCheckSystemCoordinates(myIndex int, myInterX int64, myInterY int64) bool {
 	for anotherIndex := 0; anotherIndex < totalNumSystems; anotherIndex++ {
 		if myIndex >= anotherIndex {
 			anotherIndex = myIndex + 1
 			continue
 		}
-		//logInfo(fmt.Sprintf("anotherIndex: %v", anotherIndex))
 		anotherSystem := currentGalaxy.Solarsystemslice[anotherIndex]
 		systemMutex[anotherIndex].RLock()
 		anotherInterX := anotherSystem.InterX
@@ -180,6 +316,7 @@ func checkSystemCoordinates(myIndex int, myInterX int64, myInterY int64) bool {
 		systemMutex[anotherIndex].RUnlock()
 
 		if anotherInterX == 0 && anotherInterY == 0 {
+			// default value (0,0) is not valid, must skip
 			continue
 		}
 

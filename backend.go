@@ -108,15 +108,16 @@ func startBackendMode() {
 	// start communication with frontend
 	////////////////////////////////////////////////////////////
 
-	//var tempWaitgroup sync.WaitGroup
+	// easy on/off handle for debugging purposes
+	enabled := true
 
-	//tempWaitgroup.Add(1)
-
-	//go func() {
-	//	for {
-	//		kickoffFrontendCommunication("hyperion5.com")
-	//	}
-	//}()
+	if enabled {
+		go func() {
+			for {
+				kickoffFrontendCommunication("hyperion5.com")
+			}
+		}()
+	}
 
 	////////////////////////////////////////////////////////////
 	// generate Galaxy
@@ -124,7 +125,13 @@ func startBackendMode() {
 
 	generateGalaxy()
 
-	logInfo(fmt.Sprintf("There are %v solarSystems", len(currentGalaxy.GetSolarsystemslice())))
+	////////////////////////////////////////////////////////////
+	// random sanity checks
+	////////////////////////////////////////////////////////////
+
+	logDebug(fmt.Sprintf("There are %v solarSystems", len(currentGalaxy.GetSolarsystemslice())))
+	logDebug(fmt.Sprintf("First Galaxy Name: %s", currentGalaxy.Solarsystemslice[0].GetName()))
+	logDebug(fmt.Sprintf("Random Galaxy Name: %s", currentGalaxy.Solarsystemslice[9183].Name))
 
 	getSystemIndex := func(myName string) (int, bool) {
 		for i, elem := range currentGalaxy.Solarsystemslice {
@@ -135,11 +142,18 @@ func startBackendMode() {
 		return -1, false
 	}
 
-	testSystem, ok := getSystemIndex("xyz9999")
-	if ok {
-		fmt.Printf("Printing name of 9999th system: %s\n",
-			currentGalaxy.Solarsystemslice[testSystem].GetName())
+	if debugModeBool {
+		testSystem, ok := getSystemIndex("xyz9999")
+		if ok {
+			logDebug(fmt.Sprintf("Printing name of 9999th system: %s\n",
+				currentGalaxy.Solarsystemslice[testSystem].GetName()))
+		}
+
 	}
+
+	////////////////////////////////////////////////////////////
+	// basic sanity checks
+	////////////////////////////////////////////////////////////
 
 	//time.Sleep(30 * time.Second)
 	//waitForLogging.Wait()

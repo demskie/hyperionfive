@@ -139,7 +139,7 @@ func main() {
 		fmt.Println("##############################################")
 		fmt.Println("")
 		loggingMutex.Unlock()
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Minute)
 		os.Exit(1)
 	} else {
 		startBackendMode()
@@ -150,7 +150,7 @@ func main() {
 		fmt.Println("##############################################")
 		fmt.Println("")
 		loggingMutex.Unlock()
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Minute)
 		os.Exit(1)
 	}
 }
@@ -365,14 +365,6 @@ const (
 	HEAVILYDAMAGED
 	SEVERELYDAMAGED
 	HANGINGBYATHREAD
-)
-
-// galaxytype
-const (
-	ELLIPTICAL int32 = iota
-	SPIRAL
-	BARREDSPIRAL
-	IRREGULAR
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
