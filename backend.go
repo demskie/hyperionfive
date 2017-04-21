@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dhconnelly/rtreego"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 
@@ -109,7 +110,7 @@ func startBackendMode() {
 	////////////////////////////////////////////////////////////
 
 	// easy on/off handle for debugging purposes
-	enabled := true
+	enabled := false
 
 	if enabled {
 		go func() {
@@ -123,7 +124,12 @@ func startBackendMode() {
 	// generate Galaxy
 	////////////////////////////////////////////////////////////
 
-	generateGalaxy()
+	galaxyType := ELLIPTICAL
+	generateGalaxy(galaxyType)
+
+	logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
+	rtree = &rtreego.Rtree{}
+	rtreeObjects = []rtreego.Spatial{}
 
 	////////////////////////////////////////////////////////////
 	// random sanity checks
@@ -131,7 +137,9 @@ func startBackendMode() {
 
 	logDebug(fmt.Sprintf("There are %v solarSystems", len(currentGalaxy.GetSolarsystemslice())))
 	logDebug(fmt.Sprintf("First Galaxy Name: %s", currentGalaxy.Solarsystemslice[0].GetName()))
-	logDebug(fmt.Sprintf("Random Galaxy Name: %s", currentGalaxy.Solarsystemslice[9183].Name))
+	logDebug(fmt.Sprintf("Random Galaxy Name (9183): %s", currentGalaxy.Solarsystemslice[9183].Name))
+	logDebug(fmt.Sprintf("Random Galaxy Name (123): %s", currentGalaxy.Solarsystemslice[123].Name))
+	logDebug(fmt.Sprintf("Random Galaxy Name (4834): %s", currentGalaxy.Solarsystemslice[4834].Name))
 
 	getSystemIndex := func(myName string) (int, bool) {
 		for i, elem := range currentGalaxy.Solarsystemslice {

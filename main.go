@@ -128,10 +128,12 @@ func init() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func main() {
-
-	// branch here based on command line invocation
 	if loadBalanceBool == true {
 		startFrontendMode()
+		time.Sleep(5 * time.Second)
+		for len(logInfoChan) != 0 {
+			time.Sleep(time.Second)
+		}
 		loggingMutex.Lock()
 		fmt.Println("")
 		fmt.Println("##############################################")
@@ -139,10 +141,13 @@ func main() {
 		fmt.Println("##############################################")
 		fmt.Println("")
 		loggingMutex.Unlock()
-		time.Sleep(1 * time.Minute)
 		os.Exit(1)
 	} else {
 		startBackendMode()
+		time.Sleep(5 * time.Second)
+		for len(logInfoChan) != 0 {
+			time.Sleep(time.Second)
+		}
 		loggingMutex.Lock()
 		fmt.Println("")
 		fmt.Println("##############################################")
@@ -150,26 +155,9 @@ func main() {
 		fmt.Println("##############################################")
 		fmt.Println("")
 		loggingMutex.Unlock()
-		time.Sleep(1 * time.Minute)
 		os.Exit(1)
 	}
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-// The following structs "shadow" what has already been declared in protobuf.pb.go
-
-// Galaxy ...
-//type Galaxy struct {
-//	mutex sync.RWMutex
-//}
-//
-//// SolarSystem ...
-//type SolarSystem struct {
-//	mutex sync.RWMutex
-//}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -327,7 +315,7 @@ func growPopulation(currentPopulation float64, foodSupply int32) float64 {
 
 // planettype
 const (
-	TERRAN int32 = iota
+	TERRAN int = iota
 	DESERT
 	VOLCANIC
 	ICE
@@ -341,7 +329,7 @@ const (
 
 // spaceshiptype
 const (
-	SCOUT int32 = iota
+	SCOUT int = iota
 	COLONY
 	CARRIER
 	BATTLESHIP
@@ -350,7 +338,7 @@ const (
 
 // solarsystemtype
 const (
-	BLUEGIANT int32 = iota
+	BLUEGIANT int = iota
 	YELLOWGIANT
 	REDGIANT
 	WHITEDWARF
@@ -360,7 +348,7 @@ const (
 
 // spaceshipstatus
 const (
-	OPERATIONAL int32 = iota
+	OPERATIONAL int = iota
 	LIGHTLYDAMAGED
 	HEAVILYDAMAGED
 	SEVERELYDAMAGED
