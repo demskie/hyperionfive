@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"math/rand"
 	"sync"
 
 	"github.com/dhconnelly/rtreego"
@@ -16,12 +17,11 @@ const (
 	maxNumberOfPlayers            = 10000
 	numSystemsPerPlayer           = 100
 	totalNumSystems               = maxNumberOfPlayers * numSystemsPerPlayer
-	maxDistanceFromCenter         = math.MaxInt64 // lightyears
 	lightyear                     = fakeToRealMultiplier
 	minimumDistanceBetweenSystems = lightyear
-	fakeGalaxyRadius              = math.MaxInt64 // lightyears
+	galaxyRadius                  = math.MaxInt64 // lightyears
 	realGalaxyRadius              = 125000        // lightyears
-	fakeToRealMultiplier          = fakeGalaxyRadius / realGalaxyRadius
+	fakeToRealMultiplier          = galaxyRadius / realGalaxyRadius
 	oneMillion                    = 1000000
 	oneBillion                    = 1000000000
 	oneTrillion                   = 1000000000000
@@ -110,7 +110,7 @@ func generateGalaxy(galaxyType int) {
 	for i := 1; i <= numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
-		go generateSystemCoordinates(i, startIndex, stopIndex)
+		go generateEllipticalCoordinates(i, startIndex, stopIndex)
 	}
 	waitForCores.Wait()
 
@@ -151,7 +151,7 @@ func generateGalaxy(galaxyType int) {
 		for i := 0; i < numberOfCores; i++ {
 			for x := 0; x < len(badSystems[i]); x++ {
 				val := badSystems[i][x]
-				generateSystemCoordinates(-1, val, val+1)
+				generateEllipticalCoordinates(-1, val, val+1)
 			}
 		}
 
@@ -187,36 +187,75 @@ func generateGalaxy(galaxyType int) {
 
 func generateSystemNames(coreID int, startIndex int, stopIndex int) {
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
-		/////////////////////////////////////////////
-		// initialize solarSystem with default values
-		/////////////////////////////////////////////
 		currentGalaxy.Solarsystemslice[currentIndex] = &SolarSystem{}
-
-		//////////////////////////////////////////////////////////////
-		// create system name based on index number (need to refactor)
-		/////////////////////////////////////////////////////////////
 		sysName := "xyz" + fmt.Sprintf("%v", currentIndex)
-
-		/////////////////////////////
-		// assign name to this system
-		/////////////////////////////
 		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
 		mySystem.Name = sysName
 	}
-
-	////////////////////////////////////////////////////////
-	// decrementing waitgroup
-	////////////////////////////////////////////////////////
 	if coreID != -1 {
 		waitForCores.Done()
 	}
 }
 
-func generateSpiralGalaxy(coreID int, startIndex int, stopIndex int, numSpirals int) {
+func generateSpiralCoordinates(coreID int, startIndex int, stopIndex int, numArms int) {
+
+	roundFloat := func(val float64) float64 {
+		if val < 0 {
+			return float64(int64(val - 0.5))
+		}
+		return float64(int64(val + 0.5))
+	}
+
+	posOrNegInt := func() int {
+		var randomNum int8
+		b := make([]byte, 1)
+		cryptorand.Read(b)
+		buf := bytes.NewBuffer(b)
+		binary.Read(buf, binary.LittleEndian, &randomNum)
+		if randomNum >= 0 {
+			return 1
+		}
+		return -1
+	}
+
+	seed := func() rand.Source {
+		var randomness int64
+		b := make([]byte, 8)
+		cryptorand.Read(b)
+		buf := bytes.NewBuffer(b)
+		binary.Read(buf, binary.LittleEndian, &randomness)
+		return rand.NewSource(randomness)
+	}
+	rnum := rand.New(seed())
+
+	fDeg2Rad := math.Pi / 180
+	fArmAngle := math.Mod(360/float64(numArms), 360)
+	fAngularSpread := 90 / float64(numArms)
+	fNumArms := float64(numArms)
+
+	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
+		fK := float64(1)
+
+		fR := float64(rnum.Int63n(galaxyRadius))
+		fQ := float64(rnum.Int63n(int64(fAngularSpread))) * float64(posOrNegInt())
+		fA := float64(roundFloat(rnum.Float64()*fNumArms)) * fArmAngle
+
+		interX := fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ))
+
+		fR = float64(rnum.Int63n(galaxyRadius))
+		fQ = float64(rnum.Int63n(int64(fAngularSpread))) * float64(posOrNegInt())
+		fA = float64(roundFloat(rnum.Float64()*fNumArms)) * fArmAngle
+
+		interY := fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ))
+
+		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
+		mySystem.InterX = int64(interX)
+		mySystem.InterY = int64(interY)
+	}
 
 }
 
-func generateSystemCoordinates(coreID int, startIndex int, stopIndex int) {
+func generateEllipticalCoordinates(coreID int, startIndex int, stopIndex int) {
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
 		var interX int64
 		var interY int64
@@ -244,7 +283,7 @@ func generateSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 			A2 := float64(interX * interX)
 			B2 := float64(interY * interY)
 			C := math.Sqrt(A2 + B2)
-			if C >= maxDistanceFromCenter {
+			if C >= galaxyRadius {
 				continue
 			}
 
@@ -252,7 +291,7 @@ func generateSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 		}
 
 		/////////////////////////////////
-		// assigning coordinates and name
+		// assigning coordinates
 		/////////////////////////////////
 		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
 		mySystem.InterX = interX
@@ -330,12 +369,10 @@ func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int) (myBadS
 func updateRtreeSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
 		//rtree.Delete(rtreeObjects[currentIndex]) // !!!
-
 		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
 		x := float64(mySystem.InterX)
 		y := float64(mySystem.InterY)
 		rtreeObjects[currentIndex] = &SystemBox{rtreego.Point{x, y}, currentIndex}
-
 		//rtree.Insert(rtreeObjects[currentIndex]) // !!!
 	}
 	if coreID != -1 {
