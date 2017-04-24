@@ -9,13 +9,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"reflect"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/dhconnelly/rtreego"
@@ -29,24 +27,11 @@ import (
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// global variables
-var (
-	randomSeed    *rand.Rand
-	currentGalaxy Galaxy
-	futureGalaxy  Galaxy
-
-	sliceOfLocalPlayers []string
-
-	partitionedSolarSystems []sync.RWMutex
-)
-
 func startBackendMode() {
 
 	// initializing main data structures, locks, etc
 	currentGalaxy = Galaxy{}
 	futureGalaxy = Galaxy{}
-
-	sliceOfLocalPlayers = []string{}
 
 	// handle input file parameters
 	// is the inputfilename empty?
@@ -182,7 +167,7 @@ func kickoffFrontendCommunication(host string) {
 
 	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://"+host+"/backend", nil)
+	conn, _, err := dialer.Dial("wss://hyperion5.com/backend", nil)
 	if checkError("(handshakeFrontend) unable to open websocket"+
 		"with frontend loadbalancer:", err) {
 		return
@@ -303,6 +288,7 @@ func kickoffFrontendCommunication(host string) {
 		OtherFrontends []string `json:"OtherFrontends"`
 		OtherBackends  []string `json:"OtherBackends"`
 		Message        string   `json:"Message"`
+		AnotherMessage string   `json:"AnotherMessage"`
 	}
 	type outgoingMessageFrontend struct {
 		ServerAddress     string   `json:"ServerAddress"`
@@ -312,6 +298,7 @@ func kickoffFrontendCommunication(host string) {
 		OtherFrontends    []string `json:"OtherFrontends"`
 		OtherBackends     []string `json:"OtherBackends"`
 		Message           string   `json:"Message"`
+		AnotherMessage    string   `json:"AnotherMessage"`
 	}
 
 	var (
@@ -338,18 +325,17 @@ func kickoffFrontendCommunication(host string) {
 		outMsgTemp.ActiveClientCount = len(clientSessionCount)
 		clientSessionCountMutex.RUnlock()
 
-		outMsgTemp.TotalClientCount = len(sliceOfLocalPlayers)
+		//outMsgTemp.TotalClientCount = len(sliceOfLocalPlayers)
 
-		outMsgTemp.OtherFrontends = sliceOfOtherFrontends
+		//outMsgTemp.OtherFrontends = sliceOfOtherFrontends
 
-		outMsgTemp.OtherBackends = sliceOfOtherFrontends
+		//outMsgTemp.OtherBackends = sliceOfOtherFrontends
 
 		////////////////////////////////////////////////////////////
 		// if outMsgTemp is the same as last time - send only message
 		////////////////////////////////////////////////////////////
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			//logDebug("(periodicUpdateFrontend) outgoing info hasn't changed")
 			outMsgTemp = outgoingMessageFrontend{Message: "same_as_last_time"}
 		}
 
@@ -372,13 +358,15 @@ func kickoffFrontendCommunication(host string) {
 		}
 
 		switch inMsgTemp.Message {
+		case "your_galaxy_name":
+			currentGalaxy.Name = inMsgTemp.AnotherMessage
 		case "diediedie":
 			logInfo("(periodicUpdateFrontend) received 'diediedie'")
 			gracefullyCloseBackend()
 		case "same_as_last_time":
-			//logDebug("(periodicUpdateFrontend) received 'same_as_last_time'")
+			inMsgTemp = inMsgReference
 		case "":
-			// do nothing
+			// default value, do nothing
 		default:
 			logInfo("(periodicUpdateFrontend) received unknown message:",
 				inMsgTemp.Message)
@@ -389,7 +377,7 @@ func kickoffFrontendCommunication(host string) {
 			logInfo("(periodicUpdateFrontend) received duplicate message")
 		}
 
-		// used later to check if incomingMessage has changed
+		// used later to check if info has changed
 		inMsgReference = inMsgTemp
 		outMsgReference = outMsgTemp
 
@@ -460,3 +448,7 @@ func gracefullyCloseBackend() {
 	os.Exit(1)
 
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////

@@ -7,75 +7,31 @@ import (
 	"math"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/dhconnelly/rtreego"
 
 	cryptorand "crypto/rand"
 )
 
-const (
-	maxNumberOfPlayers            = 10000
-	numSystemsPerPlayer           = 100
-	totalNumSystems               = maxNumberOfPlayers * numSystemsPerPlayer
-	lightyear                     = fakeToRealMultiplier
-	minimumDistanceBetweenSystems = lightyear
-	galaxyRadius                  = math.MaxInt64 // lightyears
-	realGalaxyRadius              = 125000        // lightyears
-	fakeToRealMultiplier          = galaxyRadius / realGalaxyRadius
-	oneMillion                    = 1000000
-	oneBillion                    = 1000000000
-	oneTrillion                   = 1000000000000
-)
-
-var (
-	waitForCores sync.WaitGroup
-	systemMutex  []sync.RWMutex
-	systemIndex  map[string]int
-)
-
-var (
-	rtree        *rtreego.Rtree
-	rtreeObjects []rtreego.Spatial
-	badSystems   [][]int
-)
-
-const (
-	numDimensions   = 2
-	minBranchFactor = 1
-	maxBranchFactor = 2
-)
-
-// galaxytype
-const (
-	ELLIPTICAL int = iota
-	SPIRAL
-	BARREDSPIRAL
-	IRREGULAR
-)
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-// SystemBox ...
-type SystemBox struct {
-	location rtreego.Point
-	index    int
-}
-
-// Bounds ...
-func (sb *SystemBox) Bounds() *rtreego.Rect {
-	tol := 0.01
-	return sb.location.ToRect(tol)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 func generateGalaxy(galaxyType int) {
 
-	currentGalaxy.Name = "Andromeda-187"
+	////////////////////////////////////////////////////////////
+	// don't start generating until we have been assigned galaxyName
+	////////////////////////////////////////////////////////////
+
+	for {
+		switch {
+		case len(galaxyInfo) != 1:
+			time.Sleep(1 * time.Second)
+			continue
+		case currentGalaxy.Name == "":
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		time.Sleep(1 * time.Second)
+		break
+	}
 
 	////////////////////////////////////////////////////////////
 	// initialize various structures
@@ -156,8 +112,6 @@ func generateGalaxy(galaxyType int) {
 		}
 
 		successful := true
-		//logInfo(fmt.Sprint(badSystems))
-		//logInfo(fmt.Sprint(len(badSystems)))
 		for i := 0; i < len(badSystems); i++ {
 			if len(badSystems[i]) > 0 {
 				successful = false

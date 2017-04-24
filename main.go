@@ -12,61 +12,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dhconnelly/rtreego"
 	"github.com/fatih/color"
 )
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-// defining various global variables (yes I know - ugly)
-var (
-	inputFilename    string
-	outputFilename   string
-	googleAudience   string
-	authPassword     string
-	staticFrontend   string
-	loadBalanceBool  bool
-	createGalaxyBool bool
-	debugModeBool    bool
-
-	numberOfCores int
-
-	clientBlacklist         map[string]FirewallClientValues
-	clientBlacklistMutex    sync.RWMutex
-	clientSessionCount      map[string]uint16
-	clientSessionCountMutex sync.RWMutex
-
-	sliceOfOtherFrontends      []string
-	sliceOfOtherFrontendsMutex sync.RWMutex
-	sliceOfOtherBackends       []string
-	sliceOfOtherBackendsMutex  sync.RWMutex
-
-	loggingMutex   sync.Mutex
-	waitForLogging sync.WaitGroup
-)
-
-// defining global constants for internal firewall
-const (
-	constChallenge     = 1
-	constGoogleAuth    = 3
-	constClientSession = 25
-)
-
-// FirewallClientValues defines values for firewalling
-type FirewallClientValues struct {
-	mutex                   sync.RWMutex
-	failedChallengeCount    uint16
-	failedChallengeTime     int64
-	failedGoogleAuthCount   uint16
-	failedGoogleAuthTime    int64
-	failedSessionLimitCount uint16
-	failedSessionLimitTime  int64
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
 
 func init() {
 
@@ -75,20 +23,17 @@ func init() {
 	go handleLogging()
 	logInfo("(initLogInfo) - init completed")
 
-	// fetching/storing initial number of cores (likely an unnecessary premature optimization)
-	numberOfCores = runtime.NumCPU()
-
 	// initializing global IP blacklist
 	clientBlacklist = map[string]FirewallClientValues{}
 
 	// initializing global IP session count
 	clientSessionCount = make(map[string]uint16)
 
-	// initializing data structures containing other server IPs
-	sliceOfOtherFrontends = []string{}
-	sliceOfOtherBackends = []string{}
+	// initializing galaxyInfo
+	galaxyInfo = map[string]GalaxyInfoStruct{}
 
 	// define commandline flags to parse for
+	galaxyNamePtr := flag.String("galaxyname", "", "specify galaxy name")
 	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
 	outputFilePtr := flag.String("output", "", "specify export destination, either json or blob")
 	googleAudiencePtr := flag.String("audience", "", "specify google oauth audience")
@@ -97,6 +42,7 @@ func init() {
 	loadBalanceBoolPtr := flag.Bool("loadbalance", false, "enable frontend loadbalancer mode")
 	createGalaxyBoolPtr := flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
 	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
+	singleThreadedBoolPtr := flag.Bool("singlethreaded", false, "force singlethreaded behavior")
 
 	// pull flags attached to CLI invocation
 	flag.Parse()
@@ -111,7 +57,15 @@ func init() {
 		os.Exit(1)
 	}
 
+	// singlethreaded mode for debugging (and emergencies)
+	if singleThreadedBool {
+		numberOfCores = 1
+	} else {
+		numberOfCores = runtime.NumCPU()
+	}
+
 	// convert pointers to values and store in global variables
+	galaxyName = *galaxyNamePtr
 	inputFilename = *inputFilePtr
 	outputFilename = *outputFilePtr
 	googleAudience = *googleAudiencePtr
@@ -120,6 +74,7 @@ func init() {
 	loadBalanceBool = *loadBalanceBoolPtr
 	createGalaxyBool = *createGalaxyBoolPtr
 	debugModeBool = *debugModeBoolPtr
+	singleThreadedBool = *singleThreadedBoolPtr
 
 }
 
@@ -354,6 +309,137 @@ const (
 	SEVERELYDAMAGED
 	HANGINGBYATHREAD
 )
+
+// galaxytype
+const (
+	ELLIPTICAL int = iota
+	SPIRAL
+	BARREDSPIRAL
+	IRREGULAR
+)
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////
+// global variables that are used everywhere
+////////////////////////////////////////////////////////////
+
+var (
+	galaxyName         string
+	inputFilename      string
+	outputFilename     string
+	googleAudience     string
+	authPassword       string
+	staticFrontend     string
+	loadBalanceBool    bool
+	createGalaxyBool   bool
+	debugModeBool      bool
+	singleThreadedBool bool
+)
+
+const (
+	constChallenge     = 1
+	constGoogleAuth    = 3
+	constClientSession = 25
+)
+
+var (
+	clientBlacklist         map[string]*FirewallClientValues
+	clientBlacklistMutex    sync.RWMutex
+	clientSessionCount      map[string]uint16
+	clientSessionCountMutex sync.RWMutex
+)
+
+// FirewallClientValues defines values for firewalling
+type FirewallClientValues struct {
+	sync.RWMutex
+	failedChallengeCount    uint16
+	failedChallengeTime     int64
+	failedGoogleAuthCount   uint16
+	failedGoogleAuthTime    int64
+	failedSessionLimitCount uint16
+	failedSessionLimitTime  int64
+}
+
+var (
+	galaxyInfo                 map[string]*GalaxyInfoStruct
+	sliceOfOtherFrontends      []string
+	sliceOfOtherFrontendsMutex sync.RWMutex
+)
+
+// GalaxyInfoStruct defines values for galaxyInfo
+type GalaxyInfoStruct struct {
+	sync.RWMutex
+	ClientIDs []string
+	Backends  []string
+}
+
+var (
+	numberOfCores  int
+	loggingMutex   sync.Mutex
+	waitForLogging sync.WaitGroup
+)
+
+////////////////////////////////////////////////////////////
+// global variables used primarily in 'backend'
+////////////////////////////////////////////////////////////
+
+var (
+	randomSeed              *rand.Rand
+	currentGalaxy           Galaxy
+	futureGalaxy            Galaxy
+	partitionedSolarSystems []sync.RWMutex
+)
+
+var (
+	waitForCores sync.WaitGroup
+	systemMutex  []sync.RWMutex
+	systemIndex  map[string]int
+)
+
+////////////////////////////////////////////////////////////
+// global variables specific to 'backend_generategalaxy'
+////////////////////////////////////////////////////////////
+
+const (
+	maxNumberOfPlayers            = 10000
+	numSystemsPerPlayer           = 100
+	totalNumSystems               = maxNumberOfPlayers * numSystemsPerPlayer
+	lightyear                     = fakeToRealMultiplier
+	minimumDistanceBetweenSystems = lightyear
+	galaxyRadius                  = math.MaxInt64
+	realGalaxyRadius              = 125000
+	fakeToRealMultiplier          = galaxyRadius / realGalaxyRadius
+	oneMillion                    = 1000000
+	oneBillion                    = 1000000000
+	oneTrillion                   = 1000000000000
+)
+
+var (
+	rtree        *rtreego.Rtree
+	rtreeObjects []rtreego.Spatial
+	badSystems   [][]int
+)
+
+const (
+	numDimensions   = 2
+	minBranchFactor = 2
+	maxBranchFactor = 2
+)
+
+// SystemBox ...
+type SystemBox struct {
+	location rtreego.Point
+	index    int
+}
+
+// Bounds ...
+func (sb *SystemBox) Bounds() *rtreego.Rect {
+	tol := 0.01
+	return sb.location.ToRect(tol)
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////

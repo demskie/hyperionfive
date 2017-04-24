@@ -22,10 +22,6 @@ import (
 	cryptorand "crypto/rand"
 )
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 func startFrontendMode() {
 
 	// setup httpMux to avoid leaking default handlers
@@ -135,7 +131,7 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 	clientFirewallValues, exists := clientBlacklist[client]
 	clientBlacklistMutex.RUnlock()
 	if exists == true {
-		clientFirewallValues.mutex.RLock()
+		clientFirewallValues.RLock()
 		currentTime := time.Now().Unix()
 		timeSinceBlacklist := currentTime - clientFirewallValues.failedChallengeTime
 		blacklistExpGrowth := int64((clientFirewallValues.failedChallengeCount) / constChallenge)
@@ -157,11 +153,11 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedGoogleAuthCount))
 			return
 		}
-		clientFirewallValues.mutex.RUnlock()
+		clientFirewallValues.RUnlock()
 	} else {
 		// intialize client with default values
 		clientBlacklistMutex.Lock()
-		clientBlacklist[client] = FirewallClientValues{}
+		clientBlacklist[client] = &FirewallClientValues{}
 		clientBlacklistMutex.Unlock()
 	}
 
@@ -242,10 +238,10 @@ func loadbalanceClients(w http.ResponseWriter, r *http.Request) {
 	}
 	if successful == false {
 		currentTime := time.Now().Unix()
-		clientFirewallValues.mutex.Lock()
+		clientFirewallValues.Lock()
 		clientFirewallValues.failedGoogleAuthCount += constGoogleAuth
 		clientFirewallValues.failedGoogleAuthTime = currentTime
-		clientFirewallValues.mutex.Unlock()
+		clientFirewallValues.Unlock()
 		conn.Close()
 		return
 	}
@@ -309,7 +305,7 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 	clientFirewallValues, exists := clientBlacklist[client]
 	clientBlacklistMutex.RUnlock()
 	if exists == true {
-		clientFirewallValues.mutex.RLock()
+		clientFirewallValues.RLock()
 		currentTime := time.Now().Unix()
 		timeSinceBlacklist := currentTime - clientFirewallValues.failedChallengeTime
 		blacklistExpGrowth := int64((clientFirewallValues.failedChallengeCount) / constChallenge)
@@ -331,11 +327,11 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 				"\n\tnumberOfOffenses:", string(clientFirewallValues.failedGoogleAuthCount))
 			return
 		}
-		clientFirewallValues.mutex.RUnlock()
+		clientFirewallValues.RUnlock()
 	} else {
 		// intialize client with default values
 		clientBlacklistMutex.Lock()
-		clientBlacklist[client] = FirewallClientValues{}
+		clientBlacklist[client] = &FirewallClientValues{}
 		clientBlacklistMutex.Unlock()
 	}
 
@@ -412,10 +408,10 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		logDebug("(handshakeBackend) received a challenge with invalid length:",
 			string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
-		clientFirewallValues.mutex.Lock()
+		clientFirewallValues.Lock()
 		clientFirewallValues.failedChallengeCount++
 		clientFirewallValues.failedChallengeTime = currentTime
-		clientFirewallValues.mutex.Unlock()
+		clientFirewallValues.Unlock()
 		return
 	}
 
@@ -509,19 +505,20 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		OtherFrontends    []string `json:"OtherFrontends"`
 		OtherBackends     []string `json:"OtherBackends"`
 		Message           string   `json:"Message"`
+		AnotherMessage    string   `json:"AnotherMessage"`
 	}
 
-	type galaxyInfo struct {
-		GalaxyName string `json:"GalaxyName"`
-		GlobalX    int64  `json:"GlobalX"`
-		GlobalY    int64  `json:"GlobalY"`
-		Diameter   int32  `json:"Diameter"`
-	}
 	type outgoingMessageBackend struct {
-		ListOfGalaxies []galaxyInfo `json:"ListOfGalaxies"`
-		OtherFrontends []string     `json:"OtherFrontends"`
-		OtherBackends  []string     `json:"OtherBackends"`
-		Message        string       `json:"Message"`
+		ListOfGalaxies []struct {
+			GalaxyName string `json:"GalaxyName"`
+			GlobalX    int64  `json:"GlobalX"`
+			GlobalY    int64  `json:"GlobalY"`
+			Diameter   int32  `json:"Diameter"`
+		} `json:"ListOfGalaxies"`
+		OtherFrontends []string `json:"OtherFrontends"`
+		OtherBackends  []string `json:"OtherBackends"`
+		Message        string   `json:"Message"`
+		AnotherMessage string   `json:"AnotherMessage"`
 	}
 
 	var (
@@ -537,8 +534,9 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 
 	// defining constants to satisfy my linter (premature optimization)
 	const (
-		sameAsLastTime = "same_as_last_time"
-		diediedie      = "diediedie"
+		newGalaxyConst      = "new_galaxy"
+		sameAsLastTimeConst = "same_as_last_time"
+		diediedieConst      = "diediedie"
 	)
 
 	for {
@@ -553,68 +551,72 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 
 		// look at the value of 'message' sent from Backend
 		switch inMsgTemp.Message {
-		case diediedie:
-			logInfo("(periodicUpdateBackend) received 'diediedie' from frontend")
-		case sameAsLastTime:
-			//logDebug("(periodicUpdateBackend) received 'same_as_last_time'")
+		case newGalaxyConst:
+			logInfo("(periodicUpdateBackend) received 'new_galaxy' from backend")
+			galName := "blahblahAndromedaGalaxy1234"
+			inMsgTemp.GalaxyName = galName
+			outMsgTemp.Message = newGalaxyConst
+			outMsgTemp.AnotherMessage = galName
+			galaxyInfo[galName] = &GalaxyInfoStruct{}
+			galaxyInfo[galName].Lock()
+			galaxyInfo[galName].Backends = append(galaxyInfo[galName].Backends, client)
+			galaxyInfo[galName].Unlock()
+		case diediedieConst:
+			logInfo("(periodicUpdateBackend) received 'diediedie' from backend *ignoring*")
+		case sameAsLastTimeConst:
+			inMsgTemp = inMsgReference
 		case "":
-			// do nothing
+			// default value, do nothing
 		default:
-			logInfo("(periodicUpdateBackend) received unknown message from frontend:",
+			logInfo("(periodicUpdateBackend) received unknown message from backend:",
 				inMsgTemp.Message)
 		}
 
 		// shouldn't receive duplicate message from Backend - but we sanitycheck anyways
-		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != sameAsLastTime {
+		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != sameAsLastTimeConst {
 			logInfo("(periodicUpdateBackend) received duplicate message")
 		}
 
-		// check if we sent the same message as last time
-		if outMsgTemp.Message == sameAsLastTime {
-			outMsgTemp = outMsgReference // probably unnecessary
-		} else {
-			outMsgReference = outMsgTemp
-		}
-
 		////////////////////////////////////////////////////////////
-		// sending JSON message to Backend
+		// finish putting together outgoing message
 		////////////////////////////////////////////////////////////
-		outMsgTemp.ListOfGalaxies = []galaxyInfo{
-			{GalaxyName: "Andromeda", GlobalX: 987654321, GlobalY: -98765},
-			{GalaxyName: "Milky Way", GlobalX: 1234, GlobalY: 4321},
-		}
 
 		sliceOfOtherFrontendsMutex.RLock()
 		outMsgTemp.OtherFrontends = sliceOfOtherFrontends
 		sliceOfOtherFrontendsMutex.RUnlock()
 
-		sliceOfOtherBackendsMutex.RLock()
-		outMsgTemp.OtherBackends = sliceOfOtherBackends
-		sliceOfOtherBackendsMutex.RUnlock()
+		galaxyInfo[inMsgTemp.GalaxyName].RLock()
+		outMsgTemp.OtherBackends = galaxyInfo[inMsgTemp.GalaxyName].Backends
+		galaxyInfo[inMsgTemp.GalaxyName].RUnlock()
 
-		// instead of sending duplicate message we just send a special string
+		////////////////////////////////////////////////////////////
+		// if outMsgTemp is the same as last time - send only short message
+		////////////////////////////////////////////////////////////
+
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			logDebug("(periodicUpdateBackend) outgoing info hasn't changed")
 			outMsgTemp = outgoingMessageBackend{Message: "same_as_last_time"}
 		}
 
-		// now we send the JSON message message
+		////////////////////////////////////////////////////////////
+		// send outgoingMessage
+		////////////////////////////////////////////////////////////
+
 		err := conn.WriteJSON(outMsgTemp)
 		if checkError("(periodicUpdateBackend) error sending message:", err) {
 			return
 		}
 
+		// used later to check if info has changed
+		inMsgReference = inMsgTemp
+		outMsgReference = outMsgTemp
+
 		// check if we received the same message as last time
-		if inMsgTemp.Message == sameAsLastTime {
-			inMsgTemp = inMsgReference // probably unnecessary
-		} else {
-			inMsgReference = inMsgTemp
-		}
+		//if inMsgTemp.Message == sameAsLastTime {
+		//	inMsgTemp = inMsgReference // probably unnecessary
+		//} else {
+		//	inMsgReference = inMsgTemp
+		//}
 
 	}
 
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
