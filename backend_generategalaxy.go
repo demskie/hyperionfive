@@ -115,7 +115,8 @@ func generateGalaxy(galaxyType int) {
 		for i := 0; i < len(badSystems); i++ {
 			if len(badSystems[i]) > 0 {
 				successful = false
-				logInfo(fmt.Sprintf("   ...\t\tThread=%v\t\t\tNumberOfBadSystems=%v", i, len(badSystems[i])))
+				logInfo(fmt.Sprintf("   ...\t\tThread=%v\t\t\tNumberOfBadSystems=%v",
+					i, len(badSystems[i])))
 			}
 		}
 		if successful {
@@ -131,7 +132,8 @@ func generateGalaxy(galaxyType int) {
 
 		iter++
 		logInfo(fmt.Sprint("   ...\tRecreating Rtree\t\tIteration=", iter))
-		rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...) // !!!
+		rtree = rtreego.NewTree(numDimensions, minBranchFactor,
+			maxBranchFactor, rtreeObjects...) // !!!
 	}
 }
 

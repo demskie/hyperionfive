@@ -6,9 +6,12 @@ import (
 	"crypto/sha512"
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -509,12 +512,9 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type outgoingMessageBackend struct {
-		ListOfGalaxies []struct {
-			GalaxyName string `json:"GalaxyName"`
-			GlobalX    int64  `json:"GlobalX"`
-			GlobalY    int64  `json:"GlobalY"`
-			Diameter   int32  `json:"Diameter"`
-		} `json:"ListOfGalaxies"`
+		GalaxyName     string   `json:"GalaxyName"`
+		GlobalX        int64    `json:"GlobalX"`
+		GlobalY        int64    `json:"GlobalY"`
 		OtherFrontends []string `json:"OtherFrontends"`
 		OtherBackends  []string `json:"OtherBackends"`
 		Message        string   `json:"Message"`
@@ -532,39 +532,103 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 	// start communication with backend
 	////////////////////////////////////////////////////////////
 
-	// defining constants to satisfy my linter (premature optimization)
-	const (
-		newGalaxyConst      = "new_galaxy"
-		sameAsLastTimeConst = "same_as_last_time"
-		diediedieConst      = "diediedie"
-	)
-
 	for {
 
 		////////////////////////////////////////////////////////////
 		// wait for JSON message from Backend
 		////////////////////////////////////////////////////////////
+
 		err = conn.ReadJSON(&inMsgTemp)
 		if checkError("(periodicUpdateBackend) error receiving message:", err) {
 			return
 		}
 
-		// look at the value of 'message' sent from Backend
+		////////////////////////////////////////////////////////////
+		// define function used to generate global Galaxy Name and Coordinates
+		////////////////////////////////////////////////////////////
+
+		generateGlobalGalaxyInfo := func(clientIP string) (galName string, glblX int64,
+			glblY int64) {
+
+			lotsOfNames := []string{"Aegis", "Aeon", "Aeris", "Babylon", "Aeternitas", "Aether", "Alliance", "Alpha", "Amazone", "Ancestor", "Anemone", "Angel", "Anomaly", "Apollo", "Arcadia", "Arcadis", "Arch", "Architect", "Ark", "Artemis", "Asphodel", "Asteria", "Astraeus", "Athena", "Atlas", "Atmos", "Aura", "Aurora", "Awe", "Azura", "Azure", "Baldur", "Beacon", "Blue Moon", "Borealis", "Burrow", "Caelestis", "Canaan", "Century", "Chrono", "Chronos", "Crescent", "Curator", "Curiosity", "Data", "Dawn", "Daydream", "Demeter", "Dogma", "Dream", "Dune", "Ecstacys", "Eir", "Elyse", "Elysium", "Empyrea", "Ender", "Enigma", "Eos", "Epiphany", "Epitome", "Erebus", "Escort", "Eternis", "Eternity", "Exposure", "Fable", "Father", "Fauna", "Felicity", "Flora", "Fortuna", "Frontier", "Gaia", "Galaxy", "Genesis", "Genius", "Glory", "Guardian", "Halo", "Heirloom", "Helios", "Hemera", "Hera", "Heritage", "Hermes", "Horus", "Hymn", "Hyperion", "Hypnos", "Ignis", "Illume", "Inception", "Infinity", "Isis", "Janus", "Juno", "Legacy", "Liberty", "Lore", "Lucent", "Lumina", "Luminous", "Luna", "Lunis", "Magni", "Mammoth", "Mani", "Marvel", "Memento", "Minerva", "Miracle", "Mother", "Muse", "Mystery", "Mythos", "Nebula", "Nemesis", "Nemo", "Neo", "Nero", "Nimbus", "Nott", "Nova", "Novis", "Nox", "Nyx", "Odyssey", "Olympus", "Omega", "Oracle", "Orbital", "Origin", "Orphan", "Osiris", "Outlander", "Parable", "Paradox", "Paragon", "Pedigree", "Phantasm", "Phantom", "Phenomenon", "Phoenix", "Pilgrim", "Pioneer", "Prism", "Prodigy", "Prometheus", "Prophecy", "Proto", "Radiance", "Rebus", "Relic", "Revelation", "Reverie", "Rogue", "Rune", "Saga", "Sancus", "Scout", "Selene", "Serenity", "Settler", "Shangris", "Shepherd", "Shu", "Sol", "Solas", "Spectacle", "Specter", "Spectrum", "Spire", "Symbolica", "Tartarus", "Terminus", "Terra", "Terran", "Terraria", "Themis", "Tiberius", "Titan", "Titanus", "Torus", "Tranquility", "Trivia", "Utopis", "Valhalla", "Vanguard", "Vanquish", "Vesta", "Vestige", "Victoria", "Virtue", "Visage", "Voyage", "Vulcan", "Warden", "Yggdrasil", "Zeus", "Zion"}
+
+			seed := func() rand.Source {
+				var randomness int64
+				b := make([]byte, 8)
+				cryptorand.Read(b)
+				buf := bytes.NewBuffer(b)
+				binary.Read(buf, binary.LittleEndian, &randomness)
+				return rand.NewSource(randomness)
+			}
+			rnum := rand.New(seed())
+			randomIndex := rnum.Intn(len(lotsOfNames) - 1)
+			galName = lotsOfNames[randomIndex]
+
+			for {
+				////////////////////////////////////////////
+				// generating a uniformly random int64 value
+				////////////////////////////////////////////
+				b := make([]byte, 8)
+				cryptorand.Read(b)
+				buf := bytes.NewBuffer(b)
+				binary.Read(buf, binary.LittleEndian, &glblX)
+				//////////////////////////////////////////////////
+				// generating another uniformly random int64 value
+				//////////////////////////////////////////////////
+				cryptorand.Read(b)
+				buf = bytes.NewBuffer(b)
+				binary.Read(buf, binary.LittleEndian, &glblY)
+				/////////////////////////////////////////////////
+				// calculate hypotenuse and throw away any
+				// coordinates that would fall outside the circle
+				/////////////////////////////////////////////////
+				A2 := float64(glblX * glblX)
+				B2 := float64(glblY * glblY)
+				C := math.Sqrt(A2 + B2)
+				if C >= galaxyRadius {
+					continue
+				}
+				break
+			}
+			return
+		}
+
+		// defining constants to satisfy my linter (premature optimization)
+		const (
+			newGalaxyConst          = "new_galaxy"
+			diediedieConst          = "diediedie"
+			sameAsLastTimeConst     = "same_as_last_time"
+			iveAcceptedGalNameConst = "ive_accepted_this_galaxyname"
+		)
+
+		////////////////////////////////////////////
+		// look at the incoming message and act on it
+		////////////////////////////////////////////
+
 		switch inMsgTemp.Message {
 		case newGalaxyConst:
 			logInfo("(periodicUpdateBackend) received 'new_galaxy' from backend")
-			galName := "blahblahAndromedaGalaxy1234"
+			galName, glblX, glblY := generateGlobalGalaxyInfo(client)
 			inMsgTemp.GalaxyName = galName
 			outMsgTemp.Message = newGalaxyConst
 			outMsgTemp.AnotherMessage = galName
 			galaxyInfo[galName] = &GalaxyInfoStruct{}
 			galaxyInfo[galName].Lock()
 			galaxyInfo[galName].Backends = append(galaxyInfo[galName].Backends, client)
+			galaxyInfo[galName].GlobalX = glblX
+			galaxyInfo[galName].GlobalX = glblY
 			galaxyInfo[galName].Unlock()
 		case diediedieConst:
 			logInfo("(periodicUpdateBackend) received 'diediedie' from backend *ignoring*")
+			// TODO add logic to 'diediedie' message
 		case sameAsLastTimeConst:
 			inMsgTemp = inMsgReference
+			if reflect.DeepEqual(inMsgTemp, inMsgReference) {
+				logInfo("(periodicUpdateBackend) received duplicate message")
+			}
+		case iveAcceptedGalNameConst:
+			logInfo("(periodicUpdateBackend) received 'ive_accepted_this_galaxyname' from backend")
+			// TODO add logic to 'ive_accepted_this_galaxyname'
 		case "":
 			// default value, do nothing
 		default:
@@ -572,22 +636,16 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 				inMsgTemp.Message)
 		}
 
-		// shouldn't receive duplicate message from Backend - but we sanitycheck anyways
-		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != sameAsLastTimeConst {
-			logInfo("(periodicUpdateBackend) received duplicate message")
-		}
-
 		////////////////////////////////////////////////////////////
 		// finish putting together outgoing message
 		////////////////////////////////////////////////////////////
 
-		sliceOfOtherFrontendsMutex.RLock()
-		outMsgTemp.OtherFrontends = sliceOfOtherFrontends
-		sliceOfOtherFrontendsMutex.RUnlock()
+		galName := inMsgTemp.GalaxyName
 
-		galaxyInfo[inMsgTemp.GalaxyName].RLock()
-		outMsgTemp.OtherBackends = galaxyInfo[inMsgTemp.GalaxyName].Backends
-		galaxyInfo[inMsgTemp.GalaxyName].RUnlock()
+		galaxyInfo[galName].RLock()
+		outMsgTemp.OtherFrontends = galaxyInfo[galName].Frontends
+		outMsgTemp.OtherBackends = galaxyInfo[galName].Backends
+		galaxyInfo[galName].RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// if outMsgTemp is the same as last time - send only short message
@@ -609,14 +667,6 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		// used later to check if info has changed
 		inMsgReference = inMsgTemp
 		outMsgReference = outMsgTemp
-
-		// check if we received the same message as last time
-		//if inMsgTemp.Message == sameAsLastTime {
-		//	inMsgTemp = inMsgReference // probably unnecessary
-		//} else {
-		//	inMsgReference = inMsgTemp
-		//}
-
 	}
 
 }

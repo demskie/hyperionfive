@@ -279,12 +279,9 @@ func kickoffFrontendCommunication(host string) {
 	////////////////////////////////////////////////////////////
 
 	type incomingMessageFrontend struct {
-		ListOfGalaxies []struct {
-			GalaxyName string `json:"GalaxyName"`
-			GlobalX    int64  `json:"GlobalX"`
-			GlobalY    int64  `json:"GlobalY"`
-			Diameter   int32  `json:"Diameter"`
-		} `json:"ListOfGalaxies"`
+		GalaxyName     string   `json:"GalaxyName"`
+		GlobalX        int64    `json:"GlobalX"`
+		GlobalY        int64    `json:"GlobalY"`
 		OtherFrontends []string `json:"OtherFrontends"`
 		OtherBackends  []string `json:"OtherBackends"`
 		Message        string   `json:"Message"`
@@ -319,17 +316,24 @@ func kickoffFrontendCommunication(host string) {
 		ipAddress, _, _ := net.SplitHostPort(netAddr.String())
 		outMsgTemp.ServerAddress = ipAddress
 
-		outMsgTemp.GalaxyName = currentGalaxy.GetName()
-
 		clientSessionCountMutex.RLock()
 		outMsgTemp.ActiveClientCount = len(clientSessionCount)
 		clientSessionCountMutex.RUnlock()
 
-		//outMsgTemp.TotalClientCount = len(sliceOfLocalPlayers)
+		galName := currentGalaxy.Name
 
-		//outMsgTemp.OtherFrontends = sliceOfOtherFrontends
+		if inMsgReference.GalaxyName == galName &&
+			outMsgReference.Message != "ive_accepted_this_galaxyname" {
+			outMsgTemp.Message = "ive_accepted_this_galaxyname"
+			outMsgTemp.AnotherMessage = galName
+		}
 
-		//outMsgTemp.OtherBackends = sliceOfOtherFrontends
+		galaxyInfo[galName].RLock()
+		outMsgTemp.GalaxyName = galName
+		outMsgTemp.TotalClientCount = len(galaxyInfo[galName].ClientIDs)
+		outMsgTemp.OtherFrontends = galaxyInfo[galName].Frontends
+		outMsgTemp.OtherBackends = galaxyInfo[galName].Backends
+		galaxyInfo[galName].RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// if outMsgTemp is the same as last time - send only message

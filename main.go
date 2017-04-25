@@ -24,13 +24,13 @@ func init() {
 	logInfo("(initLogInfo) - init completed")
 
 	// initializing global IP blacklist
-	clientBlacklist = map[string]FirewallClientValues{}
+	clientBlacklist = map[string]*FirewallClientValues{}
 
 	// initializing global IP session count
 	clientSessionCount = make(map[string]uint16)
 
 	// initializing galaxyInfo
-	galaxyInfo = map[string]GalaxyInfoStruct{}
+	galaxyInfo = map[string]*GalaxyInfoStruct{}
 
 	// define commandline flags to parse for
 	galaxyNamePtr := flag.String("galaxyname", "", "specify galaxy name")
@@ -240,8 +240,11 @@ func growPopulation(currentPopulation float64, foodSupply int32) float64 {
 	stime := rand.NewSource(time.Now().UnixNano())
 	rnum := rand.New(stime)
 
-	referencePopulation := float64(10000) // population if foodSupply == 0
-	maxPercentChange := .005              // maximum % change allowed in single turn (.0005 is standard)
+	// population if foodSupply == 0
+	referencePopulation := float64(10000)
+
+	// maximum % change allowed in single turn (.0005 is standard)
+	maxPercentChange := .005
 
 	N := currentPopulation
 	logDebug(commaFormatUint(uint64(N)))
@@ -364,16 +367,17 @@ type FirewallClientValues struct {
 }
 
 var (
-	galaxyInfo                 map[string]*GalaxyInfoStruct
-	sliceOfOtherFrontends      []string
-	sliceOfOtherFrontendsMutex sync.RWMutex
+	galaxyInfo map[string]*GalaxyInfoStruct
 )
 
 // GalaxyInfoStruct defines values for galaxyInfo
 type GalaxyInfoStruct struct {
 	sync.RWMutex
 	ClientIDs []string
+	Frontends []string
 	Backends  []string
+	GlobalX   int64
+	GlobalY   int64
 }
 
 var (
