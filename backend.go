@@ -29,74 +29,23 @@ import (
 
 func startBackendMode() {
 
-	// initializing main data structures, locks, etc
-	currentGalaxy = Galaxy{}
-	futureGalaxy = Galaxy{}
+	// easy on/off handle for debugging purposes
+	var enabled bool
 
-	// handle input file parameters
-	// is the inputfilename empty?
-	// if so set doneMatching to 'true' so that we can skip later logic
-	var doneMatching bool
-	if inputFilename == "" {
-		doneMatching = true
-		logDebug("(backend_init) no inputfilename specified - skipping data import process")
-	} else {
-		doneMatching = false
-	}
-	// skip forward if doneMatching is 'true'
-	// otherwise parse filename to determine if it is a 'blob' file
-	// and import that file if that is the case
-	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*blob$", inputFilename)
-		if foundMatch == true {
-			doneMatching = true
-			logInfo("(backend_init) parsing blob inputfilename")
-			in, err := ioutil.ReadFile(inputFilename)
-			if err != nil {
-				if os.IsNotExist(err) {
-					log.Fatalln("data.blob not found")
-				} else {
-					log.Fatalln("Error reading file:", inputFilename, err)
-				}
-			}
-			if err := proto.Unmarshal(in, &currentGalaxy); err != nil {
-				log.Fatalln("Failed to parse galaxy file:", err)
-			}
-		}
-	}
-	// skip forward if doneMatching is 'true'
-	// otherwise parse filename to determine if it is a 'json' file
-	// and import that file if that is the case
-	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*json$", inputFilename)
-		if foundMatch == true {
-			doneMatching = true
-			logInfo("(backend_init) parsing blob inputfilename")
-			in, err := ioutil.ReadFile(inputFilename)
-			if err != nil {
-				if os.IsNotExist(err) {
-					log.Fatalln(inputFilename, "not found")
-				} else {
-					log.Fatalln("Error reading file:", inputFilename, err)
-				}
-			}
-			if err := json.Unmarshal(in, &currentGalaxy); err != nil {
-				log.Fatalln("Failed to parse galaxy file:", err)
-			}
-		}
-	}
-	// if none of the above logic was successful - we have a fatal error on our hands
-	if doneMatching == false {
-		log.Fatalln("(backend_init) unknown inputfilename - skipping data import process")
+	////////////////////////////////////////////////////////////
+	// process CLI parameters to potentially import data
+	////////////////////////////////////////////////////////////
+
+	enabled = false
+	if enabled {
+		handleInputParameters()
 	}
 
 	////////////////////////////////////////////////////////////
 	// start communication with frontend
 	////////////////////////////////////////////////////////////
 
-	// easy on/off handle for debugging purposes
-	enabled := false
-
+	enabled = true
 	if enabled {
 		go func() {
 			for {
@@ -109,49 +58,18 @@ func startBackendMode() {
 	// generate Galaxy
 	////////////////////////////////////////////////////////////
 
-	galaxyType := ELLIPTICAL
-	generateGalaxy(galaxyType)
+	enabled = false
+	if enabled {
+		currentGalaxy = Galaxy{}
+		futureGalaxy = Galaxy{}
 
-	logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
-	rtree = &rtreego.Rtree{}
-	rtreeObjects = []rtreego.Spatial{}
+		galaxyType := ELLIPTICAL
+		generateGalaxy(galaxyType)
 
-	////////////////////////////////////////////////////////////
-	// random sanity checks
-	////////////////////////////////////////////////////////////
-
-	logDebug(fmt.Sprintf("There are %v solarSystems", len(currentGalaxy.GetSolarsystemslice())))
-	logDebug(fmt.Sprintf("First Galaxy Name: %s", currentGalaxy.Solarsystemslice[0].GetName()))
-	logDebug(fmt.Sprintf("Random Galaxy Name (9183): %s", currentGalaxy.Solarsystemslice[9183].Name))
-	logDebug(fmt.Sprintf("Random Galaxy Name (123): %s", currentGalaxy.Solarsystemslice[123].Name))
-	logDebug(fmt.Sprintf("Random Galaxy Name (4834): %s", currentGalaxy.Solarsystemslice[4834].Name))
-
-	getSystemIndex := func(myName string) (int, bool) {
-		for i, elem := range currentGalaxy.Solarsystemslice {
-			if elem.GetName() == myName {
-				return i, true
-			}
-		}
-		return -1, false
+		logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
+		rtree = &rtreego.Rtree{}
+		rtreeObjects = []rtreego.Spatial{}
 	}
-
-	if debugModeBool {
-		testSystem, ok := getSystemIndex("xyz9999")
-		if ok {
-			logDebug(fmt.Sprintf("Printing name of 9999th system: %s\n",
-				currentGalaxy.Solarsystemslice[testSystem].GetName()))
-		}
-
-	}
-
-	////////////////////////////////////////////////////////////
-	// basic sanity checks
-	////////////////////////////////////////////////////////////
-
-	//time.Sleep(30 * time.Second)
-	//waitForLogging.Wait()
-
-	//tempWaitgroup.Wait()
 
 }
 
@@ -320,32 +238,51 @@ func kickoffFrontendCommunication(host string) {
 		outMsgTemp.ActiveClientCount = len(clientSessionCount)
 		clientSessionCountMutex.RUnlock()
 
-		galName := currentGalaxy.Name
+		// defining constants to satisfy my linter
+		const (
+			newgalaxy      = "new_galaxy"
+			diediedie      = "diediedie"
+			sameaslasttime = "same_as_last_time"
+			yourgalaxyname = "your_galaxy_name"
+		)
 
-		if inMsgReference.GalaxyName == galName &&
-			outMsgReference.Message != "ive_accepted_this_galaxyname" {
-			outMsgTemp.Message = "ive_accepted_this_galaxyname"
-			outMsgTemp.AnotherMessage = galName
+		////////////////////////////////////////////////////////////
+		// zeroing out temp messages (important)
+		////////////////////////////////////////////////////////////
+
+		inMsgTemp = incomingMessageFrontend{}
+		outMsgTemp = outgoingMessageFrontend{}
+
+		////////////////////////////////////////////////////////////
+		// seeing if we've been assigned a galaxy name (and acting upon it)
+		////////////////////////////////////////////////////////////
+
+		galName := currentGalaxy.Name
+		logDebug(fmt.Sprint("(periodicUpdateFrontend) galName=\t\t", galName))
+
+		if galName == "" {
+			outMsgTemp.Message = newgalaxy
 		}
 
-		galaxyInfo[galName].RLock()
-		outMsgTemp.GalaxyName = galName
-		outMsgTemp.TotalClientCount = len(galaxyInfo[galName].ClientIDs)
-		outMsgTemp.OtherFrontends = galaxyInfo[galName].Frontends
-		outMsgTemp.OtherBackends = galaxyInfo[galName].Backends
-		galaxyInfo[galName].RUnlock()
-
-		////////////////////////////////////////////////////////////
-		// if outMsgTemp is the same as last time - send only message
-		////////////////////////////////////////////////////////////
-
-		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			outMsgTemp = outgoingMessageFrontend{Message: "same_as_last_time"}
+		if galName != "" {
+			galaxyInfo[galName].RLock()
+			outMsgTemp.GalaxyName = galName
+			outMsgTemp.TotalClientCount = len(galaxyInfo[galName].ClientIDs)
+			outMsgTemp.OtherFrontends = galaxyInfo[galName].Frontends
+			outMsgTemp.OtherBackends = galaxyInfo[galName].Backends
+			galaxyInfo[galName].RUnlock()
 		}
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
+
+		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgTemp=\t", outMsgTemp))
+		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgReference=\t", outMsgReference))
+
+		if reflect.DeepEqual(outMsgTemp, outMsgReference) && galName != "" {
+			outMsgTemp = outgoingMessageFrontend{Message: sameaslasttime}
+		}
 
 		err := conn.WriteJSON(outMsgTemp)
 		if checkError("(periodicUpdateFrontend) error sending message:", err) {
@@ -353,7 +290,7 @@ func kickoffFrontendCommunication(host string) {
 		}
 
 		////////////////////////////////////////////////////////////
-		// receive and process incomingMessage
+		// receive incomingMessage
 		////////////////////////////////////////////////////////////
 
 		err = conn.ReadJSON(&inMsgTemp)
@@ -361,29 +298,44 @@ func kickoffFrontendCommunication(host string) {
 			return false
 		}
 
-		switch inMsgTemp.Message {
-		case "your_galaxy_name":
-			currentGalaxy.Name = inMsgTemp.AnotherMessage
-		case "diediedie":
-			logInfo("(periodicUpdateFrontend) received 'diediedie'")
-			gracefullyCloseBackend()
-		case "same_as_last_time":
-			inMsgTemp = inMsgReference
-		case "":
-			// default value, do nothing
-		default:
-			logInfo("(periodicUpdateFrontend) received unknown message:",
-				inMsgTemp.Message)
-		}
+		////////////////////////////////////////////////////////////
+		// process incomingMessage
+		////////////////////////////////////////////////////////////
 
-		// shouldn't receive duplicate message from Frontend - but we sanitycheck anyways
-		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != "same_as_last_time" {
+		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != sameaslasttime {
 			logInfo("(periodicUpdateFrontend) received duplicate message")
 		}
 
-		// used later to check if info has changed
+		if inMsgTemp.Message == sameaslasttime {
+			inMsgTemp = inMsgReference
+		}
+
+		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgReference=\t", inMsgReference))
+
+		if inMsgTemp.Message == yourgalaxyname && galName == "" {
+			galName = inMsgTemp.GalaxyName
+			currentGalaxy.Name = galName
+			currentGalaxy.GlobalX = inMsgTemp.GlobalX
+			currentGalaxy.GlobalY = inMsgTemp.GlobalY
+			galaxyInfo[galName] = &GalaxyInfoStruct{}
+			logInfo(fmt.Sprintf("(periodicUpdateFrontend) received 'your_galaxy_name' = %s", galName))
+		}
+
+		if inMsgTemp.Message == diediedie {
+			logInfo("(periodicUpdateFrontend) received 'diediedie'")
+			gracefullyCloseBackend()
+		}
+
+		////////////////////////////////////////////////////////////
+		// store incomingMessage and outgoingMessage for future reference
+		////////////////////////////////////////////////////////////
+
 		inMsgReference = inMsgTemp
-		outMsgReference = outMsgTemp
+
+		if outMsgTemp.Message != sameaslasttime {
+			outMsgReference = outMsgTemp
+		}
 
 		return true
 	}

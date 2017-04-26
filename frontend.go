@@ -535,6 +535,13 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 	for {
 
 		////////////////////////////////////////////////////////////
+		// zeroing out temp messages (important)
+		////////////////////////////////////////////////////////////
+
+		inMsgTemp = incomingMessageBackend{}
+		outMsgTemp = outgoingMessageBackend{}
+
+		////////////////////////////////////////////////////////////
 		// wait for JSON message from Backend
 		////////////////////////////////////////////////////////////
 
@@ -547,8 +554,7 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 		// define function used to generate global Galaxy Name and Coordinates
 		////////////////////////////////////////////////////////////
 
-		generateGlobalGalaxyInfo := func(clientIP string) (galName string, glblX int64,
-			glblY int64) {
+		generateGlobalGalaxyInfo := func(clientIP string) (galName string, glblX int64, glblY int64) {
 
 			lotsOfNames := []string{"Aegis", "Aeon", "Aeris", "Babylon", "Aeternitas", "Aether", "Alliance", "Alpha", "Amazone", "Ancestor", "Anemone", "Angel", "Anomaly", "Apollo", "Arcadia", "Arcadis", "Arch", "Architect", "Ark", "Artemis", "Asphodel", "Asteria", "Astraeus", "Athena", "Atlas", "Atmos", "Aura", "Aurora", "Awe", "Azura", "Azure", "Baldur", "Beacon", "Blue Moon", "Borealis", "Burrow", "Caelestis", "Canaan", "Century", "Chrono", "Chronos", "Crescent", "Curator", "Curiosity", "Data", "Dawn", "Daydream", "Demeter", "Dogma", "Dream", "Dune", "Ecstacys", "Eir", "Elyse", "Elysium", "Empyrea", "Ender", "Enigma", "Eos", "Epiphany", "Epitome", "Erebus", "Escort", "Eternis", "Eternity", "Exposure", "Fable", "Father", "Fauna", "Felicity", "Flora", "Fortuna", "Frontier", "Gaia", "Galaxy", "Genesis", "Genius", "Glory", "Guardian", "Halo", "Heirloom", "Helios", "Hemera", "Hera", "Heritage", "Hermes", "Horus", "Hymn", "Hyperion", "Hypnos", "Ignis", "Illume", "Inception", "Infinity", "Isis", "Janus", "Juno", "Legacy", "Liberty", "Lore", "Lucent", "Lumina", "Luminous", "Luna", "Lunis", "Magni", "Mammoth", "Mani", "Marvel", "Memento", "Minerva", "Miracle", "Mother", "Muse", "Mystery", "Mythos", "Nebula", "Nemesis", "Nemo", "Neo", "Nero", "Nimbus", "Nott", "Nova", "Novis", "Nox", "Nyx", "Odyssey", "Olympus", "Omega", "Oracle", "Orbital", "Origin", "Orphan", "Osiris", "Outlander", "Parable", "Paradox", "Paragon", "Pedigree", "Phantasm", "Phantom", "Phenomenon", "Phoenix", "Pilgrim", "Pioneer", "Prism", "Prodigy", "Prometheus", "Prophecy", "Proto", "Radiance", "Rebus", "Relic", "Revelation", "Reverie", "Rogue", "Rune", "Saga", "Sancus", "Scout", "Selene", "Serenity", "Settler", "Shangris", "Shepherd", "Shu", "Sol", "Solas", "Spectacle", "Specter", "Spectrum", "Spire", "Symbolica", "Tartarus", "Terminus", "Terra", "Terran", "Terraria", "Themis", "Tiberius", "Titan", "Titanus", "Torus", "Tranquility", "Trivia", "Utopis", "Valhalla", "Vanguard", "Vanquish", "Vesta", "Vestige", "Victoria", "Virtue", "Visage", "Voyage", "Vulcan", "Warden", "Yggdrasil", "Zeus", "Zion"}
 
@@ -562,6 +568,7 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 			}
 			rnum := rand.New(seed())
 			randomIndex := rnum.Intn(len(lotsOfNames) - 1)
+
 			galName = lotsOfNames[randomIndex]
 
 			for {
@@ -590,83 +597,111 @@ func handshakeBackend(w http.ResponseWriter, r *http.Request) {
 				}
 				break
 			}
-			return
+			return galName, glblX, glblY
 		}
 
-		// defining constants to satisfy my linter (premature optimization)
+		// defining constants to satisfy my linter
 		const (
-			newGalaxyConst          = "new_galaxy"
-			diediedieConst          = "diediedie"
-			sameAsLastTimeConst     = "same_as_last_time"
-			iveAcceptedGalNameConst = "ive_accepted_this_galaxyname"
+			newgalaxy      = "new_galaxy"
+			diediedie      = "diediedie"
+			sameaslasttime = "same_as_last_time"
+			yourgalaxyname = "your_galaxy_name"
 		)
 
 		////////////////////////////////////////////
 		// look at the incoming message and act on it
 		////////////////////////////////////////////
 
-		switch inMsgTemp.Message {
-		case newGalaxyConst:
+		galName := outMsgReference.GalaxyName
+		logDebug(fmt.Sprint("(periodicUpdateBackend) galName=\t\t", galName))
+		// TODO // need to reference galaxyInfo instead
+
+		if inMsgTemp.Message == sameaslasttime {
+			inMsgTemp = inMsgReference
+		}
+
+		logDebug(fmt.Sprint("(periodicUpdateBackend) inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fmt.Sprint("(periodicUpdateBackend) inMsgReference=\t", inMsgReference))
+
+		if inMsgTemp.Message == sameaslasttime && galName != "" {
+			if reflect.DeepEqual(inMsgTemp, inMsgReference) {
+				logInfo("(periodicUpdateBackend) received duplicate message")
+			}
+		}
+
+		if inMsgTemp.Message == newgalaxy {
 			logInfo("(periodicUpdateBackend) received 'new_galaxy' from backend")
-			galName, glblX, glblY := generateGlobalGalaxyInfo(client)
-			inMsgTemp.GalaxyName = galName
-			outMsgTemp.Message = newGalaxyConst
-			outMsgTemp.AnotherMessage = galName
+			myGalName, glblX, glblY := generateGlobalGalaxyInfo(client)
+
+			galName = myGalName
+			outMsgTemp.GalaxyName = galName
+			outMsgTemp.Message = yourgalaxyname
+
 			galaxyInfo[galName] = &GalaxyInfoStruct{}
 			galaxyInfo[galName].Lock()
 			galaxyInfo[galName].Backends = append(galaxyInfo[galName].Backends, client)
 			galaxyInfo[galName].GlobalX = glblX
 			galaxyInfo[galName].GlobalX = glblY
 			galaxyInfo[galName].Unlock()
-		case diediedieConst:
+			// TODO // need to remove backend from galaxyInfo.Backends on disconnect
+
+			logInfo(fmt.Sprintf("(periodicUpdateBackend) generated the following galaxyInfo:"+
+				"\n\t\tgalName=%s\n\t\tglblX=%d\n\t\tglblY=%d", galName, glblX, glblY))
+		}
+
+		if inMsgTemp.Message == diediedie {
 			logInfo("(periodicUpdateBackend) received 'diediedie' from backend *ignoring*")
-			// TODO add logic to 'diediedie' message
-		case sameAsLastTimeConst:
-			inMsgTemp = inMsgReference
-			if reflect.DeepEqual(inMsgTemp, inMsgReference) {
-				logInfo("(periodicUpdateBackend) received duplicate message")
-			}
-		case iveAcceptedGalNameConst:
-			logInfo("(periodicUpdateBackend) received 'ive_accepted_this_galaxyname' from backend")
-			// TODO add logic to 'ive_accepted_this_galaxyname'
-		case "":
-			// default value, do nothing
-		default:
-			logInfo("(periodicUpdateBackend) received unknown message from backend:",
-				inMsgTemp.Message)
+			// TODO // add sanity logic to 'diediedie' message
 		}
 
 		////////////////////////////////////////////////////////////
 		// finish putting together outgoing message
 		////////////////////////////////////////////////////////////
 
-		galName := inMsgTemp.GalaxyName
+		if galName == "" && inMsgTemp.GalaxyName != "" {
+			logInfo(fmt.Sprintf("(periodicUpdateBackend) something is horribly wrong..."+
+				" backend %s is asserting unknown galName", client))
+			return
+		}
 
+		if galName == "" {
+			logInfo("(periodicUpdateBackend) something is horribly wrong... unable to generate galName")
+			return
+		}
+
+		outMsgTemp.GalaxyName = galName
 		galaxyInfo[galName].RLock()
+		outMsgTemp.GlobalX = galaxyInfo[galName].GlobalX
+		outMsgTemp.GlobalY = galaxyInfo[galName].GlobalY
 		outMsgTemp.OtherFrontends = galaxyInfo[galName].Frontends
 		outMsgTemp.OtherBackends = galaxyInfo[galName].Backends
 		galaxyInfo[galName].RUnlock()
 
 		////////////////////////////////////////////////////////////
-		// if outMsgTemp is the same as last time - send only short message
-		////////////////////////////////////////////////////////////
-
-		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			outMsgTemp = outgoingMessageBackend{Message: "same_as_last_time"}
-		}
-
-		////////////////////////////////////////////////////////////
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
+
+		logDebug(fmt.Sprint("(periodicUpdateBackend) outMsgTemp=\t", outMsgTemp))
+		logDebug(fmt.Sprint("(periodicUpdateBackend) outMsgReference=\t", outMsgReference))
+
+		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
+			outMsgTemp = outgoingMessageBackend{Message: sameaslasttime}
+		}
 
 		err := conn.WriteJSON(outMsgTemp)
 		if checkError("(periodicUpdateBackend) error sending message:", err) {
 			return
 		}
 
-		// used later to check if info has changed
+		////////////////////////////////////////////////////////////
+		// store messsages for future reference
+		////////////////////////////////////////////////////////////
+
 		inMsgReference = inMsgTemp
-		outMsgReference = outMsgTemp
+
+		if outMsgTemp.Message != sameaslasttime {
+			outMsgReference = outMsgTemp
+		}
 	}
 
 }

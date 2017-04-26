@@ -1,7 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"regexp"
 	"runtime"
 	"sync"
 
@@ -14,6 +18,7 @@ import (
 
 	"github.com/dhconnelly/rtreego"
 	"github.com/fatih/color"
+	"github.com/golang/protobuf/proto"
 )
 
 func init() {
@@ -35,11 +40,12 @@ func init() {
 	// define commandline flags to parse for
 	galaxyNamePtr := flag.String("galaxyname", "", "specify galaxy name")
 	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
-	outputFilePtr := flag.String("output", "", "specify export destination, either json or blob")
-	googleAudiencePtr := flag.String("audience", "", "specify google oauth audience")
+	outputFilePtr := flag.String("output", "", "override export destination, either json or blob")
+	googleAudiencePtr := flag.String("audience", "", "override google oauth audience")
 	authPasswordPtr := flag.String("password", "", "specify password for authentication purposes")
 	staticFrontendPtr := flag.String("staticfrontend", "", "specify static frontend address")
-	loadBalanceBoolPtr := flag.Bool("loadbalance", false, "enable frontend loadbalancer mode")
+	frontendBoolPtr := flag.Bool("frontend", false, "enable frontend mode")
+	backendBoolPtr := flag.Bool("backend", false, "enable backend mode")
 	createGalaxyBoolPtr := flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
 	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
 	singleThreadedBoolPtr := flag.Bool("singlethreaded", false, "force singlethreaded behavior")
@@ -53,6 +59,16 @@ func init() {
 	}
 	if *authPasswordPtr == "" {
 		logInfo("(init) FATALERROR: no password provided")
+		waitForLogging.Wait()
+		os.Exit(1)
+	}
+	switch {
+	case *backendBoolPtr == false && *frontendBoolPtr == false:
+		logInfo("(init) FATALERROR: no backend/frontend mode specified")
+		waitForLogging.Wait()
+		os.Exit(1)
+	case *backendBoolPtr == true && *frontendBoolPtr == true:
+		logInfo("(init) FATALERROR: BOTH backend/frontend mode specified - DoesNotCompute")
 		waitForLogging.Wait()
 		os.Exit(1)
 	}
@@ -71,7 +87,8 @@ func init() {
 	googleAudience = *googleAudiencePtr
 	authPassword = *authPasswordPtr
 	staticFrontend = *staticFrontendPtr
-	loadBalanceBool = *loadBalanceBoolPtr
+	frontendBool = *frontendBoolPtr
+	backendBool = *backendBoolPtr
 	createGalaxyBool = *createGalaxyBoolPtr
 	debugModeBool = *debugModeBoolPtr
 	singleThreadedBool = *singleThreadedBoolPtr
@@ -83,9 +100,8 @@ func init() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func main() {
-	if loadBalanceBool == true {
+	if frontendBool == true {
 		startFrontendMode()
-		time.Sleep(5 * time.Second)
 		for len(logInfoChan) != 0 {
 			time.Sleep(time.Second)
 		}
@@ -96,10 +112,10 @@ func main() {
 		fmt.Println("##############################################")
 		fmt.Println("")
 		loggingMutex.Unlock()
+		time.Sleep(1 * time.Hour)
 		os.Exit(1)
 	} else {
 		startBackendMode()
-		time.Sleep(5 * time.Second)
 		for len(logInfoChan) != 0 {
 			time.Sleep(time.Second)
 		}
@@ -110,6 +126,7 @@ func main() {
 		fmt.Println("##############################################")
 		fmt.Println("")
 		loggingMutex.Unlock()
+		time.Sleep(1 * time.Hour)
 		os.Exit(1)
 	}
 }
@@ -267,6 +284,64 @@ func growPopulation(currentPopulation float64, foodSupply int32) float64 {
 	return currentPopulation
 }
 
+func handleInputParameters() {
+	// is the inputfilename empty?
+	// if so set doneMatching to 'true' so that we can skip later logic
+	var doneMatching bool
+	if inputFilename == "" {
+		doneMatching = true
+		logDebug("(backend_init) no inputfilename specified - skipping data import process")
+	} else {
+		doneMatching = false
+	}
+	// skip forward if doneMatching is 'true'
+	//   otherwise parse filename to determine if it is a 'blob' file
+	//   and import that file if that is the case
+	if doneMatching == false {
+		foundMatch, _ := regexp.MatchString(".*blob$", inputFilename)
+		if foundMatch == true {
+			doneMatching = true
+			logInfo("(backend_init) parsing blob inputfilename")
+			in, err := ioutil.ReadFile(inputFilename)
+			if err != nil {
+				if os.IsNotExist(err) {
+					log.Fatalln("data.blob not found")
+				} else {
+					log.Fatalln("Error reading file:", inputFilename, err)
+				}
+			}
+			if err := proto.Unmarshal(in, &currentGalaxy); err != nil {
+				log.Fatalln("Failed to parse galaxy file:", err)
+			}
+		}
+	}
+	// skip forward if doneMatching is 'true'
+	//   otherwise parse filename to determine if it is a 'json' file
+	//   and import that file if that is the case
+	if doneMatching == false {
+		foundMatch, _ := regexp.MatchString(".*json$", inputFilename)
+		if foundMatch == true {
+			doneMatching = true
+			logInfo("(backend_init) parsing blob inputfilename")
+			in, err := ioutil.ReadFile(inputFilename)
+			if err != nil {
+				if os.IsNotExist(err) {
+					log.Fatalln(inputFilename, "not found")
+				} else {
+					log.Fatalln("Error reading file:", inputFilename, err)
+				}
+			}
+			if err := json.Unmarshal(in, &currentGalaxy); err != nil {
+				log.Fatalln("Failed to parse galaxy file:", err)
+			}
+		}
+	}
+	// if none of the above logic was successful - we have a fatal error on our hands
+	if doneMatching == false {
+		log.Fatalln("(backend_init) unknown inputfilename - skipping data import process")
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -336,7 +411,8 @@ var (
 	googleAudience     string
 	authPassword       string
 	staticFrontend     string
-	loadBalanceBool    bool
+	frontendBool       bool
+	backendBool        bool
 	createGalaxyBool   bool
 	debugModeBool      bool
 	singleThreadedBool bool
