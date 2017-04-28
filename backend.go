@@ -38,7 +38,7 @@ func startBackendMode() {
 
 	enabled = false
 	if enabled {
-		handleInputParameters()
+		handleInputParameters("startBackendMode")
 	}
 
 	////////////////////////////////////////////////////////////
@@ -85,7 +85,7 @@ func kickoffFrontendCommunication(host string) {
 
 	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://hyperion5.com/backend", nil)
+	conn, _, err := dialer.Dial("wss://"+host+":443/backend", nil)
 	if checkError("(handshakeFrontend) unable to open websocket"+
 		"with frontend loadbalancer:", err) {
 		return

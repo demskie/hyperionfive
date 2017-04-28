@@ -1,8 +1,12 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"regexp"
@@ -19,6 +23,9 @@ import (
 	"github.com/dhconnelly/rtreego"
 	"github.com/fatih/color"
 	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
+
+	cryptorand "crypto/rand"
 )
 
 func init() {
@@ -135,6 +142,130 @@ func main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string) (result bool) {
+
+	// string that will be appended to log messages
+	fName = "(" + fName + ") "
+
+	////////////////////////////////////////////////////////////
+	// receive initial challenge from frontend
+	////////////////////////////////////////////////////////////
+
+	_, dataChallenge, err := conn.ReadMessage()
+	if checkError(fName+"error receiving challenge from backend:", err) {
+		return false
+	}
+	logDebug(fName+"received the following challenge:",
+		"\n", base64.StdEncoding.EncodeToString(dataChallenge))
+
+	////////////////////////////////////////////////////////////
+	// ensure that challenge is 256bits and cast to array if so
+	////////////////////////////////////////////////////////////
+
+	var dataChallengeArray [32]byte
+
+	if len(dataChallenge) == 32 {
+		copy(dataChallengeArray[:], dataChallenge)
+	} else {
+		logDebug(fName+"received a challenge with invalid length:",
+			string(len(dataChallenge)), "bytes")
+		currentTime := time.Now().Unix()
+		clientBlacklistMutex.RLock()
+		clientFirewallValues, exists := clientBlacklist[clientIP]
+		clientBlacklistMutex.RUnlock()
+		if exists == true {
+			clientFirewallValues.Lock()
+			clientFirewallValues.failedChallengeCount++
+			clientFirewallValues.failedChallengeTime = currentTime
+			clientFirewallValues.Unlock()
+			return false
+		}
+	}
+
+	////////////////////////////////////////////////////////////
+	// compute our response
+	////////////////////////////////////////////////////////////
+
+	// define function to produce symmetric signature using a shared secret key
+	generateHMAC := func(data []byte, key [32]byte) []byte {
+		h := hmac.New(sha512.New512_256, key[:])
+		h.Write(data)
+		return h.Sum(nil)
+	}
+
+	// generate response hash based on challenge and our secret password
+	response := generateHMAC([]byte(authPassword), dataChallengeArray)
+	logDebug(fName+"computed the following response:",
+		"\n", base64.StdEncoding.EncodeToString(response))
+
+	////////////////////////////////////////////////////////////
+	// create a challenge
+	////////////////////////////////////////////////////////////
+
+	// define function to generate 256 bits of randomness
+	newHMACKey := func() [32]byte {
+		key := [32]byte{}
+		_, err = io.ReadFull(cryptorand.Reader, key[:])
+		if checkError(fName+"error while generating key", err) {
+			conn.Close()
+		}
+		return key
+	}
+
+	// call above function and store value
+	randomBytes := newHMACKey()
+	logDebug(fName+"generated the following challenge:",
+		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
+
+	////////////////////////////////////////////////////////////
+	// send the response we computed and the challenge we just created
+	////////////////////////////////////////////////////////////
+
+	type outgoingMessage struct {
+		Challenge string `json:"challenge"`
+		Response  string `json:"response"`
+	}
+
+	var outMsgResponse outgoingMessage
+	outMsgResponse.Challenge = base64.StdEncoding.EncodeToString(randomBytes[:])
+	outMsgResponse.Response = base64.StdEncoding.EncodeToString(response)
+	err = conn.WriteJSON(outMsgResponse)
+	if checkError(fName+"error sending response:", err) {
+		return false
+	}
+
+	////////////////////////////////////////////////////////////
+	// wait for response to challenge
+	////////////////////////////////////////////////////////////
+
+	// receive data from backend
+	_, remoteHash, err := conn.ReadMessage()
+	if checkError(fName+"error receiving response:", err) {
+		return false
+	}
+
+	// convert data to array
+	var remoteHashArray [32]byte
+	copy(remoteHashArray[:], randomBytes[:])
+
+	// generate localHash to compare
+	var correctResponse []byte
+	correctResponse = generateHMAC([]byte(authPassword), remoteHashArray)
+
+	// check for equality
+	if hmac.Equal(correctResponse, remoteHash) != true {
+		logInfo(fName+"initial challenge-response failed",
+			"\n", base64.StdEncoding.EncodeToString(correctResponse),
+			"\n", base64.StdEncoding.EncodeToString(remoteHash))
+		return false
+	}
+	return true
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func absInt64(val int64) int64 {
 	if val < 0 {
 		val = -val
@@ -181,6 +312,19 @@ func signedMulOverflows(a, b int64) bool {
 	c := a * b
 	return c/b != a
 }
+
+func appendStringIfMissing(slice []string, s string) []string {
+	for _, ele := range slice {
+		if ele == s {
+			return slice
+		}
+	}
+	return append(slice, s)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 var logInfoChan chan string
 
@@ -252,6 +396,10 @@ func logDebug(arrayOfStrings ...string) {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func growPopulation(currentPopulation float64, foodSupply int32) float64 {
 	foodSupplyDbl := float64(foodSupply)
 	stime := rand.NewSource(time.Now().UnixNano())
@@ -284,13 +432,20 @@ func growPopulation(currentPopulation float64, foodSupply int32) float64 {
 	return currentPopulation
 }
 
-func handleInputParameters() {
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func handleInputParameters(fName string) {
+
+	fName = "(" + fName + ") "
+
 	// is the inputfilename empty?
 	// if so set doneMatching to 'true' so that we can skip later logic
 	var doneMatching bool
 	if inputFilename == "" {
 		doneMatching = true
-		logDebug("(backend_init) no inputfilename specified - skipping data import process")
+		logDebug(fName + "no inputfilename specified - skipping data import process")
 	} else {
 		doneMatching = false
 	}
@@ -301,7 +456,7 @@ func handleInputParameters() {
 		foundMatch, _ := regexp.MatchString(".*blob$", inputFilename)
 		if foundMatch == true {
 			doneMatching = true
-			logInfo("(backend_init) parsing blob inputfilename")
+			logInfo(fName + "parsing blob inputfilename")
 			in, err := ioutil.ReadFile(inputFilename)
 			if err != nil {
 				if os.IsNotExist(err) {
@@ -322,7 +477,7 @@ func handleInputParameters() {
 		foundMatch, _ := regexp.MatchString(".*json$", inputFilename)
 		if foundMatch == true {
 			doneMatching = true
-			logInfo("(backend_init) parsing blob inputfilename")
+			logInfo(fName + "parsing blob inputfilename")
 			in, err := ioutil.ReadFile(inputFilename)
 			if err != nil {
 				if os.IsNotExist(err) {
@@ -338,7 +493,7 @@ func handleInputParameters() {
 	}
 	// if none of the above logic was successful - we have a fatal error on our hands
 	if doneMatching == false {
-		log.Fatalln("(backend_init) unknown inputfilename - skipping data import process")
+		log.Fatalln(fName + "unknown inputfilename - skipping data import process")
 	}
 }
 
@@ -401,8 +556,14 @@ const (
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////
-// global variables that are used everywhere
+// this is where I hide global variables... yeah I know...
 ////////////////////////////////////////////////////////////
+
+var (
+	numberOfCores  int
+	loggingMutex   sync.Mutex
+	waitForLogging sync.WaitGroup
+)
 
 var (
 	galaxyName         string
@@ -417,6 +578,10 @@ var (
 	debugModeBool      bool
 	singleThreadedBool bool
 )
+
+////////////////////////////////////////////////////////////
+// global variables used for Firwalling
+////////////////////////////////////////////////////////////
 
 const (
 	constChallenge     = 1
@@ -442,28 +607,67 @@ type FirewallClientValues struct {
 	failedSessionLimitTime  int64
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////
+// global variable used in 'frontend' mode
+////////////////////////////////////////////////////////////
+
 var (
-	galaxyInfo map[string]*GalaxyInfoStruct
+	frontendData      FrontendDataStruct
+	frontendDataMutex sync.RWMutex
 )
 
-// GalaxyInfoStruct defines values for galaxyInfo
-type GalaxyInfoStruct struct {
-	sync.RWMutex
+// FrontendDataStruct defines values for frontendData
+type FrontendDataStruct struct {
+	ListOfGalaxies []galInfo `json:"ListOfGalaxies"`
+	OtherFrontends []string  `json:"OtherFrontends"`
+	Message        string    `json:"Message"`
+	AnotherMessage string    `json:"AnotherMessage"`
+}
+type galInfo struct {
+	GalaxyName        string   `json:"GalaxyName"`
+	GlobalX           int64    `json:"GlobalX"`
+	GlobalY           int64    `json:"GlobalY"`
+	ClientIDs         []string `json:"ClientIDs"`
+	ClusterOfBackends []string `json:"ClusterOfBackends"`
+}
+
+// GetGalIndexOf searches listOfGalaxies for a matching galName
+func (fd FrontendDataStruct) GetGalIndexOf(s string) (i int) {
+	for i := 0; i < len(fd.ListOfGalaxies); i++ {
+		if fd.ListOfGalaxies[i].GalaxyName == s {
+			return i
+		}
+	}
+	return -1
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////
+// global variable used in 'backend' mode
+////////////////////////////////////////////////////////////
+
+var (
+	backendData      BackendDataStruct
+	backendDataMutex sync.RWMutex
+)
+
+// BackendDataStruct defines values for galaxyInfo
+type BackendDataStruct struct {
 	ClientIDs []string
-	Frontends []string
 	Backends  []string
 	GlobalX   int64
 	GlobalY   int64
 }
 
-var (
-	numberOfCores  int
-	loggingMutex   sync.Mutex
-	waitForLogging sync.WaitGroup
-)
-
 ////////////////////////////////////////////////////////////
-// global variables used primarily in 'backend'
+// global variables used primarily in 'backend' mode
 ////////////////////////////////////////////////////////////
 
 var (
