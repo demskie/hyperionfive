@@ -1,7 +1,5 @@
 function startGame(login_type, id_token, id) {
 
-	var Galaxy = new proto.main.Galaxy();
-
 	// baseline checks
 	if (typeof(Worker) == "undefined"){
 		alert("Sorry, your browser does not support WebWorkers. Halting.");
@@ -21,17 +19,17 @@ function startGame(login_type, id_token, id) {
 			socket.send(JSON.stringify(
 				{
 					"login_type" : login_type,
-					"id_token" : id_token,
+					"id_token" : id_token
 				}
 			));
 			socket.binaryType = 'arraybuffer';
-		}
+		};
 		socket.onmessage = function(event) {
 			//var incomingMsg = JSON.parse(event.data);
 			//console.log("received the following message:");
 			//console.log(JSON.stringify(incomingMsg));
 
-			var myGalaxy = new proto.main.Galaxy();
+			var Galaxy = new proto.main.Galaxy();
 
 			//Galaxy = proto.main.Galaxy.deserializeBinary(Array.from(event.data));
 
@@ -61,11 +59,11 @@ function startGame(login_type, id_token, id) {
 				//	    "ServerList": ["10.0.0.99", "192.168.1.1", "moredata"]
 				//	}]
 				//	}
-		}
+		};
 		socket.onclose = function(event) {
 			console.log("connection closed!!!");
 			console.log(event);
-		}
+		};
 		socket.onerror = function(event) {
 			console.log("error detected!!!");
 			console.log(event);
@@ -76,17 +74,17 @@ function startGame(login_type, id_token, id) {
 	function pingTestGameServers(data) {
 		var socket = new WebSocket("ws://echo.websocket.org");
 		socket.onopen = function(event) {
-			console.log("pingTest - sending message to ws://echo.websocket.org")
+			console.log("pingTest - sending message to ws://echo.websocket.org");
 			socket.send("hello there");
-		}
+		};
 		socket.onmessage = function(event) {
 			console.log("pingTest - received message from ws://echo.websocket.org");
 			console.log(event.data);
-		}
+		};
 		socket.onclose = function(event) {
 			console.log("pingTest - connection closed!!!");
 			console.log(event);
-		}
+		};
 		socket.onerror = function(event) {
 			console.log("pingTest - error detected!!!");
 			console.log(event);
@@ -132,7 +130,6 @@ function startGame(login_type, id_token, id) {
 	function init() {
 
 		scene = new THREE.Scene();
-
 
 		//////////////////////////////////////////////////
 
@@ -218,7 +215,7 @@ function startGame(login_type, id_token, id) {
 document.getElementById("loadingStatus").style.visibility = "hidden";
 
 // set initial scale for googleLoginButton
-var loginButtonScaleBy = (document.documentElement.clientWidth / 120) / 3
+var loginButtonScaleBy = (document.documentElement.clientWidth / 120) / 3;
 document.getElementById("googleLoginButton").style.transform = "translate(-50%, 0px) scale("+loginButtonScaleBy+")";
 
 //////////////////////////////////////////////////
@@ -226,7 +223,7 @@ document.getElementById("googleLoginButton").style.transform = "translate(-50%, 
 function onWindowResize() {
 	// update googleLoginButton
 	if (document.getElementById("googleLoginButton").style.visibility !== "hidden") {
-		var loginButtonScaleBy = (document.documentElement.clientWidth / 120) / 3
+		var loginButtonScaleBy = (document.documentElement.clientWidth / 120) / 3;
 		document.getElementById("googleLoginButton").style.transform = "translate(-50%, 0px) scale("+loginButtonScaleBy+")";
 	}
 }

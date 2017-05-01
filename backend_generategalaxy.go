@@ -22,7 +22,7 @@ func generateGalaxy(galaxyType int) {
 
 	for {
 		switch {
-		case len(galaxyInfo) != 1:
+		case len(backendData.Frontends) == 0:
 			time.Sleep(1 * time.Second)
 			continue
 		case currentGalaxy.Name == "":

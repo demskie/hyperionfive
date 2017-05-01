@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
+	"crypto/tls"
 	"encoding/base64"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,6 +33,11 @@ import (
 func startBackendMode() {
 
 	// easy on/off handle for debugging purposes
+	backendData = BackendDataStruct{}
+	currentGalaxy = Galaxy{}
+	futureGalaxy = Galaxy{}
+
+	// easy on/off handle for debugging purposes
 	var enabled bool
 
 	////////////////////////////////////////////////////////////
@@ -49,7 +57,7 @@ func startBackendMode() {
 	if enabled {
 		go func() {
 			for {
-				kickoffFrontendCommunication("hyperion5.com")
+				kickoffFrontendInfoSync("hyperion5.com")
 			}
 		}()
 	}
@@ -60,9 +68,6 @@ func startBackendMode() {
 
 	enabled = false
 	if enabled {
-		currentGalaxy = Galaxy{}
-		futureGalaxy = Galaxy{}
-
 		galaxyType := ELLIPTICAL
 		generateGalaxy(galaxyType)
 
@@ -71,13 +76,68 @@ func startBackendMode() {
 		rtreeObjects = []rtreego.Spatial{}
 	}
 
+	////////////////////////////////////////////////////////////
+	// setup httpMux to avoid leaking default handlers
+	////////////////////////////////////////////////////////////
+
+	muxSecure := http.NewServeMux()
+
+	////////////////////////////////////////////////////////////
+	// setup the websocket handlers
+	////////////////////////////////////////////////////////////
+
+	muxSecure.HandleFunc("/clientgalaxy", backendReceiveClientGalaxyRequest)
+	muxSecure.HandleFunc("/backendsyncinfo", backendReceiveBackendInfoRequest)
+	muxSecure.HandleFunc("/backendsyncgalaxy", backendReceiveBackendGalaxyRequest)
+
+	////////////////////////////////////////////////////////////
+	// tying the following http parameters to the handlers associated with 'muxSecure'
+	////////////////////////////////////////////////////////////
+
+	srvSecure := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  30 * time.Second,
+		Addr:         ":443",
+		Handler:      muxSecure,
+
+		// defining various security parameters used to specify accepted ciphersuites
+		TLSConfig: &tls.Config{
+			MinVersion:               tls.VersionTLS12,
+			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, // Go 1.8 only
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,   // Go 1.8 only
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
+		},
+
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+	}
+
+	////////////////////////////////////////////////////////////
+	// serve HTTPS requests with config defined above
+	////////////////////////////////////////////////////////////
+
+	go func() {
+		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
+		if checkError("(ListenAndServeTLS) Something went wrong:", errServeTLS) {
+			waitForLogging.Wait()
+			//os.Exit(1)
+		}
+	}()
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func kickoffFrontendCommunication(host string) {
+func kickoffFrontendInfoSync(host string) {
 
 	////////////////////////////////////////////////////////////
 	// start communication with frontend
@@ -86,8 +146,7 @@ func kickoffFrontendCommunication(host string) {
 	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backend", nil)
-	if checkError("(handshakeFrontend) unable to open websocket"+
-		"with frontend loadbalancer:", err) {
+	if checkError("(handshakeFrontend) unable to open websocket with frontend loadbalancer:", err) {
 		return
 	}
 	defer conn.Close()
@@ -117,8 +176,7 @@ func kickoffFrontendCommunication(host string) {
 
 	// send random string to frontend
 	err = conn.WriteMessage(websocket.BinaryMessage, randomBytes[:])
-	if checkError("(handshakeFrontend) error sending"+
-		" message to frontend loadbalancer:", err) {
+	if checkError("(handshakeFrontend) error sending message to frontend loadbalancer:", err) {
 		return
 	}
 
@@ -133,8 +191,7 @@ func kickoffFrontendCommunication(host string) {
 
 	var inMsg incomingChallengeResponse
 	err = conn.ReadJSON(&inMsg)
-	if checkError("(handshakeFrontend) error receiving initial"+
-		"response from frontend loadbalancer:", err) {
+	if checkError("(handshakeFrontend) error receiving initial response from frontend loadbalancer:", err) {
 		return
 	}
 
@@ -187,8 +244,7 @@ func kickoffFrontendCommunication(host string) {
 
 	// send response to frontend
 	err = conn.WriteMessage(websocket.BinaryMessage, ourResponse)
-	if checkError("(handshakeFrontend) error sending message"+
-		"to frontend loadbalancer:", err) {
+	if checkError("(handshakeFrontend) error sending message to frontend loadbalancer:", err) {
 		return
 	}
 
@@ -265,12 +321,12 @@ func kickoffFrontendCommunication(host string) {
 		}
 
 		if galName != "" {
-			galaxyInfo[galName].RLock()
+			backendDataMutex.Lock()
 			outMsgTemp.GalaxyName = galName
-			outMsgTemp.TotalClientCount = len(galaxyInfo[galName].ClientIDs)
-			outMsgTemp.OtherFrontends = galaxyInfo[galName].Frontends
-			outMsgTemp.OtherBackends = galaxyInfo[galName].Backends
-			galaxyInfo[galName].RUnlock()
+			outMsgTemp.TotalClientCount = len(backendData.ClientIDs)
+			outMsgTemp.OtherFrontends = backendData.Frontends
+			outMsgTemp.OtherBackends = backendData.Backends
+			backendDataMutex.Unlock()
 		}
 
 		////////////////////////////////////////////////////////////
@@ -284,17 +340,30 @@ func kickoffFrontendCommunication(host string) {
 			outMsgTemp = outgoingMessageFrontend{Message: sameaslasttime}
 		}
 
-		err := conn.WriteJSON(outMsgTemp)
-		if checkError("(periodicUpdateFrontend) error sending message:", err) {
+		var networkOut bytes.Buffer
+		enc := gob.NewEncoder(&networkOut)
+		err := enc.Encode(outMsgTemp)
+		if checkError("(periodicUpdateFrontend) error encoding outgoing message", err) {
 			return false
 		}
+		conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
 
 		////////////////////////////////////////////////////////////
 		// receive incomingMessage
 		////////////////////////////////////////////////////////////
 
-		err = conn.ReadJSON(&inMsgTemp)
+		msgType, newData, err := conn.ReadMessage()
 		if checkError("(periodicUpdateFrontend) error receiving message:", err) {
+			return false
+		}
+		if msgType != websocket.BinaryMessage {
+			logInfo("(periodicUpdateFrontend) messageType is invalid")
+			return false
+		}
+		networkIn := bytes.NewBuffer(newData)
+		dec := gob.NewDecoder(networkIn)
+		err = dec.Decode(&inMsgTemp)
+		if checkError("(periodicUpdateFrontend) error decoding incoming message", err) {
 			return false
 		}
 
@@ -318,8 +387,12 @@ func kickoffFrontendCommunication(host string) {
 			currentGalaxy.Name = galName
 			currentGalaxy.GlobalX = inMsgTemp.GlobalX
 			currentGalaxy.GlobalY = inMsgTemp.GlobalY
-			galaxyInfo[galName] = &GalaxyInfoStruct{}
+			backendData = BackendDataStruct{}
 			logInfo(fmt.Sprintf("(periodicUpdateFrontend) received 'your_galaxy_name' = %s", galName))
+		}
+
+		if inMsgTemp.Message == yourgalaxyname && galName != "" {
+			logInfo("(periodicUpdateFrontend) received 'your_galaxy_name' after already being assigned one")
 		}
 
 		if inMsgTemp.Message == diediedie {
@@ -328,7 +401,7 @@ func kickoffFrontendCommunication(host string) {
 		}
 
 		////////////////////////////////////////////////////////////
-		// store incomingMessage and outgoingMessage for future reference
+		// store messsages for future reference
 		////////////////////////////////////////////////////////////
 
 		inMsgReference = inMsgTemp
@@ -343,6 +416,7 @@ func kickoffFrontendCommunication(host string) {
 	////////////////////////////////////////////////////////////
 	// loop periodicUpdate and fallback to main if failure occurs
 	////////////////////////////////////////////////////////////
+
 	for {
 		if periodicUpdate() == true {
 			time.Sleep(1 * time.Second)
@@ -360,7 +434,69 @@ func kickoffFrontendCommunication(host string) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func backendWebSocket(w http.ResponseWriter, r *http.Request) {
+func kickoffBackendInfoSync(host string) {
+
+	////////////////////////////////////////////////////////////
+	// start communication with frontend
+	////////////////////////////////////////////////////////////
+
+	// create websocket with loadbalancer frontend
+	var dialer *websocket.Dialer
+	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncinfo", nil)
+	if checkError("(handshakeFrontend) unable to open _info_ websocket with backend:", err) {
+		return
+	}
+	defer conn.Close()
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func kickoffBackendGalaxySync(host string) {
+
+	////////////////////////////////////////////////////////////
+	// start communication with frontend
+	////////////////////////////////////////////////////////////
+
+	// create websocket with loadbalancer frontend
+	var dialer *websocket.Dialer
+	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncgalaxy", nil)
+	if checkError("(handshakeFrontend) unable to open _galaxy_ websocket with backend:", err) {
+		return
+	}
+	defer conn.Close()
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func backendReceiveClientGalaxyRequest(w http.ResponseWriter, r *http.Request) {
+	//upgrader := websocket.Upgrader{
+	//	ReadBufferSize:  1024,
+	//	WriteBufferSize: 1024,
+	//}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func backendReceiveBackendInfoRequest(w http.ResponseWriter, r *http.Request) {
+	//upgrader := websocket.Upgrader{
+	//	ReadBufferSize:  1024,
+	//	WriteBufferSize: 1024,
+	//}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func backendReceiveBackendGalaxyRequest(w http.ResponseWriter, r *http.Request) {
 	//upgrader := websocket.Upgrader{
 	//	ReadBufferSize:  1024,
 	//	WriteBufferSize: 1024,
@@ -372,10 +508,6 @@ func backendWebSocket(w http.ResponseWriter, r *http.Request) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func gracefullyCloseBackend() {
-
-	////////////////////////////////////////////////////////////
-	// handle output parameters
-	////////////////////////////////////////////////////////////
 
 	foundMatch, _ := regexp.MatchString(".*blob$", inputFilename)
 	if inputFilename == "" || foundMatch {
