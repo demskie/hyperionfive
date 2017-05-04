@@ -139,6 +139,60 @@ func main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+func checkFirewall(fName string, client string, check string) bool {
+
+	fName = "(" + fName + ") "
+
+	clientBlacklist[client].RLock()
+	_, exists := clientBlacklist[client]
+
+	if exists == true {
+		var limit int
+		var count uint16
+		var lastTime int64
+		switch check {
+		case "challenge":
+			limit = constChallenge
+			count = clientBlacklist[client].failedChallengeCount
+			lastTime = clientBlacklist[client].failedChallengeTime
+		case "googleAuth":
+			limit = constGoogleAuth
+			count = clientBlacklist[client].failedGoogleAuthCount
+			lastTime = clientBlacklist[client].failedGoogleAuthTime
+		case "sessionLimit":
+			limit = constClientSession
+			count = clientBlacklist[client].failedSessionLimitCount
+			lastTime = clientBlacklist[client].failedSessionLimitTime
+		default:
+			logInfo(fName + "checkFirewallHistory was given an invalid 'check' parameter")
+			return false
+		}
+		currentTime := time.Now().Unix()
+		timeSinceBlacklist := currentTime - lastTime
+		blacklistExpGrowth := int64((count) / uint16(limit))
+		currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
+		if timeSinceBlacklist < currentBlacklistGiven {
+			logInfo(fName+"blacklisted client attempting to connect:", client,
+				"\n\tblacklistedFor:", string(timeSinceBlacklist),
+				"\n\treason:", check,
+				"\n\tnumberOfOffenses:", string(count))
+			return false
+		}
+		clientBlacklist[client].RUnlock()
+	} else {
+		clientBlacklistMutex.Lock()
+		clientBlacklist[client] = &FirewallClientValues{}
+		clientBlacklistMutex.Unlock()
+		return true
+	}
+
+	return true
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string) (result bool) {
 
 	// string that will be appended to log messages
@@ -256,6 +310,107 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 			"\n", base64.StdEncoding.EncodeToString(remoteHash))
 		return false
 	}
+	return true
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func kickoffChallengeResponse(fName string, conn *websocket.Conn, clientIP string) (result bool) {
+
+	// string that will be appended to log messages
+	fName = "(" + fName + ") "
+
+	// define function to generate 256 bits of randomness
+	newHMACKey := func() [32]byte {
+		key := [32]byte{}
+		_, err := io.ReadFull(cryptorand.Reader, key[:])
+		if checkError(fName+"error while generating key", err) {
+			conn.Close()
+		}
+		return key
+	}
+
+	// call above function and store value
+	randomBytes := newHMACKey()
+	logDebug(fName+"sending the following challenge:",
+		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
+
+	// send random string to frontend
+	err := conn.WriteMessage(websocket.BinaryMessage, randomBytes[:])
+	if checkError(fName+"error sending message to frontend loadbalancer:", err) {
+		return false
+	}
+
+	////////////////////////////////////////////////////////////
+	// parse incoming response
+	////////////////////////////////////////////////////////////
+
+	type incomingChallengeResponse struct {
+		Challenge string `json:"challenge"`
+		Response  string `json:"response"`
+	}
+
+	var inMsg incomingChallengeResponse
+	err = conn.ReadJSON(&inMsg)
+	if checkError(fName+"error receiving initial response from frontend loadbalancer:", err) {
+		return false
+	}
+
+	logDebug(fName+"received the following JSON challenge/response:\n",
+		fmt.Sprintf("%s\n", inMsg))
+
+	////////////////////////////////////////////////////////////
+	// validate incoming response to our challenge
+	////////////////////////////////////////////////////////////
+
+	// define function to produce symmetric signature using a shared secret key
+	generateHMAC := func(data []byte, key [32]byte) []byte {
+		h := hmac.New(sha512.New512_256, key[:])
+		h.Write(data)
+		return h.Sum(nil)
+	}
+
+	// convert data to array
+	var dataChallengeArray [32]byte
+	copy(dataChallengeArray[:], randomBytes[:])
+
+	// generate response hash based on challenge and our secret password
+	var correctResponse []byte
+	correctResponse = generateHMAC([]byte(authPassword), dataChallengeArray)
+
+	// compare locally generated hash to received hash
+	remoteHash, _ := base64.StdEncoding.DecodeString(inMsg.Response)
+	if hmac.Equal(correctResponse, remoteHash) != true {
+		logInfo(fName+"initial challenge-response failed:",
+			"\n", base64.StdEncoding.EncodeToString(correctResponse),
+			"\n", base64.StdEncoding.EncodeToString(remoteHash))
+		return false
+	}
+
+	////////////////////////////////////////////////////////////
+	// respond to challenge sent to us
+	////////////////////////////////////////////////////////////
+
+	// decode into binary
+	remoteChallenge, _ := base64.StdEncoding.DecodeString(inMsg.Challenge)
+
+	// convert data to array
+	var remoteChallengeArray [32]byte
+	copy(remoteChallengeArray[:], remoteChallenge)
+
+	// generate response hash based on challenge and our secret password
+	ourResponse := generateHMAC([]byte(authPassword), remoteChallengeArray)
+	logDebug(fName+"local hash for challenge sent by LoadBalancer:",
+		"\n", base64.StdEncoding.EncodeToString(ourResponse))
+
+	// send response to frontend
+	err = conn.WriteMessage(websocket.BinaryMessage, ourResponse)
+	if checkError(fName+"error sending message to frontend loadbalancer:", err) {
+		return false
+	}
+
 	return true
 }
 
