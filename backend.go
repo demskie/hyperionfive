@@ -1,15 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
 	"time"
+
+	cryptorand "crypto/rand"
 
 	"github.com/dhconnelly/rtreego"
 	"github.com/golang/protobuf/proto"
@@ -30,6 +35,16 @@ func startBackendMode() {
 	var enabled bool
 
 	////////////////////////////////////////////////////////////
+	// generate randomNumber to determine server priority
+	////////////////////////////////////////////////////////////
+
+	enabled = true
+	if enabled {
+		serverPriority = generateRandomUint64()
+		logInfo(fmt.Sprintf("serverPriority = %d", serverPriority))
+	}
+
+	////////////////////////////////////////////////////////////
 	// process CLI parameters to potentially import data
 	////////////////////////////////////////////////////////////
 
@@ -39,14 +54,14 @@ func startBackendMode() {
 	}
 
 	////////////////////////////////////////////////////////////
-	// start communication with frontend
+	// start communication with Frontend
 	////////////////////////////////////////////////////////////
 
 	enabled = true
 	if enabled {
 		go func() {
 			for {
-				kickoffFrontendInfo("hyperion5.com")
+				kickoffBackendToFrontend("hyperion5.com")
 			}
 		}()
 	}
@@ -66,6 +81,78 @@ func startBackendMode() {
 	}
 
 	////////////////////////////////////////////////////////////
+	// start communication with other Backend servers
+	////////////////////////////////////////////////////////////
+
+	go func() {
+		connectedBackends := []Backend{}
+		idleConnectedBackends := []Backend{}
+
+		seed := func() rand.Source {
+			var randomness int64
+			b := make([]byte, 8)
+			cryptorand.Read(b)
+			buf := bytes.NewBuffer(b)
+			binary.Read(buf, binary.LittleEndian, &randomness)
+			return rand.NewSource(randomness)
+		}
+		rnum := rand.New(seed())
+
+		for {
+
+			backendDataMutex.RLock()
+			copyOtherBackends := backendData.Backends
+			backendDataMutex.RUnlock()
+
+			connectedBackendsMutex.RLock()
+			copyConnectedBackends := connectedBackends
+			connectedBackendsMutex.RUnlock()
+			numConnectedBackends := len(copyConnectedBackends)
+
+			idleConnectedBackendsMutex.RLock()
+			copyIdleConnectedBackends := idleConnectedBackends
+			idleConnectedBackendsMutex.RUnlock()
+			numIdleConnectedBackends := len(copyIdleConnectedBackends)
+
+			// we want the list of reference backends to not include Servers we're already connected to
+			for i := 0; i < numConnectedBackends; i++ {
+				copyOtherBackends = removeStringIfPresent(copyOtherBackends, copyConnectedBackends[i].ServerIP)
+			}
+			numOtherBackends := len(copyOtherBackends)
+
+			// we want a list of backends that do not include Servers we have an idle connection with
+			copyOtherBackendsNotIdle := copyOtherBackends
+			for i := 0; i < numConnectedBackends; i++ {
+				copyOtherBackendsNotIdle = removeStringIfPresent(copyOtherBackendsNotIdle,
+					copyConnectedBackends[i].ServerIP)
+			}
+			numOtherBackendsNotIdle := len(copyOtherBackendsNotIdle)
+
+			if numIdleConnectedBackends < idleConnectedBackendsLimit {
+				numNewIdleConnections := idleConnectedBackendsLimit - numIdleConnectedBackends
+				randPerm := rnum.Perm(numOtherBackendsNotIdle)
+				for i := 0; i < numNewIdleConnections; i++ {
+					randIndex := randPerm[i]
+					randBackendHost := copyOtherBackendsNotIdle[randIndex]
+					go kickoffIdleBackendToBackend(randBackendHost)
+				}
+			}
+
+			if numConnectedBackends < connectedBackendsLimit {
+				numNewConnections := connectedBackendsLimit - numConnectedBackends
+				randPerm := rnum.Perm(numOtherBackends)
+				for i := 0; i < numNewConnections; i++ {
+					randIndex := randPerm[i]
+					randBackendHost := copyOtherBackends[randIndex]
+					go kickoffBackendToBackend(randBackendHost)
+				}
+			}
+
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	////////////////////////////////////////////////////////////
 	// setup httpMux to avoid leaking default handlers
 	////////////////////////////////////////////////////////////
 
@@ -75,9 +162,8 @@ func startBackendMode() {
 	// setup the websocket handlers
 	////////////////////////////////////////////////////////////
 
-	muxSecure.HandleFunc("/clientgalaxy", backendReceiveClientGalaxyRequest)
-	muxSecure.HandleFunc("/backendsyncinfo", backendReceiveBackendInfoRequest)
-	muxSecure.HandleFunc("/backendsyncgalaxy", backendReceiveBackendGalaxyRequest)
+	muxSecure.HandleFunc("/clientgalaxy", clientToBackend)
+	muxSecure.HandleFunc("/backendsync", backendToBackend)
 
 	////////////////////////////////////////////////////////////
 	// tying the following http parameters to the handlers associated with 'muxSecure'
@@ -128,8 +214,8 @@ func startBackendMode() {
 
 func gracefullyCloseBackend() {
 
-	foundMatch, _ := regexp.MatchString(".*blob$", inputFilename)
-	if inputFilename == "" || foundMatch {
+	foundMatch, _ := regexp.MatchString(".*blob$", outputFilename)
+	if outputFilename == "" || foundMatch {
 		protoOut, err := proto.Marshal(&currentGalaxy)
 		if err != nil {
 			log.Fatalln("Failed to PROTOBUF encode Galaxy:", err)

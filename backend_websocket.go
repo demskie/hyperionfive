@@ -1,18 +1,23 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"hash/crc32"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
+	"sync/atomic"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
 
-func backendReceiveClientGalaxyRequest(w http.ResponseWriter, r *http.Request) {
+func clientToBackend(w http.ResponseWriter, r *http.Request) {
 	//upgrader := websocket.Upgrader{
 	//	ReadBufferSize:  1024,
 	//	WriteBufferSize: 1024,
@@ -23,35 +28,147 @@ func backendReceiveClientGalaxyRequest(w http.ResponseWriter, r *http.Request) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func backendReceiveBackendInfoRequest(w http.ResponseWriter, r *http.Request) {
-	//upgrader := websocket.Upgrader{
-	//	ReadBufferSize:  1024,
-	//	WriteBufferSize: 1024,
-	//}
-}
+func backendToBackend(w http.ResponseWriter, r *http.Request) {
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
+	// if client is blocked - backout of this http connection with 'return'
+	client, _, _ := net.SplitHostPort(r.RemoteAddr)
+	thisCheckPassed := checkFirewall("handshakeBackend", client, "challenge")
+	if thisCheckPassed != true {
+		return
+	}
 
-func backendReceiveBackendGalaxyRequest(w http.ResponseWriter, r *http.Request) {
-	//upgrader := websocket.Upgrader{
-	//	ReadBufferSize:  1024,
-	//	WriteBufferSize: 1024,
-	//}
-}
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:    1024,
+		WriteBufferSize:   1024,
+		EnableCompression: true,
+	}
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func kickoffFrontendInfo(host string) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if checkError("(handshakeBackend) upgrade error:", err) {
+		return
+	}
 
 	////////////////////////////////////////////////////////////
-	// start communication with frontend
+	// defer statements
 	////////////////////////////////////////////////////////////
 
-	// create websocket with loadbalancer frontend
+	defer conn.Close()
+
+	clientSessionCountMutex.Lock()
+	_, ok := clientSessionCount[client]
+	if ok {
+		clientSessionCount[client]++
+	} else {
+		clientSessionCount[client] = 1
+		logDebug("(handshakeBackend) setting 'clientSessionCount' to ONE",
+			"for this client:", client)
+	}
+	clientSessionCountMutex.Unlock()
+
+	defer func() {
+		clientSessionCountMutex.Lock()
+		clientSessionCount[client]--
+		clientSessionCountMutex.Unlock()
+	}()
+
+	logDebug("(handshakeBackend) opening socket:", string(r.RemoteAddr))
+	defer logDebug("(handshakeBackend) closing connection:", client)
+
+	////////////////////////////////////////////////////////////
+	// do challenge-response handshake (defined in Main.go)
+	////////////////////////////////////////////////////////////
+
+	successful := handleChallengeResponse("handshakeBackend", conn, client)
+	if successful == false {
+		return
+	}
+
+	////////////////////////////////////////////////////////////
+	// define data structures for upcoming back/forth communication
+	////////////////////////////////////////////////////////////
+
+	type message struct {
+		Source            uint32
+		Priority          uint32
+		SequenceNumber    uint64
+		Checksum          []byte
+		ChangedGalaxyData *Galaxy
+	}
+
+	var (
+		inMsg  = message{}
+		outMsg = message{}
+	)
+
+	////////////////////////////////////////////////////////////
+	// wait for message from Backend
+	////////////////////////////////////////////////////////////
+
+	msgType, newData, err := conn.ReadMessage()
+	if checkError("(periodicUpdateBackendGalaxy) error receiving message:", err) {
+		return
+	}
+	if msgType != websocket.BinaryMessage {
+		logInfo("(periodicUpdateBackendGalaxy) messageType is invalid")
+		return
+	}
+	network := bytes.NewBuffer(newData)
+	dec := gob.NewDecoder(network)
+	err = dec.Decode(&inMsg)
+	if checkError("(periodicUpdateBackendGalaxy) error decoding incoming message", err) {
+		return
+	}
+
+	////////////////////////////////////////////////////////////
+	// process incoming message
+	////////////////////////////////////////////////////////////
+
+	////////////////////////////////////////////////////////////
+	// put together outgoing message
+	////////////////////////////////////////////////////////////
+
+	outMsg.SequenceNumber = atomic.LoadUint64(&sequenceNumber)
+
+	var result []byte
+	branch := 2
+	switch branch {
+
+	case 1:
+		data, err := proto.Marshal(&currentGalaxy)
+		if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
+			os.Exit(1)
+		}
+		hash := crc32.NewIEEE()
+		hash.Write(data)
+		result = hash.Sum(nil)
+
+	case 2:
+		data, err := proto.Marshal(&currentGalaxy)
+		if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
+			os.Exit(1)
+		}
+		buffer := bytes.NewBuffer(data)
+		reader := bufio.NewReader(buffer)
+		scanner := bufio.NewScanner(reader)
+
+		hash := crc32.NewIEEE()
+		for scanner.Scan() {
+			hash.Write(scanner.Bytes())
+		}
+		result = hash.Sum(nil)
+
+	}
+
+	outMsg.Checksum = result
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func kickoffBackendToFrontend(host string) {
+
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backend", nil)
 	if checkError("(handshakeFrontend) unable to open websocket with frontend loadbalancer:", err) {
@@ -59,7 +176,6 @@ func kickoffFrontendInfo(host string) {
 	}
 	defer conn.Close()
 
-	// log client IP address
 	logDebug("(handshakeFrontend) opening connection:", conn.RemoteAddr().String())
 	defer logDebug("(handshakeFrontend) closing connection:", conn.RemoteAddr().String())
 
@@ -67,8 +183,7 @@ func kickoffFrontendInfo(host string) {
 	// do challenge-response handshake (defined in Main.go)
 	////////////////////////////////////////////////////////////
 
-	clientIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-	successful := handleChallengeResponse("handshakeFrontend", conn, clientIP)
+	successful := kickoffChallengeResponse("handshakeFrontend", conn)
 	if successful == false {
 		return
 	}
@@ -110,16 +225,8 @@ func kickoffFrontendInfo(host string) {
 
 	periodicUpdate := func() bool {
 
-		////////////////////////////////////////////////////////////
-		// zeroing out temp messages (important)
-		////////////////////////////////////////////////////////////
-
 		inMsgTemp = incomingMessageFrontend{}
 		outMsgTemp = outgoingMessageFrontend{}
-
-		////////////////////////////////////////////////////////////
-		// defining constants to satisfy my linter
-		////////////////////////////////////////////////////////////
 
 		const (
 			newgalaxy      = "new_galaxy"
@@ -241,7 +348,7 @@ func kickoffFrontendInfo(host string) {
 	}
 
 	////////////////////////////////////////////////////////////
-	// loop periodicUpdate and fallback to main if failure occurs
+	// loop periodicUpdate and fallback to calling Func if failure occurs
 	////////////////////////////////////////////////////////////
 
 	for {
@@ -252,7 +359,7 @@ func kickoffFrontendInfo(host string) {
 		}
 	}
 
-	// fallback to main
+	// fallback to calling Func
 	time.Sleep(1 * time.Second)
 	return
 }
@@ -261,13 +368,8 @@ func kickoffFrontendInfo(host string) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func kickoffBackendInfoSync(host string) {
+func kickoffBackendToBackend(host string) {
 
-	////////////////////////////////////////////////////////////
-	// start communication with frontend
-	////////////////////////////////////////////////////////////
-
-	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncinfo", nil)
 	if checkError("(handshakeFrontend) unable to open _info_ websocket with backend:", err) {
@@ -280,16 +382,11 @@ func kickoffBackendInfoSync(host string) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func kickoffBackendGalaxySync(host string) {
+func kickoffIdleBackendToBackend(host string) {
 
-	////////////////////////////////////////////////////////////
-	// start communication with frontend
-	////////////////////////////////////////////////////////////
-
-	// create websocket with loadbalancer frontend
 	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncgalaxy", nil)
-	if checkError("(handshakeFrontend) unable to open _galaxy_ websocket with backend:", err) {
+	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncinfo", nil)
+	if checkError("(handshakeFrontend) unable to open _info_ websocket with backend:", err) {
 		return
 	}
 	defer conn.Close()

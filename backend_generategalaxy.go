@@ -227,25 +227,15 @@ func generateEllipticalCoordinates(coreID int, startIndex int, stopIndex int) {
 		var interY int64
 
 		for {
-			////////////////////////////////////////////
-			// generating a uniformly random int64 value
-			////////////////////////////////////////////
 			b := make([]byte, 8)
 			cryptorand.Read(b)
 			buf := bytes.NewBuffer(b)
 			binary.Read(buf, binary.LittleEndian, &interX)
 
-			//////////////////////////////////////////////////
-			// generating another uniformly random int64 value
-			//////////////////////////////////////////////////
 			cryptorand.Read(b)
 			buf = bytes.NewBuffer(b)
 			binary.Read(buf, binary.LittleEndian, &interY)
 
-			/////////////////////////////////////////////////
-			// calculate hypotenuse and throw away any
-			// coordinates that would fall outside the circle
-			/////////////////////////////////////////////////
 			A2 := float64(interX * interX)
 			B2 := float64(interY * interY)
 			C := math.Sqrt(A2 + B2)
@@ -255,19 +245,11 @@ func generateEllipticalCoordinates(coreID int, startIndex int, stopIndex int) {
 
 			break
 		}
-
-		/////////////////////////////////
-		// assigning coordinates
-		/////////////////////////////////
 		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
 		mySystem.InterX = interX
 		mySystem.InterY = interY
-
 	}
 
-	////////////////////////////////////////////////////////
-	// decrementing waitgroup and printing completion status
-	////////////////////////////////////////////////////////
 	if coreID != -1 {
 		waitForCores.Done()
 	}
@@ -334,12 +316,12 @@ func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int) (myBadS
 
 func updateRtreeSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
-		//rtree.Delete(rtreeObjects[currentIndex]) // !!!
+		//rtree.Delete(rtreeObjects[currentIndex]) // !!! TODO: NEED TO FIX
 		mySystem := currentGalaxy.Solarsystemslice[currentIndex]
 		x := float64(mySystem.InterX)
 		y := float64(mySystem.InterY)
 		rtreeObjects[currentIndex] = &SystemBox{rtreego.Point{x, y}, currentIndex}
-		//rtree.Insert(rtreeObjects[currentIndex]) // !!!
+		//rtree.Insert(rtreeObjects[currentIndex]) // !!! TODO: NEED TO FIX
 	}
 	if coreID != -1 {
 		waitForCores.Done()

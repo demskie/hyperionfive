@@ -804,8 +804,7 @@ func kickoffFrontendInfoSync(host string) {
 	logDebug("(handshakeFrontend) opening connection:", conn.RemoteAddr().String())
 	defer logDebug("(handshakeFrontend) closing connection:", conn.RemoteAddr().String())
 
-	clientIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-	if kickoffChallengeResponse("handshakeFrontend", conn, clientIP) != true {
+	if kickoffChallengeResponse("handshakeFrontend", conn) != true {
 		return
 	}
 

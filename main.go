@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -317,7 +319,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func kickoffChallengeResponse(fName string, conn *websocket.Conn, clientIP string) (result bool) {
+func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) {
 
 	// string that will be appended to log messages
 	fName = "(" + fName + ") "
@@ -472,6 +474,31 @@ func appendStringIfMissing(slice []string, s string) []string {
 		}
 	}
 	return append(slice, s)
+}
+
+func removeStringIfPresent(slice []string, s string) []string {
+	for i, ele := range slice {
+		if ele == s {
+			slice[i] = slice[len(slice)-1]
+			slice = slice[:len(slice)-1]
+		}
+	}
+	return slice
+}
+
+var serverPriority uint64
+
+func generateRandomUint64() uint64 {
+	seed := func() rand.Source {
+		var randomness int64
+		b := make([]byte, 8)
+		cryptorand.Read(b)
+		buf := bytes.NewBuffer(b)
+		binary.Read(buf, binary.LittleEndian, &randomness)
+		return rand.NewSource(randomness)
+	}
+	rnum := rand.New(seed())
+	return rnum.Uint64()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -805,23 +832,49 @@ var (
 	backendDataMutex sync.RWMutex
 )
 
-// BackendDataStruct defines values for galaxyInfo
+// BackendDataStruct defines values for ...
 type BackendDataStruct struct {
-	ClientIDs []string
-	Frontends []string
-	Backends  []string
-	GlobalX   int64
-	GlobalY   int64
+	ClientIDs              []string
+	Frontends              []string
+	Backends               []string
+	HighestBackendPriority uint64
+	GlobalX                int64
+	GlobalY                int64
+}
+
+const (
+	connectedBackendsLimit     = 3
+	idleConnectedBackendsLimit = 25
+)
+
+var (
+	connectedBackends          []Backend
+	connectedBackendsMutex     sync.RWMutex
+	idleConnectedBackends      []Backend
+	idleConnectedBackendsMutex sync.RWMutex
+)
+
+// Backend defines values for ...
+type Backend struct {
+	ServerIP           string
+	AdvertisedPriority uint64
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+// IncomingRequest defines values used in clientRequests
+type IncomingRequest struct {
+	ClientID string
+	Data     map[string]string
+}
+
 var (
-	randomSeed              *rand.Rand
+	sequenceNumber          uint64
 	currentGalaxy           Galaxy
 	futureGalaxy            Galaxy
+	clientRequests          []IncomingRequest
 	partitionedSolarSystems []sync.RWMutex
 )
 
