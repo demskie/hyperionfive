@@ -217,8 +217,8 @@ func startBackendMode() {
 
 func gracefullyCloseBackend() {
 
-	foundMatch, _ := regexp.MatchString(".*blob$", outputFilename)
-	if outputFilename == "" || foundMatch {
+	foundMatch, _ := regexp.MatchString(".*blob$", outputFile)
+	if outputFile == "" || foundMatch {
 		protoOut, err := proto.Marshal(&currentGalaxy)
 		if err != nil {
 			log.Fatalln("Failed to PROTOBUF encode Galaxy:", err)
@@ -231,7 +231,7 @@ func gracefullyCloseBackend() {
 		if err != nil {
 			log.Fatalln("Failed to JSON encode Galaxy:", err)
 		}
-		if err := ioutil.WriteFile(outputFilename, jsonOut, 0644); err != nil {
+		if err := ioutil.WriteFile(outputFile, jsonOut, 0644); err != nil {
 			log.Fatalln("Failed to write Galaxy:", err)
 		}
 	}
