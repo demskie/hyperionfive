@@ -31,9 +31,9 @@ func startFrontendMode() {
 	muxSecure.Handle("/", fileserverWithModifiedHeaders)
 
 	// setup the websocket handlers
-	muxSecure.HandleFunc("/clientlb", frontendReceiveClientInfoRequest)
-	muxSecure.HandleFunc("/backend", frontendReceiveBackendInfoRequest)
-	muxSecure.HandleFunc("/frontend", frontendReceiveFrontendInfoRequest)
+	muxSecure.HandleFunc("/clientlb", handleClientToFrontend)
+	muxSecure.HandleFunc("/backend", handleBackendToFrontend)
+	muxSecure.HandleFunc("/frontend", handleFrontendToFrontend)
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{

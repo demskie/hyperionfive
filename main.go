@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"container/ring"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/base64"
@@ -834,17 +835,20 @@ var (
 
 // BackendDataStruct defines values for ...
 type BackendDataStruct struct {
-	ClientIDs              []string
-	Frontends              []string
-	Backends               []string
-	HighestBackendPriority uint64
-	GlobalX                int64
-	GlobalY                int64
+	ClientIDs             []string
+	Frontends             []string
+	Backends              []string
+	HighestPriority       uint64
+	SecondHighestPriority uint64
+	GlobalX               int64
+	GlobalY               int64
 }
 
 const (
 	connectedBackendsLimit     = 3
 	idleConnectedBackendsLimit = 25
+	latencyRingLength          = 25
+	backendTickrate            = 1 * time.Second
 )
 
 var (
@@ -858,6 +862,7 @@ var (
 type Backend struct {
 	ServerIP           string
 	AdvertisedPriority uint64
+	Latency            *ring.Ring
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -866,8 +871,10 @@ type Backend struct {
 
 // IncomingRequest defines values used in clientRequests
 type IncomingRequest struct {
-	ClientID string
-	Data     map[string]string
+	ClientID      string
+	ClientMessage string
+	ClientValues  []string
+	ServerMessage string
 }
 
 var (

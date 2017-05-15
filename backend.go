@@ -61,7 +61,7 @@ func startBackendMode() {
 	if enabled {
 		go func() {
 			for {
-				kickoffBackendToFrontend("hyperion5.com")
+				spawnBackendToFrontend("hyperion5.com")
 			}
 		}()
 	}
@@ -87,6 +87,7 @@ func startBackendMode() {
 	go func() {
 		connectedBackends := []Backend{}
 		idleConnectedBackends := []Backend{}
+		// https://play.golang.org/p/pFWNe6CGxd
 
 		seed := func() rand.Source {
 			var randomness int64
@@ -134,8 +135,9 @@ func startBackendMode() {
 				for i := 0; i < numNewIdleConnections; i++ {
 					randIndex := randPerm[i]
 					randBackendHost := copyOtherBackendsNotIdle[randIndex]
-					go kickoffIdleBackendToBackend(randBackendHost)
+					go spawnPingPongBackend(randBackendHost)
 				}
+				time.Sleep(1000 * time.Millisecond)
 			}
 
 			if numConnectedBackends < connectedBackendsLimit {
@@ -144,7 +146,7 @@ func startBackendMode() {
 				for i := 0; i < numNewConnections; i++ {
 					randIndex := randPerm[i]
 					randBackendHost := copyOtherBackends[randIndex]
-					go kickoffBackendToBackend(randBackendHost)
+					go spawnBackendToBackend(randBackendHost)
 				}
 			}
 
@@ -162,8 +164,9 @@ func startBackendMode() {
 	// setup the websocket handlers
 	////////////////////////////////////////////////////////////
 
-	muxSecure.HandleFunc("/clientgalaxy", clientToBackend)
-	muxSecure.HandleFunc("/backendsync", backendToBackend)
+	muxSecure.HandleFunc("/clientgalaxy", handleClientToBackend)
+	muxSecure.HandleFunc("/backendsync", handleBackendToBackend)
+	muxSecure.HandleFunc("/pingpong", handlePingPongBackend)
 
 	////////////////////////////////////////////////////////////
 	// tying the following http parameters to the handlers associated with 'muxSecure'
