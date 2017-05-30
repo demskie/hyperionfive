@@ -72,7 +72,9 @@ message Galaxy {
 // cd D:\OneDrive\GoPrototypes\src\GOSERVER
 // D:\OneDrive\GoPrototypes\bin\protoc --go_out=D:\OneDrive\GoPrototypes\src\GOSERVER\ protobuf.proto
 // D:\OneDrive\GoPrototypes\bin\protoc --js_out=import_style=commonjs,binary:D:\OneDrive\GoPrototypes\src\GOSERVER protobuf.proto
+// npm install npm@latest -g
 // npm update
+// cd D:\OneDrive\GoPrototypes\src\GOSERVER\node_modules
 // npm install --save protobuf
 // npm install --global browserify
-// browserify protobuf_pb.js -o websiteroot\protobuf.js
+// browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js

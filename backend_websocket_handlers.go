@@ -19,15 +19,84 @@ import (
 )
 
 func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
-	//upgrader := websocket.Upgrader{
-	//	ReadBufferSize:  1024,
-	//	WriteBufferSize: 1024,
-	//}
+
+	////////////////////////////////////////////////////////////
+	// check that the host is not currently blacklisted
+	////////////////////////////////////////////////////////////
+
+	client, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if checkFirewall("cleintToBackend", client, "challenge") != true {
+		return
+	}
+
+	////////////////////////////////////////////////////////////
+	// upgrade websocket
+	////////////////////////////////////////////////////////////
+
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if checkError("(clientToBackend) upgrade error:", err) {
+		return
+	}
+	logDebug("(clientToBackend) opening socket:", string(r.RemoteAddr))
+
+	////////////////////////////////////////////////////////////
+	// DEFER STATEMENTS
+	////////////////////////////////////////////////////////////
+
+	defer conn.Close()
+
+	GLOBAL.clientSessionCountMutex.Lock()
+	_, ok := GLOBAL.clientSessionCount[client]
+	if ok {
+		GLOBAL.clientSessionCount[client]++
+	} else {
+		GLOBAL.clientSessionCount[client] = 1
+	}
+	GLOBAL.clientSessionCountMutex.Unlock()
+
+	defer func() {
+		GLOBAL.clientSessionCountMutex.Lock()
+		GLOBAL.clientSessionCount[client]--
+		GLOBAL.clientSessionCountMutex.Unlock()
+	}()
+
+	////////////////////////////////////////////////////////////
+	// receive and process google authentication
+	////////////////////////////////////////////////////////////
+
+	if handleGoogleAuth("clientToBackend", conn, client) != true {
+		return
+	}
+
+	////////////////////////////////////////////////////////////
+	// send data to client
+	////////////////////////////////////////////////////////////
+
+	go func() {
+		<-GLOBAL.tickChan
+
+	}()
+
+	////////////////////////////////////////////////////////////
+	// receive requests from client
+	////////////////////////////////////////////////////////////
+
+	go func() {
+
+	}()
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 
-	// if client is blocked - backout of this http connection with 'return'
+	// if client is blocked - backout of this http connection
 	client, _, _ := net.SplitHostPort(r.RemoteAddr)
 	thisCheckPassed := checkFirewall("handshakeBackend", client, "challenge")
 	if thisCheckPassed != true {
@@ -51,21 +120,21 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	clientSessionCountMutex.Lock()
-	_, ok := clientSessionCount[client]
+	GLOBAL.clientSessionCountMutex.Lock()
+	_, ok := GLOBAL.clientSessionCount[client]
 	if ok {
-		clientSessionCount[client]++
+		GLOBAL.clientSessionCount[client]++
 	} else {
-		clientSessionCount[client] = 1
+		GLOBAL.clientSessionCount[client] = 1
 		logDebug("(handshakeBackend) setting 'clientSessionCount' to ONE",
 			"for this client:", client)
 	}
-	clientSessionCountMutex.Unlock()
+	GLOBAL.clientSessionCountMutex.Unlock()
 
 	defer func() {
-		clientSessionCountMutex.Lock()
-		clientSessionCount[client]--
-		clientSessionCountMutex.Unlock()
+		GLOBAL.clientSessionCountMutex.Lock()
+		GLOBAL.clientSessionCount[client]--
+		GLOBAL.clientSessionCountMutex.Unlock()
 	}()
 
 	logDebug("(handshakeBackend) opening socket:", string(r.RemoteAddr))
@@ -124,14 +193,14 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	// put together outgoing message
 	////////////////////////////////////////////////////////////
 
-	outMsg.SequenceNumber = atomic.LoadUint64(&sequenceNumber)
+	outMsg.SequenceNumber = atomic.LoadUint64(&GLOBAL.sequenceNumber)
 
 	var result []byte
 	branch := 2
 	switch branch {
 
 	case 1:
-		data, err := proto.Marshal(&currentGalaxy)
+		data, err := proto.Marshal(&GLOBAL.currentGalaxy)
 		if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
 			os.Exit(1)
 		}
@@ -140,7 +209,7 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 		result = hash.Sum(nil)
 
 	case 2:
-		data, err := proto.Marshal(&currentGalaxy)
+		data, err := proto.Marshal(&GLOBAL.currentGalaxy)
 		if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
 			os.Exit(1)
 		}
@@ -159,6 +228,10 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	outMsg.Checksum = result
 
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
 func handlePingPongBackend(w http.ResponseWriter, r *http.Request) {
 
@@ -195,19 +268,19 @@ func handlePingPongBackend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	clientSessionCountMutex.Lock()
-	_, ok := clientSessionCount[client]
+	GLOBAL.clientSessionCountMutex.Lock()
+	_, ok := GLOBAL.clientSessionCount[client]
 	if ok {
-		clientSessionCount[client]++
+		GLOBAL.clientSessionCount[client]++
 	} else {
-		clientSessionCount[client] = 1
+		GLOBAL.clientSessionCount[client] = 1
 	}
-	clientSessionCountMutex.Unlock()
+	GLOBAL.clientSessionCountMutex.Unlock()
 
 	defer func() {
-		clientSessionCountMutex.Lock()
-		clientSessionCount[client]--
-		clientSessionCountMutex.Unlock()
+		GLOBAL.clientSessionCountMutex.Lock()
+		GLOBAL.clientSessionCount[client]--
+		GLOBAL.clientSessionCountMutex.Unlock()
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -219,19 +292,19 @@ func handlePingPongBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	connectedBackendsMutex.RLock()
-	for i := 0; i < len(connectedBackends); i++ {
-		if connectedBackends[i].ServerIP == client {
+	GLOBAL.connectedBackendsMutex.RLock()
+	for i := 0; i < len(GLOBAL.connectedBackends); i++ {
+		if GLOBAL.connectedBackends[i].ServerIP == client {
 			return
 		}
 	}
-	connectedBackendsMutex.RUnlock()
+	GLOBAL.connectedBackendsMutex.RUnlock()
 
 	var startTime int64
 	var endTime int64
 	var advertisedPriority uint64
 
-	startTime = math.MaxInt64
+	startTime = math.MaxInt64 // intentionally invalid
 
 	for {
 
@@ -248,44 +321,44 @@ func handlePingPongBackend(w http.ResponseWriter, r *http.Request) {
 			endTime = time.Now().UnixNano()
 			latency := (endTime - startTime) - (backendTickrate.Nanoseconds() / 2)
 			advertisedPriority = binary.LittleEndian.Uint64(newData)
-			connectedBackendsMutex.Lock()
-			backendIndex := -1 // intentionally invalid
-			for i := 0; i < len(connectedBackends); i++ {
-				if connectedBackends[i].ServerIP == client {
-					backendIndex = i
+			GLOBAL.idleConnectedBackendsMutex.Lock()
+			idleBackendIndex := -1 // intentionally invalid
+			for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
+				if GLOBAL.idleConnectedBackends[i].ServerIP == client {
+					idleBackendIndex = i
 					break
 				}
 			}
-			if backendIndex == -1 {
-				data := Backend{}
+			if idleBackendIndex == -1 {
+				data := backend{}
 				data.ServerIP = client
 				data.AdvertisedPriority = advertisedPriority
 				data.Latency = ring.New(latencyRingLength)
 				data.Latency.Value = latency
 				data.Latency = data.Latency.Next()
-				connectedBackends = append(connectedBackends, data)
+				GLOBAL.idleConnectedBackends = append(GLOBAL.idleConnectedBackends, data)
 			} else {
-				connectedBackends[backendIndex].Latency.Value = latency
-				connectedBackends[backendIndex].Latency.Next()
-				if connectedBackends[backendIndex].AdvertisedPriority != advertisedPriority {
+				GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Value = latency
+				GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Next()
+				if GLOBAL.idleConnectedBackends[idleBackendIndex].AdvertisedPriority != advertisedPriority {
 					logInfo("(pingPongBackend) advertisedPriority has changed (and isn't supposed to)")
 				}
 			}
-			connectedBackendsMutex.Unlock()
+			GLOBAL.idleConnectedBackendsMutex.Unlock()
 		}
 
-		connectedBackendsMutex.RLock()
+		GLOBAL.idleConnectedBackendsMutex.RLock()
 		count := 0
 		otherSideHasPriority := advertisedPriority > serverPriority
-		for i := 0; i < len(connectedBackends); i++ {
-			if connectedBackends[i].ServerIP == client {
+		for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
+			if GLOBAL.idleConnectedBackends[i].ServerIP == client {
 				count++
 			}
 			if count > 1 && otherSideHasPriority {
 				return
 			}
 		}
-		connectedBackendsMutex.RUnlock()
+		GLOBAL.idleConnectedBackendsMutex.RUnlock()
 
 		time.Sleep(backendTickrate / 2)
 

@@ -85,7 +85,7 @@ func spawnBackendToFrontend(host string) {
 		// seeing if we've been assigned a galaxy name (and acting upon it)
 		////////////////////////////////////////////////////////////
 
-		galName := currentGalaxy.Name
+		galName := GLOBAL.currentGalaxy.Name
 		logDebug(fmt.Sprint("(periodicUpdateFrontend) galName=\t\t", galName))
 
 		if galName == "" {
@@ -93,21 +93,21 @@ func spawnBackendToFrontend(host string) {
 		}
 
 		if galName != "" {
-			backendDataMutex.Lock()
+			GLOBAL.backendDataMutex.Lock()
 			outMsgTemp.GalaxyName = galName
-			outMsgTemp.TotalClientCount = len(backendData.ClientIDs)
-			outMsgTemp.OtherFrontends = backendData.Frontends
-			outMsgTemp.OtherBackends = backendData.Backends
-			backendDataMutex.Unlock()
+			outMsgTemp.TotalClientCount = len(GLOBAL.backendData.ClientIDs)
+			outMsgTemp.OtherFrontends = GLOBAL.backendData.Frontends
+			outMsgTemp.OtherBackends = GLOBAL.backendData.Backends
+			GLOBAL.backendDataMutex.Unlock()
 		}
 
 		netAddr := conn.LocalAddr()
 		ipAddress, _, _ := net.SplitHostPort(netAddr.String())
 		outMsgTemp.ServerAddress = ipAddress
 
-		clientSessionCountMutex.RLock()
-		outMsgTemp.ActiveClientCount = len(clientSessionCount)
-		clientSessionCountMutex.RUnlock()
+		GLOBAL.clientSessionCountMutex.RLock()
+		outMsgTemp.ActiveClientCount = len(GLOBAL.clientSessionCount)
+		GLOBAL.clientSessionCountMutex.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
@@ -164,10 +164,10 @@ func spawnBackendToFrontend(host string) {
 
 		if inMsgTemp.Message == yourgalaxyname && galName == "" {
 			galName = inMsgTemp.GalaxyName
-			currentGalaxy.Name = galName
-			currentGalaxy.GlobalX = inMsgTemp.GlobalX
-			currentGalaxy.GlobalY = inMsgTemp.GlobalY
-			backendData = BackendDataStruct{}
+			GLOBAL.currentGalaxy.Name = galName
+			GLOBAL.currentGalaxy.GlobalX = inMsgTemp.GlobalX
+			GLOBAL.currentGalaxy.GlobalY = inMsgTemp.GlobalY
+			GLOBAL.backendData = backendDataStruct{}
 			logInfo(fmt.Sprintf("(periodicUpdateFrontend) received 'your_galaxy_name' = %s", galName))
 		}
 
@@ -211,7 +211,6 @@ func spawnBackendToFrontend(host string) {
 }
 
 func spawnBackendToBackend(host string) {
-
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncinfo", nil)
 	if checkError("(handshakeBackend) unable to open _data_ websocket with backend:", err) {
@@ -221,7 +220,6 @@ func spawnBackendToBackend(host string) {
 }
 
 func spawnPingPongBackend(host string) {
-
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/pingpong", nil)
 	if checkError("(pingPongBackend) unable to open _idle_ websocket with backend:", err) {
@@ -238,13 +236,13 @@ func spawnPingPongBackend(host string) {
 
 	for {
 
-		connectedBackendsMutex.RLock()
-		for i := 0; i < len(connectedBackends); i++ {
-			if connectedBackends[i].ServerIP == host {
+		GLOBAL.connectedBackendsMutex.RLock()
+		for i := 0; i < len(GLOBAL.connectedBackends); i++ {
+			if GLOBAL.connectedBackends[i].ServerIP == host {
 				return
 			}
 		}
-		connectedBackendsMutex.RUnlock()
+		GLOBAL.connectedBackendsMutex.RUnlock()
 
 		data := make([]byte, 8)
 		binary.LittleEndian.PutUint64(data, serverPriority)
@@ -267,43 +265,43 @@ func spawnPingPongBackend(host string) {
 		latency := (endTime - startTime) - (backendTickrate.Nanoseconds() / 2)
 		advertisedPriority := binary.LittleEndian.Uint64(newData)
 
-		idleConnectedBackendsMutex.Lock()
+		GLOBAL.idleConnectedBackendsMutex.Lock()
 		idleBackendIndex := -1 // intentionally invalid
-		for i := 0; i < len(idleConnectedBackends); i++ {
-			if idleConnectedBackends[i].ServerIP == host {
+		for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
+			if GLOBAL.idleConnectedBackends[i].ServerIP == host {
 				idleBackendIndex = i
 				break
 			}
 		}
 		if idleBackendIndex == -1 {
-			data := Backend{}
+			data := backend{}
 			data.ServerIP = host
 			data.AdvertisedPriority = advertisedPriority
 			data.Latency = ring.New(latencyRingLength)
 			data.Latency.Value = latency
 			data.Latency = data.Latency.Next()
-			idleConnectedBackends = append(idleConnectedBackends, data)
+			GLOBAL.idleConnectedBackends = append(GLOBAL.idleConnectedBackends, data)
 		} else {
-			idleConnectedBackends[idleBackendIndex].Latency.Value = latency
-			idleConnectedBackends[idleBackendIndex].Latency.Next()
-			if idleConnectedBackends[idleBackendIndex].AdvertisedPriority != advertisedPriority {
+			GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Value = latency
+			GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Next()
+			if GLOBAL.idleConnectedBackends[idleBackendIndex].AdvertisedPriority != advertisedPriority {
 				logInfo("(pingPongBackend) advertisedPriority has changed (and isn't supposed to)")
 			}
 		}
-		idleConnectedBackendsMutex.Unlock()
+		GLOBAL.idleConnectedBackendsMutex.Unlock()
 
-		idleConnectedBackendsMutex.RLock()
+		GLOBAL.idleConnectedBackendsMutex.RLock()
 		count := 0
 		otherSideHasPriority := advertisedPriority > serverPriority
-		for i := 0; i < len(idleConnectedBackends); i++ {
-			if idleConnectedBackends[i].ServerIP == host {
+		for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
+			if GLOBAL.idleConnectedBackends[i].ServerIP == host {
 				count++
 			}
 			if count > 1 && otherSideHasPriority {
 				return
 			}
 		}
-		idleConnectedBackendsMutex.RUnlock()
+		GLOBAL.idleConnectedBackendsMutex.RUnlock()
 
 		time.Sleep(backendTickrate / 2)
 	}

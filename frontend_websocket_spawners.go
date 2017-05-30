@@ -33,46 +33,46 @@ func spawnFrontendToFrontend(host string) {
 	////////////////////////////////////////////////////////////
 
 	var (
-		inMsgTemp       = FrontendDataStruct{}
-		inMsgReference  = FrontendDataStruct{}
-		outMsgTemp      = FrontendDataStruct{}
-		outMsgReference = FrontendDataStruct{}
+		inMsgTemp       = frontendDataStruct{}
+		inMsgReference  = frontendDataStruct{}
+		outMsgTemp      = frontendDataStruct{}
+		outMsgReference = frontendDataStruct{}
 	)
 
 	periodicUpdate := func() bool {
 
-		inMsgTemp = FrontendDataStruct{}
-		outMsgTemp = FrontendDataStruct{}
+		inMsgTemp = frontendDataStruct{}
+		outMsgTemp = frontendDataStruct{}
 
 		////////////////////////////////////////////////////////////
 		// put together outgoing message
 		////////////////////////////////////////////////////////////
 
-		frontendDataMutex.RLock()
+		GLOBAL.frontendDataMutex.RLock()
 
 		foundMatch := false
 		myIPaddr, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-		for i := 0; i < len(frontendData.OtherFrontends); i++ {
-			if frontendData.OtherFrontends[i] == myIPaddr {
+		for i := 0; i < len(GLOBAL.frontendData.OtherFrontends); i++ {
+			if GLOBAL.frontendData.OtherFrontends[i] == myIPaddr {
 				foundMatch = true
 				break
 			}
 		}
 		if foundMatch == false {
-			outMsgTemp.OtherFrontends = append(frontendData.OtherFrontends, myIPaddr)
+			outMsgTemp.OtherFrontends = append(GLOBAL.frontendData.OtherFrontends, myIPaddr)
 		}
 
-		for i := 0; i < len(frontendData.ListOfGalaxies); i++ {
-			outMsgTemp.ListOfGalaxies[i].GalaxyName = frontendData.ListOfGalaxies[i].GalaxyName
-			outMsgTemp.ListOfGalaxies[i].GlobalX = frontendData.ListOfGalaxies[i].GlobalX
-			outMsgTemp.ListOfGalaxies[i].GlobalY = frontendData.ListOfGalaxies[i].GlobalY
+		for i := 0; i < len(GLOBAL.frontendData.ListOfGalaxies); i++ {
+			outMsgTemp.ListOfGalaxies[i].GalaxyName = GLOBAL.frontendData.ListOfGalaxies[i].GalaxyName
+			outMsgTemp.ListOfGalaxies[i].GlobalX = GLOBAL.frontendData.ListOfGalaxies[i].GlobalX
+			outMsgTemp.ListOfGalaxies[i].GlobalY = GLOBAL.frontendData.ListOfGalaxies[i].GlobalY
 		}
 
-		outMsgTemp.ListOfGalaxies = frontendData.ListOfGalaxies
-		outMsgTemp.OtherFrontends = frontendData.OtherFrontends
+		outMsgTemp.ListOfGalaxies = GLOBAL.frontendData.ListOfGalaxies
+		outMsgTemp.OtherFrontends = GLOBAL.frontendData.OtherFrontends
 		outMsgTemp.OtherFrontends = appendStringIfMissing(outMsgTemp.OtherFrontends, myIPaddr)
 
-		frontendDataMutex.RUnlock()
+		GLOBAL.frontendDataMutex.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// defining constants to satisfy my linter
@@ -91,7 +91,7 @@ func spawnFrontendToFrontend(host string) {
 		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			outMsgTemp = FrontendDataStruct{Message: sameaslasttime}
+			outMsgTemp = frontendDataStruct{Message: sameaslasttime}
 		}
 
 		var networkOut bytes.Buffer
@@ -140,12 +140,12 @@ func spawnFrontendToFrontend(host string) {
 		// making local copy of data structure to reference without contention
 		////////////////////////////////////////////////////////////
 
-		frontendDataMutex.RLock()
-		copyOfFrontendSlice := make([]string, len(frontendData.OtherFrontends))
-		copy(copyOfFrontendSlice, frontendData.OtherFrontends)
-		copyOfGalaxySlice := make([]galInfo, len(frontendData.ListOfGalaxies))
-		copy(copyOfGalaxySlice, frontendData.ListOfGalaxies)
-		frontendDataMutex.RUnlock()
+		GLOBAL.frontendDataMutex.RLock()
+		copyOfFrontendSlice := make([]string, len(GLOBAL.frontendData.OtherFrontends))
+		copy(copyOfFrontendSlice, GLOBAL.frontendData.OtherFrontends)
+		copyOfGalaxySlice := make([]galInfo, len(GLOBAL.frontendData.ListOfGalaxies))
+		copy(copyOfGalaxySlice, GLOBAL.frontendData.ListOfGalaxies)
+		GLOBAL.frontendDataMutex.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// append incoming frontend slice to local slice
@@ -169,12 +169,12 @@ func spawnFrontendToFrontend(host string) {
 		}
 
 		if newInfoFound == true {
-			frontendDataMutex.Lock()
-			for i := 0; i < len(frontendData.OtherFrontends); i++ {
-				frontendData.OtherFrontends = appendStringIfMissing(frontendData.OtherFrontends,
-					frontendData.OtherFrontends[i])
+			GLOBAL.frontendDataMutex.Lock()
+			for i := 0; i < len(GLOBAL.frontendData.OtherFrontends); i++ {
+				GLOBAL.frontendData.OtherFrontends = appendStringIfMissing(GLOBAL.frontendData.OtherFrontends,
+					GLOBAL.frontendData.OtherFrontends[i])
 			}
-			frontendDataMutex.Unlock()
+			GLOBAL.frontendDataMutex.Unlock()
 		}
 
 		////////////////////////////////////////////////////////////
@@ -188,9 +188,9 @@ func spawnFrontendToFrontend(host string) {
 			logDebug("(periodicUpdateFrontend) localSlice of galaxies and incomingSlice are both properly sorted")
 		} else {
 			logDebug("(periodicUpdateFrontend) localSlice of galaxies needed to be sorted")
-			frontendDataMutex.Lock()
-			sort.Sort(ByGalaxyName(frontendData.ListOfGalaxies))
-			frontendDataMutex.Unlock()
+			GLOBAL.frontendDataMutex.Lock()
+			sort.Sort(ByGalaxyName(GLOBAL.frontendData.ListOfGalaxies))
+			GLOBAL.frontendDataMutex.Unlock()
 		}
 
 		////////////////////////////////////////////////////////////
@@ -205,9 +205,10 @@ func spawnFrontendToFrontend(host string) {
 					break
 				}
 				if x >= len(copyOfGalaxySlice)-1 {
-					frontendDataMutex.Lock()
-					frontendData.ListOfGalaxies = append(frontendData.ListOfGalaxies, inMsgTemp.ListOfGalaxies[i])
-					frontendDataMutex.Unlock()
+					GLOBAL.frontendDataMutex.Lock()
+					GLOBAL.frontendData.ListOfGalaxies = append(GLOBAL.frontendData.ListOfGalaxies,
+						inMsgTemp.ListOfGalaxies[i])
+					GLOBAL.frontendDataMutex.Unlock()
 				}
 			}
 		}
@@ -242,11 +243,11 @@ func spawnFrontendToFrontend(host string) {
 				}
 			}
 			if len(thisGalaxysNewClientIDs) != 0 {
-				frontendDataMutex.Lock()
-				existingData := &frontendData.ListOfGalaxies[i].ClientIDs
+				GLOBAL.frontendDataMutex.Lock()
+				existingData := &GLOBAL.frontendData.ListOfGalaxies[i].ClientIDs
 				*existingData = append(*existingData, thisGalaxysNewClientIDs...)
 				//fmt.Println("newFrontendData:", frontendData)
-				frontendDataMutex.Unlock()
+				GLOBAL.frontendDataMutex.Unlock()
 			}
 		}
 
@@ -274,11 +275,11 @@ func spawnFrontendToFrontend(host string) {
 				}
 			}
 			if len(thisGalaxysNewBackends) != 0 {
-				frontendDataMutex.Lock()
-				existingData := &frontendData.ListOfGalaxies[i].ClusterOfBackends
+				GLOBAL.frontendDataMutex.Lock()
+				existingData := &GLOBAL.frontendData.ListOfGalaxies[i].ClusterOfBackends
 				*existingData = append(*existingData, thisGalaxysNewBackends...)
 				//fmt.Println("newFrontendData:", frontendData)
-				frontendDataMutex.Unlock()
+				GLOBAL.frontendDataMutex.Unlock()
 			}
 		}
 

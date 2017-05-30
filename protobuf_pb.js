@@ -1078,7 +1078,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.main.SolarSystem.repeatedFields_ = [4,5];
+proto.main.SolarSystem.repeatedFields_ = [4,5,6];
 
 
 
@@ -1115,7 +1115,9 @@ proto.main.SolarSystem.toObject = function(includeInstance, msg) {
     proto.main.Planet.toObject, includeInstance),
     spaceshipsliceList: jspb.Message.toObjectList(msg.getSpaceshipsliceList(),
     proto.main.Spaceship.toObject, includeInstance),
-    type: jspb.Message.getFieldWithDefault(msg, 6, 0)
+    otherobjectsliceList: jspb.Message.toObjectList(msg.getOtherobjectsliceList(),
+    proto.main.OtherObject.toObject, includeInstance),
+    type: jspb.Message.getFieldWithDefault(msg, 7, 0)
   };
 
   if (includeInstance) {
@@ -1175,6 +1177,11 @@ proto.main.SolarSystem.deserializeBinaryFromReader = function(msg, reader) {
       msg.addSpaceshipslice(value);
       break;
     case 6:
+      var value = new proto.main.OtherObject;
+      reader.readMessage(value,proto.main.OtherObject.deserializeBinaryFromReader);
+      msg.addOtherobjectslice(value);
+      break;
+    case 7:
       var value = /** @type {number} */ (reader.readInt32());
       msg.setType(value);
       break;
@@ -1243,10 +1250,18 @@ proto.main.SolarSystem.serializeBinaryToWriter = function(message, writer) {
       proto.main.Spaceship.serializeBinaryToWriter
     );
   }
+  f = message.getOtherobjectsliceList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      6,
+      f,
+      proto.main.OtherObject.serializeBinaryToWriter
+    );
+  }
   f = message.getType();
   if (f !== 0) {
     writer.writeInt32(
-      6,
+      7,
       f
     );
   }
@@ -1365,17 +1380,50 @@ proto.main.SolarSystem.prototype.clearSpaceshipsliceList = function() {
 
 
 /**
- * optional int32 type = 6;
+ * repeated OtherObject otherobjectslice = 6;
+ * If you change this array by adding, removing or replacing elements, or if you
+ * replace the array itself, then you must call the setter to update it.
+ * @return {!Array.<!proto.main.OtherObject>}
+ */
+proto.main.SolarSystem.prototype.getOtherobjectsliceList = function() {
+  return /** @type{!Array.<!proto.main.OtherObject>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.main.OtherObject, 6));
+};
+
+
+/** @param {!Array.<!proto.main.OtherObject>} value */
+proto.main.SolarSystem.prototype.setOtherobjectsliceList = function(value) {
+  jspb.Message.setRepeatedWrapperField(this, 6, value);
+};
+
+
+/**
+ * @param {!proto.main.OtherObject=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.main.OtherObject}
+ */
+proto.main.SolarSystem.prototype.addOtherobjectslice = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 6, opt_value, proto.main.OtherObject, opt_index);
+};
+
+
+proto.main.SolarSystem.prototype.clearOtherobjectsliceList = function() {
+  this.setOtherobjectsliceList([]);
+};
+
+
+/**
+ * optional int32 type = 7;
  * @return {number}
  */
 proto.main.SolarSystem.prototype.getType = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 7, 0));
 };
 
 
 /** @param {number} value */
 proto.main.SolarSystem.prototype.setType = function(value) {
-  jspb.Message.setField(this, 6, value);
+  jspb.Message.setField(this, 7, value);
 };
 
 

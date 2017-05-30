@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
-	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
@@ -12,12 +11,10 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
-	"time"
 
 	cryptorand "crypto/rand"
 
 	"github.com/gorilla/websocket"
-	oauth2 "google.golang.org/api/oauth2/v1"
 )
 
 func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
@@ -29,12 +26,12 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 	client, _, _ := net.SplitHostPort(r.RemoteAddr)
 
 	// checking blacklist and acting on it accordingly
-	if checkFirewall("loadbalanceClients", client, "challenge") != true {
+	if checkFirewall("clientToFrontend", client, "challenge") != true {
 		return
 	}
 
 	////////////////////////////////////////////////////////////
-	// begin processing incoming message
+	// upgrade websocket
 	////////////////////////////////////////////////////////////
 
 	upgrader := websocket.Upgrader{
@@ -42,12 +39,11 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 		WriteBufferSize:   1024,
 		EnableCompression: true,
 	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError("(loadbalanceClients) upgrade error:", err) {
+	if checkError("(clientToFrontend) upgrade error:", err) {
 		return
 	}
-	logDebug("(loadbalanceClients) opening socket:", string(r.RemoteAddr))
+	logDebug("(clientToFrontend) opening socket:", string(r.RemoteAddr))
 
 	////////////////////////////////////////////////////////////
 	// DEFER STATEMENTS
@@ -55,82 +51,27 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	clientSessionCountMutex.Lock()
-	_, ok := clientSessionCount[client]
+	GLOBAL.clientSessionCountMutex.Lock()
+	_, ok := GLOBAL.clientSessionCount[client]
 	if ok {
-		clientSessionCount[client]++
+		GLOBAL.clientSessionCount[client]++
 	} else {
-		clientSessionCount[client] = 1
+		GLOBAL.clientSessionCount[client] = 1
 	}
-	clientSessionCountMutex.Unlock()
+	GLOBAL.clientSessionCountMutex.Unlock()
 
 	defer func() {
-		clientSessionCountMutex.Lock()
-		clientSessionCount[client]--
-		clientSessionCountMutex.Unlock()
+		GLOBAL.clientSessionCountMutex.Lock()
+		GLOBAL.clientSessionCount[client]--
+		GLOBAL.clientSessionCountMutex.Unlock()
 	}()
 
 	////////////////////////////////////////////////////////////
-	// receive JSON message from client
+	// receive and process google authentication
 	////////////////////////////////////////////////////////////
 
-	type incomingMessage struct {
-		LoginType string `json:"login_type"`
-		IDToken   string `json:"id_token"`
-	}
-
-	var inMsg incomingMessage
-	err = conn.ReadJSON(&inMsg)
-	if checkError("(loadbalanceClients) error receiving message:", err) {
+	if handleGoogleAuth("clientToFrontend", conn, client) != true {
 		return
-	}
-	logDebug("(loadbalanceClients) received the following message\n", fmt.Sprintf("%s", inMsg))
-
-	////////////////////////////////////////////////////////////
-	// send id_token to google oauth service
-	////////////////////////////////////////////////////////////
-
-	successful := false
-	var oauth2Service *oauth2.Service // will be used outside of 'for' loop
-	for i := 0; i < constGoogleAuth; i++ {
-		var httpClient = &http.Client{}
-		oauth2Service, err = oauth2.New(httpClient)
-		if checkError("(loadbalanceClients) error contacting google:", err) {
-			continue
-		} else {
-			successful = true
-			break
-		}
-	}
-	if successful == false {
-		currentTime := time.Now().Unix()
-		clientBlacklist[client].Lock()
-		clientBlacklist[client].failedGoogleAuthCount += constGoogleAuth
-		clientBlacklist[client].failedGoogleAuthTime = currentTime
-		clientBlacklist[client].Unlock()
-		return
-	}
-
-	tokenInfoCall := oauth2Service.Tokeninfo()
-	tokenInfoCall.IdToken(inMsg.IDToken)
-	tokenInfo, err := tokenInfoCall.Do()
-	if checkError("(loadbalanceClients) error parsing incoming google response:", err) {
-		conn.Close()
-		return
-	}
-
-	rawJSON, err := tokenInfo.MarshalJSON()
-	if checkError("(loadbalanceClients) error MarshalJSON'ing google response:", err) {
-		conn.Close()
-		return
-	}
-
-	if debugModeBool == true {
-		var prettyJSON bytes.Buffer
-		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
-		checkError("(loadbalanceClients) error jsonIndent'ing google response:", err)
-		logDebug("(loadbalanceClients) received the following message from google:\n",
-			string(prettyJSON.Bytes()))
 	}
 
 	////////////////////////////////////////////////////////////
@@ -145,11 +86,11 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 		Servers []PotentialServers
 	}
 
-	////////////////////////////////////////////////////////////
-	// close websocket with completion
-	////////////////////////////////////////////////////////////
+	/////////////////////
+	/// not completed ///
+	/////////////////////
 
-	logDebug("(loadbalanceClients) closing socket:", string(r.RemoteAddr))
+	logDebug("(clientToFrontend) closing socket:", string(r.RemoteAddr))
 }
 
 func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
@@ -182,21 +123,21 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	clientSessionCountMutex.Lock()
-	_, ok := clientSessionCount[client]
+	GLOBAL.clientSessionCountMutex.Lock()
+	_, ok := GLOBAL.clientSessionCount[client]
 	if ok {
-		clientSessionCount[client]++
+		GLOBAL.clientSessionCount[client]++
 	} else {
-		clientSessionCount[client] = 1
+		GLOBAL.clientSessionCount[client] = 1
 		logDebug("(handshakeBackend) setting 'clientSessionCount' to ONE",
 			"for this client:", client)
 	}
-	clientSessionCountMutex.Unlock()
+	GLOBAL.clientSessionCountMutex.Unlock()
 
 	defer func() {
-		clientSessionCountMutex.Lock()
-		clientSessionCount[client]--
-		clientSessionCountMutex.Unlock()
+		GLOBAL.clientSessionCountMutex.Lock()
+		GLOBAL.clientSessionCount[client]--
+		GLOBAL.clientSessionCountMutex.Unlock()
 	}()
 
 	logDebug("(handshakeBackend) opening socket:", string(r.RemoteAddr))
@@ -365,11 +306,17 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 			outMsgTemp.GalaxyName = galName
 			outMsgTemp.Message = yourgalaxyname
 
-			frontendDataMutex.RLock()
-			galIndex := frontendData.GetGalIndexOf(galName)
-			frontendDataMutex.RUnlock()
+			GLOBAL.frontendDataMutex.RLock()
+			galIndex := -1
+			for i := 0; i < len(GLOBAL.frontendData.ListOfGalaxies); i++ {
+				if GLOBAL.frontendData.ListOfGalaxies[i].GalaxyName == galName {
+					galIndex = i
+					break
+				}
+			}
+			GLOBAL.frontendDataMutex.RUnlock()
 			if galIndex == -1 {
-				frontendDataMutex.Lock()
+				GLOBAL.frontendDataMutex.Lock()
 				newObjectForSlice := galInfo{}
 				newObjectForSlice.GalaxyName = galName
 				newObjectForSlice.GlobalX = glblX
@@ -377,8 +324,8 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 				newObjectForSlice.ClientIDs = []string{}
 				newObjectForSlice.ClusterOfBackends = []string{client}
 				// TODO // need to remove backend from galaxyInfo.Backends on disconnect
-				frontendData.ListOfGalaxies = append(frontendData.ListOfGalaxies, newObjectForSlice)
-				frontendDataMutex.Unlock()
+				GLOBAL.frontendData.ListOfGalaxies = append(GLOBAL.frontendData.ListOfGalaxies, newObjectForSlice)
+				GLOBAL.frontendDataMutex.Unlock()
 			} else {
 				logInfo("(periodicUpdateBackend) galaxy that we JUST generated already exists (fatalerror)")
 				return
@@ -414,13 +361,19 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 
 		outMsgTemp.GalaxyName = galName
 
-		frontendDataMutex.RLock()
-		galIndex := frontendData.GetGalIndexOf(galName)
-		outMsgTemp.GlobalX = frontendData.ListOfGalaxies[galIndex].GlobalX
-		outMsgTemp.GlobalY = frontendData.ListOfGalaxies[galIndex].GlobalY
-		outMsgTemp.OtherFrontends = frontendData.OtherFrontends
-		outMsgTemp.OtherBackends = frontendData.ListOfGalaxies[galIndex].ClusterOfBackends
-		frontendDataMutex.RUnlock()
+		GLOBAL.frontendDataMutex.RLock()
+		galIndex := -1
+		for i := 0; i < len(GLOBAL.frontendData.ListOfGalaxies); i++ {
+			if GLOBAL.frontendData.ListOfGalaxies[i].GalaxyName == galName {
+				galIndex = i
+				break
+			}
+		}
+		outMsgTemp.GlobalX = GLOBAL.frontendData.ListOfGalaxies[galIndex].GlobalX
+		outMsgTemp.GlobalY = GLOBAL.frontendData.ListOfGalaxies[galIndex].GlobalY
+		outMsgTemp.OtherFrontends = GLOBAL.frontendData.OtherFrontends
+		outMsgTemp.OtherBackends = GLOBAL.frontendData.ListOfGalaxies[galIndex].ClusterOfBackends
+		GLOBAL.frontendDataMutex.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
@@ -488,21 +441,21 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 	// modify sessionCount accordingly
 	////////////////////////////////////////////////////////////
 
-	clientSessionCountMutex.Lock()
-	_, ok := clientSessionCount[client]
+	GLOBAL.clientSessionCountMutex.Lock()
+	_, ok := GLOBAL.clientSessionCount[client]
 	if ok {
-		clientSessionCount[client]++
+		GLOBAL.clientSessionCount[client]++
 	} else {
-		clientSessionCount[client] = 1
+		GLOBAL.clientSessionCount[client] = 1
 		logDebug("(handshakeFrontend) setting 'clientSessionCount' to ONE",
 			"for this client:", client)
 	}
-	clientSessionCountMutex.Unlock()
+	GLOBAL.clientSessionCountMutex.Unlock()
 
 	defer func() {
-		clientSessionCountMutex.Lock()
-		clientSessionCount[client]--
-		clientSessionCountMutex.Unlock()
+		GLOBAL.clientSessionCountMutex.Lock()
+		GLOBAL.clientSessionCount[client]--
+		GLOBAL.clientSessionCountMutex.Unlock()
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -519,10 +472,10 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 
 	var (
-		inMsgTemp       = FrontendDataStruct{}
-		inMsgReference  = FrontendDataStruct{}
-		outMsgTemp      = FrontendDataStruct{}
-		outMsgReference = FrontendDataStruct{}
+		inMsgTemp       = frontendDataStruct{}
+		inMsgReference  = frontendDataStruct{}
+		outMsgTemp      = frontendDataStruct{}
+		outMsgReference = frontendDataStruct{}
 	)
 
 	////////////////////////////////////////////////////////////
@@ -535,8 +488,8 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// zeroing out temp messages (important)
 		////////////////////////////////////////////////////////////
 
-		inMsgTemp = FrontendDataStruct{}
-		outMsgTemp = FrontendDataStruct{}
+		inMsgTemp = frontendDataStruct{}
+		outMsgTemp = frontendDataStruct{}
 
 		////////////////////////////////////////////////////////////
 		// wait for message from Frontend
@@ -585,12 +538,12 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// append incoming frontend slice to local slice
 		////////////////////////////////////////////////////////////
 
-		frontendDataMutex.RLock()
-		copyOfFrontendSlice := make([]string, len(frontendData.OtherFrontends))
-		copy(copyOfFrontendSlice, frontendData.OtherFrontends)
-		copyOfGalaxySlice := make([]galInfo, len(frontendData.ListOfGalaxies))
-		copy(copyOfGalaxySlice, frontendData.ListOfGalaxies)
-		frontendDataMutex.RUnlock()
+		GLOBAL.frontendDataMutex.RLock()
+		copyOfFrontendSlice := make([]string, len(GLOBAL.frontendData.OtherFrontends))
+		copy(copyOfFrontendSlice, GLOBAL.frontendData.OtherFrontends)
+		copyOfGalaxySlice := make([]galInfo, len(GLOBAL.frontendData.ListOfGalaxies))
+		copy(copyOfGalaxySlice, GLOBAL.frontendData.ListOfGalaxies)
+		GLOBAL.frontendDataMutex.RUnlock()
 
 		newInfoFound := false
 		for i := 0; i < len(inMsgTemp.OtherFrontends); i++ {
@@ -610,12 +563,12 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if newInfoFound == true {
-			frontendDataMutex.Lock()
-			for i := 0; i < len(frontendData.OtherFrontends); i++ {
-				frontendData.OtherFrontends = appendStringIfMissing(frontendData.OtherFrontends,
-					frontendData.OtherFrontends[i])
+			GLOBAL.frontendDataMutex.Lock()
+			for i := 0; i < len(GLOBAL.frontendData.OtherFrontends); i++ {
+				GLOBAL.frontendData.OtherFrontends = appendStringIfMissing(GLOBAL.frontendData.OtherFrontends,
+					GLOBAL.frontendData.OtherFrontends[i])
 			}
-			frontendDataMutex.Unlock()
+			GLOBAL.frontendDataMutex.Unlock()
 		}
 
 		////////////////////////////////////////////////////////////
@@ -629,9 +582,9 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 			logDebug("(periodicUpdateFrontend) localSlice of galaxies and incomingSlice are both properly sorted")
 		} else {
 			logDebug("(periodicUpdateFrontend) localSlice of galaxies needed to be sorted")
-			frontendDataMutex.Lock()
-			sort.Sort(ByGalaxyName(frontendData.ListOfGalaxies))
-			frontendDataMutex.Unlock()
+			GLOBAL.frontendDataMutex.Lock()
+			sort.Sort(ByGalaxyName(GLOBAL.frontendData.ListOfGalaxies))
+			GLOBAL.frontendDataMutex.Unlock()
 		}
 
 		////////////////////////////////////////////////////////////
@@ -646,9 +599,10 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				if x >= len(copyOfGalaxySlice)-1 {
-					frontendDataMutex.Lock()
-					frontendData.ListOfGalaxies = append(frontendData.ListOfGalaxies, inMsgTemp.ListOfGalaxies[i])
-					frontendDataMutex.Unlock()
+					GLOBAL.frontendDataMutex.Lock()
+					GLOBAL.frontendData.ListOfGalaxies = append(GLOBAL.frontendData.ListOfGalaxies,
+						inMsgTemp.ListOfGalaxies[i])
+					GLOBAL.frontendDataMutex.Unlock()
 				}
 			}
 		}
@@ -683,11 +637,11 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if len(thisGalaxysNewClientIDs) != 0 {
-				frontendDataMutex.Lock()
-				existingData := &frontendData.ListOfGalaxies[i].ClientIDs
+				GLOBAL.frontendDataMutex.Lock()
+				existingData := &GLOBAL.frontendData.ListOfGalaxies[i].ClientIDs
 				*existingData = append(*existingData, thisGalaxysNewClientIDs...)
 				//fmt.Println("newFrontendData:", frontendData)
-				frontendDataMutex.Unlock()
+				GLOBAL.frontendDataMutex.Unlock()
 			}
 		}
 
@@ -715,11 +669,11 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if len(thisGalaxysNewBackends) != 0 {
-				frontendDataMutex.Lock()
-				existingData := &frontendData.ListOfGalaxies[i].ClusterOfBackends
+				GLOBAL.frontendDataMutex.Lock()
+				existingData := &GLOBAL.frontendData.ListOfGalaxies[i].ClusterOfBackends
 				*existingData = append(*existingData, thisGalaxysNewBackends...)
 				//fmt.Println("newFrontendData:", frontendData)
-				frontendDataMutex.Unlock()
+				GLOBAL.frontendDataMutex.Unlock()
 			}
 		}
 
@@ -727,27 +681,27 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// finish putting together outgoing message
 		////////////////////////////////////////////////////////////
 
-		frontendDataMutex.RLock()
+		GLOBAL.frontendDataMutex.RLock()
 
 		foundMatch := false
 		myIPaddr, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-		for i := 0; i < len(frontendData.OtherFrontends); i++ {
-			if frontendData.OtherFrontends[i] == myIPaddr {
+		for i := 0; i < len(GLOBAL.frontendData.OtherFrontends); i++ {
+			if GLOBAL.frontendData.OtherFrontends[i] == myIPaddr {
 				foundMatch = true
 				break
 			}
 		}
 		if foundMatch == false {
-			outMsgTemp.OtherFrontends = append(frontendData.OtherFrontends, myIPaddr)
+			outMsgTemp.OtherFrontends = append(GLOBAL.frontendData.OtherFrontends, myIPaddr)
 		}
 
 		for i := 0; i < len(copyOfGalaxySlice); i++ {
-			outMsgTemp.ListOfGalaxies[i].GalaxyName = frontendData.ListOfGalaxies[i].GalaxyName
-			outMsgTemp.ListOfGalaxies[i].GlobalX = frontendData.ListOfGalaxies[i].GlobalX
-			outMsgTemp.ListOfGalaxies[i].GlobalY = frontendData.ListOfGalaxies[i].GlobalY
+			outMsgTemp.ListOfGalaxies[i].GalaxyName = GLOBAL.frontendData.ListOfGalaxies[i].GalaxyName
+			outMsgTemp.ListOfGalaxies[i].GlobalX = GLOBAL.frontendData.ListOfGalaxies[i].GlobalX
+			outMsgTemp.ListOfGalaxies[i].GlobalY = GLOBAL.frontendData.ListOfGalaxies[i].GlobalY
 		}
 
-		frontendDataMutex.RUnlock()
+		GLOBAL.frontendDataMutex.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
@@ -757,7 +711,7 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			outMsgTemp = FrontendDataStruct{Message: sameaslasttime}
+			outMsgTemp = frontendDataStruct{Message: sameaslasttime}
 		}
 
 		var networkOut bytes.Buffer

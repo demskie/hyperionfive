@@ -20,16 +20,12 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 func startBackendMode() {
 
 	// initialize primary data structures
-	backendData = BackendDataStruct{}
-	currentGalaxy = Galaxy{}
-	futureGalaxy = Galaxy{}
+	GLOBAL.backendData = backendDataStruct{}
+	GLOBAL.currentGalaxy = Galaxy{}
+	GLOBAL.futureGalaxy = Galaxy{}
 
 	// easy on/off handle for debugging purposes
 	var enabled bool
@@ -45,7 +41,7 @@ func startBackendMode() {
 	}
 
 	////////////////////////////////////////////////////////////
-	// process CLI parameters to potentially import data
+	// handle CLI parameters
 	////////////////////////////////////////////////////////////
 
 	enabled = false
@@ -84,74 +80,34 @@ func startBackendMode() {
 	// start communication with other Backend servers
 	////////////////////////////////////////////////////////////
 
+	enabled = true
+	if enabled {
+		go kickoffBackendCommunication()
+	}
+
+	////////////////////////////////////////////////////////////
+	// game loop
+	////////////////////////////////////////////////////////////
+
 	go func() {
-		connectedBackends := []Backend{}
-		idleConnectedBackends := []Backend{}
-		// https://play.golang.org/p/pFWNe6CGxd
+		GLOBAL.tickChan = make(chan struct{})
 
-		seed := func() rand.Source {
-			var randomness int64
-			b := make([]byte, 8)
-			cryptorand.Read(b)
-			buf := bytes.NewBuffer(b)
-			binary.Read(buf, binary.LittleEndian, &randomness)
-			return rand.NewSource(randomness)
+		GLOBAL.currentGalaxy = GLOBAL.futureGalaxy
+
+		GLOBAL.waitForCores.Add(GLOBAL.numberOfCores)
+		numPlayers := len(GLOBAL.currentGalaxy.GetSolarsystemslice())
+		playersPerCore := numPlayers / GLOBAL.numberOfCores
+		for i := 0; i < GLOBAL.numberOfCores; i++ {
+			coreNum := i + 1
+			stopIndex := playersPerCore * coreNum
+			startIndex := stopIndex - playersPerCore
+			go func() {
+				result := walkGalaxyForPlayers(startIndex, stopIndex)
+			}()
 		}
-		rnum := rand.New(seed())
+		GLOBAL.waitForCores.Wait()
 
-		for {
-
-			backendDataMutex.RLock()
-			copyOtherBackends := backendData.Backends
-			backendDataMutex.RUnlock()
-
-			connectedBackendsMutex.RLock()
-			copyConnectedBackends := connectedBackends
-			connectedBackendsMutex.RUnlock()
-			numConnectedBackends := len(copyConnectedBackends)
-
-			idleConnectedBackendsMutex.RLock()
-			copyIdleConnectedBackends := idleConnectedBackends
-			idleConnectedBackendsMutex.RUnlock()
-			numIdleConnectedBackends := len(copyIdleConnectedBackends)
-
-			// we want the list of reference backends to not include Servers we're already connected to
-			for i := 0; i < numConnectedBackends; i++ {
-				copyOtherBackends = removeStringIfPresent(copyOtherBackends, copyConnectedBackends[i].ServerIP)
-			}
-			numOtherBackends := len(copyOtherBackends)
-
-			// we want a list of backends that do not include Servers we have an idle connection with
-			copyOtherBackendsNotIdle := copyOtherBackends
-			for i := 0; i < numConnectedBackends; i++ {
-				copyOtherBackendsNotIdle = removeStringIfPresent(copyOtherBackendsNotIdle,
-					copyConnectedBackends[i].ServerIP)
-			}
-			numOtherBackendsNotIdle := len(copyOtherBackendsNotIdle)
-
-			if numIdleConnectedBackends < idleConnectedBackendsLimit {
-				numNewIdleConnections := idleConnectedBackendsLimit - numIdleConnectedBackends
-				randPerm := rnum.Perm(numOtherBackendsNotIdle)
-				for i := 0; i < numNewIdleConnections; i++ {
-					randIndex := randPerm[i]
-					randBackendHost := copyOtherBackendsNotIdle[randIndex]
-					go spawnPingPongBackend(randBackendHost)
-				}
-				time.Sleep(1000 * time.Millisecond)
-			}
-
-			if numConnectedBackends < connectedBackendsLimit {
-				numNewConnections := connectedBackendsLimit - numConnectedBackends
-				randPerm := rnum.Perm(numOtherBackends)
-				for i := 0; i < numNewConnections; i++ {
-					randIndex := randPerm[i]
-					randBackendHost := copyOtherBackends[randIndex]
-					go spawnBackendToBackend(randBackendHost)
-				}
-			}
-
-			time.Sleep(100 * time.Millisecond)
-		}
+		close(GLOBAL.tickChan)
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -204,7 +160,7 @@ func startBackendMode() {
 	go func() {
 		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
 		if checkError("(ListenAndServeTLS) Something went wrong:", errServeTLS) {
-			waitForLogging.Wait()
+			GLOBAL.waitForLogging.Wait()
 			//os.Exit(1)
 		}
 	}()
@@ -215,11 +171,132 @@ func startBackendMode() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Copypasta'd from:
+// https://rogpeppe.wordpress.com/2009/12/01/concurrent-idioms-1-broadcasting-values-in-go-with-linked-channels/
+// https://play.golang.org/p/HCbY04zIg3
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func kickoffBackendCommunication() {
+	GLOBAL.connectedBackends = []backend{}
+	GLOBAL.idleConnectedBackends = []backend{}
+	// https://play.golang.org/p/pFWNe6CGxd
+
+	seed := func() rand.Source {
+		var randomness int64
+		b := make([]byte, 8)
+		cryptorand.Read(b)
+		buf := bytes.NewBuffer(b)
+		binary.Read(buf, binary.LittleEndian, &randomness)
+		return rand.NewSource(randomness)
+	}
+	rnum := rand.New(seed())
+
+	for {
+
+		GLOBAL.backendDataMutex.RLock()
+		copyOtherBackends := GLOBAL.backendData.Backends
+		GLOBAL.backendDataMutex.RUnlock()
+
+		GLOBAL.connectedBackendsMutex.RLock()
+		copyConnectedBackends := GLOBAL.connectedBackends
+		GLOBAL.connectedBackendsMutex.RUnlock()
+		numConnectedBackends := len(copyConnectedBackends)
+
+		GLOBAL.idleConnectedBackendsMutex.RLock()
+		copyIdleConnectedBackends := GLOBAL.idleConnectedBackends
+		GLOBAL.idleConnectedBackendsMutex.RUnlock()
+		numIdleConnectedBackends := len(copyIdleConnectedBackends)
+
+		// we want the list of reference backends to not include Servers we're already connected to
+		for i := 0; i < numConnectedBackends; i++ {
+			copyOtherBackends = removeStringIfPresent(copyOtherBackends, copyConnectedBackends[i].ServerIP)
+		}
+		numOtherBackends := len(copyOtherBackends)
+
+		// we want a list of backends that do not include Servers we have an idle connection with
+		copyOtherBackendsNotIdle := copyOtherBackends
+		for i := 0; i < numConnectedBackends; i++ {
+			copyOtherBackendsNotIdle = removeStringIfPresent(copyOtherBackendsNotIdle,
+				copyConnectedBackends[i].ServerIP)
+		}
+		numOtherBackendsNotIdle := len(copyOtherBackendsNotIdle)
+
+		if numIdleConnectedBackends < idleConnectedBackendsLimit {
+			numNewIdleConnections := idleConnectedBackendsLimit - numIdleConnectedBackends
+			randPerm := rnum.Perm(numOtherBackendsNotIdle)
+			for i := 0; i < numNewIdleConnections; i++ {
+				randIndex := randPerm[i]
+				randBackendHost := copyOtherBackendsNotIdle[randIndex]
+				go spawnPingPongBackend(randBackendHost)
+			}
+			time.Sleep(1000 * time.Millisecond)
+		}
+
+		if numConnectedBackends < connectedBackendsLimit {
+			numNewConnections := connectedBackendsLimit - numConnectedBackends
+			randPerm := rnum.Perm(numOtherBackends)
+			for i := 0; i < numNewConnections; i++ {
+				randIndex := randPerm[i]
+				randBackendHost := copyOtherBackends[randIndex]
+				go spawnBackendToBackend(randBackendHost)
+			}
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
+	systemPtrs := map[string][]*SolarSystem{}
+	for i := startIndex; i < stopIndex; i++ {
+		solarsystem := GLOBAL.currentGalaxy.Solarsystemslice[i]
+
+		addOwner := func(owner string) {
+			if owner == "" {
+				return
+			}
+			_, ok := systemPtrs[owner]
+			if !ok {
+				systemPtrs[owner] = []*SolarSystem{solarsystem}
+			} else {
+				foundMatch := false
+				for _, thisSystem := range systemPtrs[owner] {
+					if thisSystem == solarsystem {
+						foundMatch = true
+					}
+				}
+				if foundMatch == false {
+					systemPtrs[owner] = append(systemPtrs[owner], solarsystem)
+				}
+			}
+		}
+
+		for _, planet := range solarsystem.Planetslice {
+			addOwner(planet.GetOwner())
+		}
+		for _, spaceship := range solarsystem.Spaceshipslice {
+			addOwner(spaceship.GetOwner())
+		}
+		for _, otherobject := range solarsystem.Otherobjectslice {
+			addOwner(otherobject.GetOwner())
+		}
+	}
+
+	return systemPtrs
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func gracefullyCloseBackend() {
 
-	foundMatch, _ := regexp.MatchString(".*blob$", outputFile)
-	if outputFile == "" || foundMatch {
-		protoOut, err := proto.Marshal(&currentGalaxy)
+	foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.outputFile)
+	if GLOBAL.outputFile == "" || foundMatch {
+		protoOut, err := proto.Marshal(&GLOBAL.currentGalaxy)
 		if err != nil {
 			log.Fatalln("Failed to PROTOBUF encode Galaxy:", err)
 		}
@@ -227,24 +304,20 @@ func gracefullyCloseBackend() {
 			log.Fatalln("Failed to write Galaxy:", err)
 		}
 	} else {
-		jsonOut, err := json.MarshalIndent(currentGalaxy, "", "  ")
+		jsonOut, err := json.MarshalIndent(GLOBAL.currentGalaxy, "", "  ")
 		if err != nil {
 			log.Fatalln("Failed to JSON encode Galaxy:", err)
 		}
-		if err := ioutil.WriteFile(outputFile, jsonOut, 0644); err != nil {
+		if err := ioutil.WriteFile(GLOBAL.outputFile, jsonOut, 0644); err != nil {
 			log.Fatalln("Failed to write Galaxy:", err)
 		}
 	}
 
 	// wait for logging to complete
 	logInfo("PROGRAM EXITING GRACEFULLY")
-	waitForLogging.Wait()
+	GLOBAL.waitForLogging.Wait()
 
 	// halt all further execution
 	os.Exit(1)
 
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////

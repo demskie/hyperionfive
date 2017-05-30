@@ -12,9 +12,12 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"regexp"
 	"runtime"
 	"sync"
+
+	oauth2 "google.golang.org/api/oauth2/v1"
 
 	"flag"
 	"math"
@@ -23,7 +26,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dhconnelly/rtreego"
 	"github.com/fatih/color"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
@@ -33,58 +35,61 @@ import (
 
 func init() {
 
+	// sorry not sorry
+	GLOBAL = globalVars{}
+
 	// start logging routine
 	logInfoChan = make(chan string)
 	logInfo("(initLogInfo) - init completed")
 	go handleLogging()
 
 	// initializing global IP blacklist
-	clientBlacklist = map[string]*FirewallClientValues{}
+	GLOBAL.clientBlacklist = map[string]*firewallClientValues{}
 
 	// initializing global IP session count
-	clientSessionCount = make(map[string]uint16)
+	GLOBAL.clientSessionCount = make(map[string]uint16)
 
 	// define commandline flags to parse for
-	galaxyName = *flag.String("galaxyname", "", "specify galaxy name")
-	inputFile = *flag.String("input", "", "specify data source, either json or blob")
-	outputFile = *flag.String("output", "", "override export destination, either json or blob")
-	googleAudience = *flag.String("audience", "", "override google oauth audience")
-	authPassword = *flag.String("password", "", "specify password for authentication purposes")
-	staticFrontend = *flag.String("staticfrontend", "", "specify static frontend address")
-	frontendBool = *flag.Bool("frontend", false, "enable frontend mode")
-	backendBool = *flag.Bool("backend", false, "enable backend mode")
-	createGalaxyBool = *flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
-	debugModeBool = *flag.Bool("debug", false, "enable debug logging")
-	singleThreadedBool = *flag.Bool("singlethreaded", false, "force singlethreaded behavior")
+	GLOBAL.galaxyName = *flag.String("galaxyname", "", "specify galaxy name")
+	GLOBAL.inputFile = *flag.String("input", "", "specify data source, either json or blob")
+	GLOBAL.outputFile = *flag.String("output", "", "override export destination, either json or blob")
+	GLOBAL.googleAudience = *flag.String("audience", "", "override google oauth audience")
+	GLOBAL.authPassword = *flag.String("password", "", "specify password for authentication purposes")
+	GLOBAL.staticFrontend = *flag.String("staticfrontend", "", "specify static frontend address")
+	GLOBAL.frontendBool = *flag.Bool("frontend", false, "enable frontend mode")
+	GLOBAL.backendBool = *flag.Bool("backend", false, "enable backend mode")
+	GLOBAL.createGalaxyBool = *flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
+	GLOBAL.debugModeBool = *flag.Bool("debug", false, "enable debug logging")
+	GLOBAL.singleThreadedBool = *flag.Bool("singlethreaded", false, "force singlethreaded behavior")
 
 	// pull flags attached to CLI invocation
 	flag.Parse()
 
 	// handle default and/or invalid parameters
-	if googleAudience == "" {
-		googleAudience = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
+	if GLOBAL.googleAudience == "" {
+		GLOBAL.googleAudience = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
 	}
-	if authPassword == "" {
+	if GLOBAL.authPassword == "" {
 		logInfo("(init) FATALERROR: no password provided")
-		waitForLogging.Wait()
+		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
 	}
 	switch {
-	case backendBool == false && frontendBool == false:
+	case GLOBAL.backendBool == false && GLOBAL.frontendBool == false:
 		logInfo("(init) FATALERROR: no backend/frontend mode specified")
-		waitForLogging.Wait()
+		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
-	case backendBool == true && frontendBool == true:
+	case GLOBAL.backendBool == true && GLOBAL.frontendBool == true:
 		logInfo("(init) FATALERROR: BOTH backend/frontend mode specified - DoesNotCompute")
-		waitForLogging.Wait()
+		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
 	}
 
 	// singlethreaded mode for debugging (and emergencies)
-	if singleThreadedBool {
-		numberOfCores = 1
+	if GLOBAL.singleThreadedBool {
+		GLOBAL.numberOfCores = 1
 	} else {
-		numberOfCores = runtime.NumCPU()
+		GLOBAL.numberOfCores = runtime.NumCPU()
 	}
 }
 
@@ -93,18 +98,18 @@ func init() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func main() {
-	if frontendBool == true {
+	if GLOBAL.frontendBool == true {
 		startFrontendMode()
 		for len(logInfoChan) != 0 {
 			time.Sleep(time.Second)
 		}
-		loggingMutex.Lock()
+		GLOBAL.loggingMutex.Lock()
 		fmt.Println("")
 		fmt.Println("##############################################")
 		fmt.Println("#     Frontend has finished executing!!!     #")
 		fmt.Println("##############################################")
 		fmt.Println("")
-		loggingMutex.Unlock()
+		GLOBAL.loggingMutex.Unlock()
 		time.Sleep(1 * time.Hour)
 		os.Exit(1)
 	} else {
@@ -112,13 +117,13 @@ func main() {
 		for len(logInfoChan) != 0 {
 			time.Sleep(time.Second)
 		}
-		loggingMutex.Lock()
+		GLOBAL.loggingMutex.Lock()
 		fmt.Println("")
 		fmt.Println("##############################################")
 		fmt.Println("#     Backend has finished executing!!!      #")
 		fmt.Println("##############################################")
 		fmt.Println("")
-		loggingMutex.Unlock()
+		GLOBAL.loggingMutex.Unlock()
 		time.Sleep(1 * time.Hour)
 		os.Exit(1)
 	}
@@ -132,8 +137,8 @@ func checkFirewall(fName string, client string, check string) bool {
 
 	fName = "(" + fName + ") "
 
-	clientBlacklist[client].RLock()
-	_, exists := clientBlacklist[client]
+	GLOBAL.clientBlacklist[client].RLock()
+	_, exists := GLOBAL.clientBlacklist[client]
 
 	if exists == true {
 		var limit int
@@ -142,16 +147,16 @@ func checkFirewall(fName string, client string, check string) bool {
 		switch check {
 		case "challenge":
 			limit = constChallenge
-			count = clientBlacklist[client].failedChallengeCount
-			lastTime = clientBlacklist[client].failedChallengeTime
+			count = GLOBAL.clientBlacklist[client].FailedChallengeCount
+			lastTime = GLOBAL.clientBlacklist[client].FailedChallengeTime
 		case "googleAuth":
 			limit = constGoogleAuth
-			count = clientBlacklist[client].failedGoogleAuthCount
-			lastTime = clientBlacklist[client].failedGoogleAuthTime
+			count = GLOBAL.clientBlacklist[client].FailedGoogleAuthCount
+			lastTime = GLOBAL.clientBlacklist[client].FailedGoogleAuthTime
 		case "sessionLimit":
 			limit = constClientSession
-			count = clientBlacklist[client].failedSessionLimitCount
-			lastTime = clientBlacklist[client].failedSessionLimitTime
+			count = GLOBAL.clientBlacklist[client].FailedSessionLimitCount
+			lastTime = GLOBAL.clientBlacklist[client].FailedSessionLimitTime
 		default:
 			logInfo(fName + "checkFirewallHistory was given an invalid 'check' parameter")
 			return false
@@ -167,15 +172,89 @@ func checkFirewall(fName string, client string, check string) bool {
 				"\n\tnumberOfOffenses:", string(count))
 			return false
 		}
-		clientBlacklist[client].RUnlock()
+		GLOBAL.clientBlacklist[client].RUnlock()
 	} else {
-		clientBlacklistMutex.Lock()
-		clientBlacklist[client] = &FirewallClientValues{}
-		clientBlacklistMutex.Unlock()
+		GLOBAL.clientBlacklistMutex.Lock()
+		GLOBAL.clientBlacklist[client] = &firewallClientValues{}
+		GLOBAL.clientBlacklistMutex.Unlock()
 		return true
 	}
 
 	return true
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func handleGoogleAuth(fName string, conn *websocket.Conn, client string) bool {
+
+	// string that will be appended to log messages
+	fName = "(" + fName + ") "
+
+	////////////////////////////////////////////////////////////
+	// receive JSON message from client
+	////////////////////////////////////////////////////////////
+
+	type incomingMessage struct {
+		LoginType string `json:"login_type"`
+		IDToken   string `json:"id_token"`
+	}
+
+	var inMsg incomingMessage
+	err := conn.ReadJSON(&inMsg)
+	if checkError(fName+"error receiving message:", err) {
+		return false
+	}
+	logDebug(fName+"received the following message\n", fmt.Sprintf("%s", inMsg))
+
+	////////////////////////////////////////////////////////////
+	// send id_token to google oauth service
+	////////////////////////////////////////////////////////////
+
+	successful := false
+	var oauth2Service *oauth2.Service // will be used outside of 'for' loop
+	for i := 0; i < constGoogleAuth; i++ {
+		var httpClient = &http.Client{}
+		oauth2Service, err = oauth2.New(httpClient)
+		if checkError(fName+"error contacting google:", err) {
+			continue
+		} else {
+			successful = true
+			break
+		}
+	}
+	if successful == false {
+		currentTime := time.Now().Unix()
+		GLOBAL.clientBlacklist[client].Lock()
+		GLOBAL.clientBlacklist[client].FailedGoogleAuthCount += constGoogleAuth
+		GLOBAL.clientBlacklist[client].FailedGoogleAuthTime = currentTime
+		GLOBAL.clientBlacklist[client].Unlock()
+		return false
+	}
+
+	tokenInfoCall := oauth2Service.Tokeninfo()
+	tokenInfoCall.IdToken(inMsg.IDToken)
+	tokenInfo, err := tokenInfoCall.Do()
+	if checkError(fName+"error parsing incoming google response:", err) {
+		return false
+	}
+
+	rawJSON, err := tokenInfo.MarshalJSON()
+	if checkError(fName+"error MarshalJSON'ing google response:", err) {
+		return false
+	}
+
+	if GLOBAL.debugModeBool == true {
+		var prettyJSON bytes.Buffer
+		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
+		checkError(fName+"error jsonIndent'ing google response:", err)
+		logDebug(fName+"received the following message from google:\n",
+			string(prettyJSON.Bytes()))
+	}
+
+	return true
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,14 +289,14 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 		logDebug(fName+"received a challenge with invalid length:",
 			string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
-		clientBlacklistMutex.RLock()
-		clientFirewallValues, exists := clientBlacklist[clientIP]
-		clientBlacklistMutex.RUnlock()
+		GLOBAL.clientBlacklistMutex.RLock()
+		_, exists := GLOBAL.clientBlacklist[clientIP]
+		GLOBAL.clientBlacklistMutex.RUnlock()
 		if exists == true {
-			clientFirewallValues.Lock()
-			clientFirewallValues.failedChallengeCount++
-			clientFirewallValues.failedChallengeTime = currentTime
-			clientFirewallValues.Unlock()
+			GLOBAL.clientBlacklist[clientIP].Lock()
+			GLOBAL.clientBlacklist[clientIP].FailedChallengeCount++
+			GLOBAL.clientBlacklist[clientIP].FailedChallengeTime = currentTime
+			GLOBAL.clientBlacklist[clientIP].Unlock()
 			return false
 		}
 	}
@@ -234,7 +313,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	}
 
 	// generate response hash based on challenge and our secret password
-	response := generateHMAC([]byte(authPassword), dataChallengeArray)
+	response := generateHMAC([]byte(GLOBAL.authPassword), dataChallengeArray)
 	logDebug(fName+"computed the following response:",
 		"\n", base64.StdEncoding.EncodeToString(response))
 
@@ -290,7 +369,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 
 	// generate localHash to compare
 	var correctResponse []byte
-	correctResponse = generateHMAC([]byte(authPassword), remoteHashArray)
+	correctResponse = generateHMAC([]byte(GLOBAL.authPassword), remoteHashArray)
 
 	// check for equality
 	if hmac.Equal(correctResponse, remoteHash) != true {
@@ -367,7 +446,7 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 
 	// generate response hash based on challenge and our secret password
 	var correctResponse []byte
-	correctResponse = generateHMAC([]byte(authPassword), dataChallengeArray)
+	correctResponse = generateHMAC([]byte(GLOBAL.authPassword), dataChallengeArray)
 
 	// compare locally generated hash to received hash
 	remoteHash, _ := base64.StdEncoding.DecodeString(inMsg.Response)
@@ -390,7 +469,7 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 	copy(remoteChallengeArray[:], remoteChallenge)
 
 	// generate response hash based on challenge and our secret password
-	ourResponse := generateHMAC([]byte(authPassword), remoteChallengeArray)
+	ourResponse := generateHMAC([]byte(GLOBAL.authPassword), remoteChallengeArray)
 	logDebug(fName+"local hash for challenge sent by LoadBalancer:",
 		"\n", base64.StdEncoding.EncodeToString(ourResponse))
 
@@ -509,9 +588,9 @@ func handleLogging() {
 				break
 			}
 		}
-		loggingMutex.Lock()
+		GLOBAL.loggingMutex.Lock()
 		color.White(singleMessage)
-		loggingMutex.Unlock()
+		GLOBAL.loggingMutex.Unlock()
 	}
 }
 
@@ -536,9 +615,9 @@ func checkError(message string, err error) bool {
 		go func() {
 			t := time.Now().UTC().Format("2006-01-02 15:04:05")
 			err := err.Error() // convert err to string
-			loggingMutex.Lock()
+			GLOBAL.loggingMutex.Lock()
 			color.Red(t + " " + message + err)
-			loggingMutex.Unlock()
+			GLOBAL.loggingMutex.Unlock()
 		}()
 	} else {
 		errorFound = false
@@ -547,7 +626,7 @@ func checkError(message string, err error) bool {
 }
 
 func logDebug(arrayOfStrings ...string) {
-	if debugModeBool == true {
+	if GLOBAL.debugModeBool == true {
 		var message string
 		for i := range arrayOfStrings {
 			if i > 0 {
@@ -556,9 +635,9 @@ func logDebug(arrayOfStrings ...string) {
 			message += arrayOfStrings[i]
 		}
 		t := time.Now().UTC().Format("2006-01-02 15:04:05")
-		loggingMutex.Lock()
+		GLOBAL.loggingMutex.Lock()
 		color.Cyan(t + " " + message)
-		loggingMutex.Unlock()
+		GLOBAL.loggingMutex.Unlock()
 	}
 }
 
@@ -609,7 +688,7 @@ func handleInputParameters(fName string) {
 	// is the inputfilename empty?
 	// if so set doneMatching to 'true' so that we can skip later logic
 	var doneMatching bool
-	if inputFile == "" {
+	if GLOBAL.inputFile == "" {
 		doneMatching = true
 		logDebug(fName + "no inputfilename specified - skipping data import process")
 	} else {
@@ -619,19 +698,19 @@ func handleInputParameters(fName string) {
 	//   otherwise parse filename to determine if it is a 'blob' file
 	//   and import that file if that is the case
 	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*blob$", inputFile)
+		foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.inputFile)
 		if foundMatch == true {
 			doneMatching = true
 			logInfo(fName + "parsing blob inputfilename")
-			in, err := ioutil.ReadFile(inputFile)
+			in, err := ioutil.ReadFile(GLOBAL.inputFile)
 			if err != nil {
 				if os.IsNotExist(err) {
 					log.Fatalln("data.blob not found")
 				} else {
-					log.Fatalln("Error reading file:", inputFile, err)
+					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
 				}
 			}
-			if err := proto.Unmarshal(in, &currentGalaxy); err != nil {
+			if err := proto.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
 				log.Fatalln("Failed to parse galaxy file:", err)
 			}
 		}
@@ -640,19 +719,19 @@ func handleInputParameters(fName string) {
 	//   otherwise parse filename to determine if it is a 'json' file
 	//   and import that file if that is the case
 	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*json$", inputFile)
+		foundMatch, _ := regexp.MatchString(".*json$", GLOBAL.inputFile)
 		if foundMatch == true {
 			doneMatching = true
 			logInfo(fName + "parsing blob inputfilename")
-			in, err := ioutil.ReadFile(inputFile)
+			in, err := ioutil.ReadFile(GLOBAL.inputFile)
 			if err != nil {
 				if os.IsNotExist(err) {
-					log.Fatalln(inputFile, "not found")
+					log.Fatalln(GLOBAL.inputFile, "not found")
 				} else {
-					log.Fatalln("Error reading file:", inputFile, err)
+					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
 				}
 			}
-			if err := json.Unmarshal(in, &currentGalaxy); err != nil {
+			if err := json.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
 				log.Fatalln("Failed to parse galaxy file:", err)
 			}
 		}
@@ -721,114 +800,11 @@ const (
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-var (
-	numberOfCores  int
-	loggingMutex   sync.Mutex
-	waitForLogging sync.WaitGroup
-)
-
-var (
-	galaxyName         string
-	inputFile          string
-	outputFile         string
-	googleAudience     string
-	authPassword       string
-	staticFrontend     string
-	frontendBool       bool
-	backendBool        bool
-	createGalaxyBool   bool
-	debugModeBool      bool
-	singleThreadedBool bool
-)
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 const (
 	constChallenge     = 1
 	constGoogleAuth    = 3
 	constClientSession = 25
 )
-
-var (
-	clientBlacklist         map[string]*FirewallClientValues
-	clientBlacklistMutex    sync.RWMutex
-	clientSessionCount      map[string]uint16
-	clientSessionCountMutex sync.RWMutex
-)
-
-// FirewallClientValues defines values for firewalling
-type FirewallClientValues struct {
-	sync.RWMutex
-	failedChallengeCount    uint16
-	failedChallengeTime     int64
-	failedGoogleAuthCount   uint16
-	failedGoogleAuthTime    int64
-	failedSessionLimitCount uint16
-	failedSessionLimitTime  int64
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-var (
-	frontendData      FrontendDataStruct
-	frontendDataMutex sync.RWMutex
-)
-
-// FrontendDataStruct defines values for frontendData
-type FrontendDataStruct struct {
-	ListOfGalaxies []galInfo `json:"ListOfGalaxies"`
-	OtherFrontends []string  `json:"OtherFrontends"`
-	Message        string    `json:"Message"`
-	AnotherMessage string    `json:"AnotherMessage"`
-}
-type galInfo struct {
-	GalaxyName        string   `json:"GalaxyName"`
-	GlobalX           int64    `json:"GlobalX"`
-	GlobalY           int64    `json:"GlobalY"`
-	ClientIDs         []string `json:"ClientIDs"`
-	ClusterOfBackends []string `json:"ClusterOfBackends"`
-}
-
-// GetGalIndexOf searches listOfGalaxies for a matching galName
-func (fd FrontendDataStruct) GetGalIndexOf(s string) (i int) {
-	for i := 0; i < len(fd.ListOfGalaxies); i++ {
-		if fd.ListOfGalaxies[i].GalaxyName == s {
-			return i
-		}
-	}
-	return -1
-}
-
-// ByGalaxyName implements sort.Interface for []galInfo based on the GalaxyName field
-type ByGalaxyName []galInfo
-
-func (gn ByGalaxyName) Len() int           { return len(gn) }
-func (gn ByGalaxyName) Swap(i, j int)      { gn[i], gn[j] = gn[j], gn[i] }
-func (gn ByGalaxyName) Less(i, j int) bool { return gn[i].GalaxyName < gn[j].GalaxyName }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-var (
-	backendData      BackendDataStruct
-	backendDataMutex sync.RWMutex
-)
-
-// BackendDataStruct defines values for ...
-type BackendDataStruct struct {
-	ClientIDs             []string
-	Frontends             []string
-	Backends              []string
-	HighestPriority       uint64
-	SecondHighestPriority uint64
-	GlobalX               int64
-	GlobalY               int64
-}
 
 const (
 	connectedBackendsLimit     = 3
@@ -837,49 +813,11 @@ const (
 	backendTickrate            = 1 * time.Second
 )
 
-var (
-	connectedBackends          []Backend
-	connectedBackendsMutex     sync.RWMutex
-	idleConnectedBackends      []Backend
-	idleConnectedBackendsMutex sync.RWMutex
+const (
+	numDimensions   = 2
+	minBranchFactor = 2
+	maxBranchFactor = 2
 )
-
-// Backend defines values for ...
-type Backend struct {
-	ServerIP           string
-	AdvertisedPriority uint64
-	Latency            *ring.Ring
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-// IncomingRequest defines values used in clientRequests
-type IncomingRequest struct {
-	ClientID      string
-	ClientMessage string
-	ClientValues  []string
-	ServerMessage string
-}
-
-var (
-	sequenceNumber          uint64
-	currentGalaxy           Galaxy
-	futureGalaxy            Galaxy
-	clientRequests          []IncomingRequest
-	partitionedSolarSystems []sync.RWMutex
-)
-
-var (
-	waitForCores sync.WaitGroup
-	systemMutex  []sync.RWMutex
-	systemIndex  map[string]int
-)
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
 
 const (
 	maxNumberOfPlayers            = 10000
@@ -895,30 +833,108 @@ const (
 	oneTrillion                   = 1000000000000
 )
 
-var (
-	rtree        *rtreego.Rtree
-	rtreeObjects []rtreego.Spatial
-	badSystems   [][]int
-)
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
 
-const (
-	numDimensions   = 2
-	minBranchFactor = 2
-	maxBranchFactor = 2
-)
-
-// SystemBox ...
-type SystemBox struct {
-	location rtreego.Point
-	index    int
+type firewallClientValues struct {
+	sync.RWMutex
+	FailedChallengeCount    uint16
+	FailedChallengeTime     int64
+	FailedGoogleAuthCount   uint16
+	FailedGoogleAuthTime    int64
+	FailedSessionLimitCount uint16
+	FailedSessionLimitTime  int64
 }
 
-// Bounds ...
-func (sb *SystemBox) Bounds() *rtreego.Rect {
-	tol := 0.01
-	return sb.location.ToRect(tol)
+type incomingRequest struct {
+	ClientID      string
+	ClientMessage string
+	ClientValues  []string
+	ServerMessage string
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
+type backendDataStruct struct {
+	ClientIDs             []string
+	Frontends             []string
+	Backends              []string
+	HighestPriority       uint64
+	SecondHighestPriority uint64
+	GlobalX               int64
+	GlobalY               int64
+}
+
+type backend struct {
+	ServerIP           string
+	AdvertisedPriority uint64
+	Latency            *ring.Ring
+}
+
+type frontendDataStruct struct {
+	ListOfGalaxies []galInfo `json:"ListOfGalaxies"`
+	OtherFrontends []string  `json:"OtherFrontends"`
+	Message        string    `json:"Message"`
+	AnotherMessage string    `json:"AnotherMessage"`
+}
+type galInfo struct {
+	GalaxyName        string   `json:"GalaxyName"`
+	GlobalX           int64    `json:"GlobalX"`
+	GlobalY           int64    `json:"GlobalY"`
+	ClientIDs         []string `json:"ClientIDs"`
+	ClusterOfBackends []string `json:"ClusterOfBackends"`
+}
+
+// GLOBAL var allows me to clearly label which objects are global
+var GLOBAL globalVars
+
+type globalVars struct {
+	galaxyName         string
+	inputFile          string
+	outputFile         string
+	googleAudience     string
+	authPassword       string
+	staticFrontend     string
+	frontendBool       bool
+	backendBool        bool
+	createGalaxyBool   bool
+	debugModeBool      bool
+	singleThreadedBool bool
+
+	tickChan       chan struct{}
+	numberOfCores  int
+	loggingMutex   sync.Mutex
+	waitForLogging sync.WaitGroup
+
+	clientBlacklist         map[string]*firewallClientValues
+	clientBlacklistMutex    sync.RWMutex
+	clientSessionCount      map[string]uint16
+	clientSessionCountMutex sync.RWMutex
+
+	sequenceNumber          uint64
+	currentGalaxy           Galaxy
+	futureGalaxy            Galaxy
+	clientRequests          []incomingRequest
+	partitionedSolarSystems []sync.RWMutex
+
+	waitForCores sync.WaitGroup
+	systemMutex  []sync.RWMutex
+	systemIndex  map[string]int
+
+	backendData      backendDataStruct
+	backendDataMutex sync.RWMutex
+
+	connectedBackends          []backend
+	connectedBackendsMutex     sync.RWMutex
+	idleConnectedBackends      []backend
+	idleConnectedBackendsMutex sync.RWMutex
+
+	frontendData      frontendDataStruct
+	frontendDataMutex sync.RWMutex
+}
+
+// ByGalaxyName implements sort.Interface for []galInfo based on the GalaxyName field
+type ByGalaxyName []galInfo
+
+func (gn ByGalaxyName) Len() int           { return len(gn) }
+func (gn ByGalaxyName) Swap(i, j int)      { gn[i], gn[j] = gn[j], gn[i] }
+func (gn ByGalaxyName) Less(i, j int) bool { return gn[i].GalaxyName < gn[j].GalaxyName }
