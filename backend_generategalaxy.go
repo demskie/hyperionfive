@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/dhconnelly/rtreego"
@@ -56,8 +55,6 @@ func generateGalaxy(galaxyType int) {
 	////////////////////////////////////////////////////////////
 
 	GLOBAL.currentGalaxy.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
-	GLOBAL.systemMutex = make([]sync.RWMutex, totalNumSystems)
-	GLOBAL.systemIndex = make(map[string]int, totalNumSystems)
 
 	////////////////////////////////////////////////////////////
 	// spawn goroutines to generate systemNames
@@ -66,13 +63,13 @@ func generateGalaxy(galaxyType int) {
 	logInfo(fmt.Sprintf("(backend_init) starting systemName generation (%d threads)",
 		GLOBAL.numberOfCores))
 	systemsPerCore := totalNumSystems / GLOBAL.numberOfCores
-	GLOBAL.waitForCores.Add(GLOBAL.numberOfCores)
+	GLOBAL.waitForCores["galaxygen"].Add(GLOBAL.numberOfCores)
 	for i := 1; i <= GLOBAL.numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
 		go generateSystemNames(i, startIndex, stopIndex)
 	}
-	GLOBAL.waitForCores.Wait()
+	GLOBAL.waitForCores["galaxygen"].Wait()
 
 	////////////////////////////////////////////////////////////
 	// spawn goroutines to generate all X,Y coordinates
@@ -80,13 +77,13 @@ func generateGalaxy(galaxyType int) {
 
 	logInfo(fmt.Sprintf("(backend_init) starting systemCoordinates generation (%d threads)",
 		GLOBAL.numberOfCores))
-	GLOBAL.waitForCores.Add(GLOBAL.numberOfCores)
+	GLOBAL.waitForCores["galaxygen"].Add(GLOBAL.numberOfCores)
 	for i := 1; i <= GLOBAL.numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
 		go generateEllipticalCoordinates(i, startIndex, stopIndex)
 	}
-	GLOBAL.waitForCores.Wait()
+	GLOBAL.waitForCores["galaxygen"].Wait()
 
 	////////////////////////////////////////////////////////////
 	// load coordinates into R* tree data structure (global variable)
@@ -111,7 +108,7 @@ func generateGalaxy(galaxyType int) {
 	iter := 0
 	for {
 		badSystems := [][]int{}
-		GLOBAL.waitForCores.Add(GLOBAL.numberOfCores)
+		GLOBAL.waitForCores["galaxygen"].Add(GLOBAL.numberOfCores)
 		for i := 0; i < GLOBAL.numberOfCores; i++ {
 			coreNum := i + 1
 			stopIndex := systemsPerCore * coreNum
@@ -121,7 +118,7 @@ func generateGalaxy(galaxyType int) {
 				badSystems = append(badSystems, result)
 			}()
 		}
-		GLOBAL.waitForCores.Wait()
+		GLOBAL.waitForCores["galaxygen"].Wait()
 		for i := 0; i < GLOBAL.numberOfCores; i++ {
 			for x := 0; x < len(badSystems[i]); x++ {
 				val := badSystems[i][x]
@@ -177,7 +174,7 @@ func generateSystemNames(coreID int, startIndex int, stopIndex int) {
 		mySystem.Name = sysName
 	}
 	if coreID != -1 {
-		GLOBAL.waitForCores.Done()
+		GLOBAL.waitForCores["galaxygen"].Done()
 	}
 }
 
@@ -269,7 +266,7 @@ func generateEllipticalCoordinates(coreID int, startIndex int, stopIndex int) {
 	}
 
 	if coreID != -1 {
-		GLOBAL.waitForCores.Done()
+		GLOBAL.waitForCores["galaxygen"].Done()
 	}
 }
 
@@ -327,7 +324,7 @@ func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int) (myBadS
 		}
 	}
 	if coreID != -1 {
-		GLOBAL.waitForCores.Done()
+		GLOBAL.waitForCores["galaxygen"].Done()
 	}
 	return myBadSystems
 }
@@ -342,6 +339,6 @@ func updateRtreeSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 		//rtree.Insert(rtreeObjects[currentIndex]) // !!! TODO: NEED TO FIX
 	}
 	if coreID != -1 {
-		GLOBAL.waitForCores.Done()
+		GLOBAL.waitForCores["galaxygen"].Done()
 	}
 }

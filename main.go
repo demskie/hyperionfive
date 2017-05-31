@@ -49,6 +49,9 @@ func init() {
 	// initializing global IP session count
 	GLOBAL.clientSessionCount = make(map[string]uint16)
 
+	//
+	GLOBAL.waitForCores = map[string]*sync.WaitGroup{}
+
 	// define commandline flags to parse for
 	GLOBAL.galaxyName = *flag.String("galaxyname", "", "specify galaxy name")
 	GLOBAL.inputFile = *flag.String("input", "", "specify data source, either json or blob")
@@ -187,7 +190,9 @@ func checkFirewall(fName string, client string, check string) bool {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func handleGoogleAuth(fName string, conn *websocket.Conn, client string) bool {
+func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid string) {
+
+	userid = ""
 
 	// string that will be appended to log messages
 	fName = "(" + fName + ") "
@@ -204,7 +209,7 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) bool {
 	var inMsg incomingMessage
 	err := conn.ReadJSON(&inMsg)
 	if checkError(fName+"error receiving message:", err) {
-		return false
+		return userid
 	}
 	logDebug(fName+"received the following message\n", fmt.Sprintf("%s", inMsg))
 
@@ -225,27 +230,46 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) bool {
 		}
 	}
 	if successful == false {
-		currentTime := time.Now().Unix()
-		GLOBAL.clientBlacklist[client].Lock()
-		GLOBAL.clientBlacklist[client].FailedGoogleAuthCount += constGoogleAuth
-		GLOBAL.clientBlacklist[client].FailedGoogleAuthTime = currentTime
-		GLOBAL.clientBlacklist[client].Unlock()
-		return false
+		return userid
 	}
 
 	tokenInfoCall := oauth2Service.Tokeninfo()
 	tokenInfoCall.IdToken(inMsg.IDToken)
 	tokenInfo, err := tokenInfoCall.Do()
 	if checkError(fName+"error parsing incoming google response:", err) {
-		return false
+		return userid
 	}
 
-	rawJSON, err := tokenInfo.MarshalJSON()
-	if checkError(fName+"error MarshalJSON'ing google response:", err) {
-		return false
+	triggerFailState := func() {
+		currentTime := time.Now().Unix()
+		GLOBAL.clientBlacklist[client].Lock()
+		GLOBAL.clientBlacklist[client].FailedGoogleAuthCount += constGoogleAuth
+		GLOBAL.clientBlacklist[client].FailedGoogleAuthTime = currentTime
+		GLOBAL.clientBlacklist[client].Unlock()
+	}
+	type reportErrorMessage struct {
+		Error string `json:"error"`
+	}
+	if tokenInfo.VerifiedEmail != true {
+		var outMsgResponse reportErrorMessage
+		outMsgResponse.Error = "EmailNotVerified"
+		err = conn.WriteJSON(outMsgResponse)
+		checkError(fName+"error sending response:", err)
+		triggerFailState()
+		return userid
+	}
+	if tokenInfo.Audience != GLOBAL.googleAudience {
+		var outMsgResponse reportErrorMessage
+		outMsgResponse.Error = "AudienceMismatch"
+		err = conn.WriteJSON(outMsgResponse)
+		checkError(fName+"error sending response:", err)
+		triggerFailState()
+		return userid
 	}
 
 	if GLOBAL.debugModeBool == true {
+		rawJSON, err := tokenInfo.MarshalJSON()
+		checkError(fName+"error MarshalJSON'ing google response:", err)
 		var prettyJSON bytes.Buffer
 		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
 		checkError(fName+"error jsonIndent'ing google response:", err)
@@ -253,7 +277,8 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) bool {
 			string(prettyJSON.Bytes()))
 	}
 
-	return true
+	userid = tokenInfo.UserId
+	return userid
 
 }
 
@@ -616,13 +641,29 @@ func checkError(message string, err error) bool {
 			t := time.Now().UTC().Format("2006-01-02 15:04:05")
 			err := err.Error() // convert err to string
 			GLOBAL.loggingMutex.Lock()
-			color.Red(t + " " + message + err)
+			color.Red("ERROR: " + t + " " + message + err)
 			GLOBAL.loggingMutex.Unlock()
 		}()
 	} else {
 		errorFound = false
 	}
 	return errorFound
+}
+
+func logError(arrayOfStrings ...string) {
+	var message string
+	for i := range arrayOfStrings {
+		if i > 0 {
+			message += " "
+		}
+		message += arrayOfStrings[i]
+	}
+	go func() {
+		t := time.Now().UTC().Format("2006-01-02 15:04:05")
+		GLOBAL.loggingMutex.Lock()
+		color.Red("ERROR: " + t + " " + message)
+		GLOBAL.loggingMutex.Unlock()
+	}()
 }
 
 func logDebug(arrayOfStrings ...string) {
@@ -900,10 +941,13 @@ type globalVars struct {
 	debugModeBool      bool
 	singleThreadedBool bool
 
-	tickChan       chan struct{}
+	turnGalaxyStart chan struct{}
+	turnGalaxyEnd   chan struct{}
+	//tockChan       chan struct{}
 	numberOfCores  int
 	loggingMutex   sync.Mutex
 	waitForLogging sync.WaitGroup
+	waitForCores   map[string]*sync.WaitGroup
 
 	clientBlacklist         map[string]*firewallClientValues
 	clientBlacklistMutex    sync.RWMutex
@@ -915,10 +959,7 @@ type globalVars struct {
 	futureGalaxy            Galaxy
 	clientRequests          []incomingRequest
 	partitionedSolarSystems []sync.RWMutex
-
-	waitForCores sync.WaitGroup
-	systemMutex  []sync.RWMutex
-	systemIndex  map[string]int
+	parsedPlayerPtrs        map[string][]*SolarSystem
 
 	backendData      backendDataStruct
 	backendDataMutex sync.RWMutex

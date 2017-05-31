@@ -70,7 +70,8 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 	// receive and process google authentication
 	////////////////////////////////////////////////////////////
 
-	if handleGoogleAuth("clientToFrontend", conn, client) != true {
+	userid := handleGoogleAuth("clientToFrontend", conn, client)
+	if userid == "" {
 		return
 	}
 

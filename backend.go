@@ -90,24 +90,35 @@ func startBackendMode() {
 	////////////////////////////////////////////////////////////
 
 	go func() {
-		GLOBAL.tickChan = make(chan struct{})
+
+		GLOBAL.turnGalaxyStart = make(chan struct{})
+		close(GLOBAL.turnGalaxyEnd)
 
 		GLOBAL.currentGalaxy = GLOBAL.futureGalaxy
-
-		GLOBAL.waitForCores.Add(GLOBAL.numberOfCores)
+		GLOBAL.waitForCores["parsedptrs"].Add(GLOBAL.numberOfCores)
 		numPlayers := len(GLOBAL.currentGalaxy.GetSolarsystemslice())
 		playersPerCore := numPlayers / GLOBAL.numberOfCores
+		tempResults := make([]map[string][]*SolarSystem, GLOBAL.numberOfCores)
 		for i := 0; i < GLOBAL.numberOfCores; i++ {
 			coreNum := i + 1
 			stopIndex := playersPerCore * coreNum
 			startIndex := stopIndex - playersPerCore
 			go func() {
-				result := walkGalaxyForPlayers(startIndex, stopIndex)
+				tempResults[i] = walkGalaxyForPlayers(startIndex, stopIndex)
+				GLOBAL.waitForCores["parsedptrs"].Done()
 			}()
 		}
-		GLOBAL.waitForCores.Wait()
+		GLOBAL.waitForCores["parsedptrs"].Wait()
+		GLOBAL.parsedPlayerPtrs = map[string][]*SolarSystem{}
+		for i := range tempResults {
+			for key, val := range tempResults[i] {
+				GLOBAL.parsedPlayerPtrs[key] = val
+			}
+		}
 
-		close(GLOBAL.tickChan)
+		GLOBAL.turnGalaxyEnd = make(chan struct{})
+		close(GLOBAL.turnGalaxyStart)
+
 	}()
 
 	////////////////////////////////////////////////////////////

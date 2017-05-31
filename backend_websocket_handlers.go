@@ -68,16 +68,52 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	// receive and process google authentication
 	////////////////////////////////////////////////////////////
 
-	if handleGoogleAuth("clientToBackend", conn, client) != true {
+	userid := handleGoogleAuth("clientToBackend", conn, client)
+	if userid == "" {
 		return
 	}
+
+	////////////////////////////////////////////////////////////
+	// create channel to backout of nested gofuncs
+	////////////////////////////////////////////////////////////
+
+	backoutSignal := make(chan struct{})
 
 	////////////////////////////////////////////////////////////
 	// send data to client
 	////////////////////////////////////////////////////////////
 
 	go func() {
-		<-GLOBAL.tickChan
+
+		<-GLOBAL.turnGalaxyStart
+
+		data := []byte{}
+		dataSignal := make(chan struct{})
+		go func() {
+			playerData := Galaxy{}
+			playerData.Name = GLOBAL.currentGalaxy.GetName()
+			playerData.GlobalX = GLOBAL.currentGalaxy.GetGlobalX()
+			playerData.GlobalY = GLOBAL.currentGalaxy.GetGlobalY()
+			playerData.Type = GLOBAL.currentGalaxy.GetType()
+			playerData.Solarsystemslice = GLOBAL.parsedPlayerPtrs[userid]
+			data, err = proto.Marshal(&playerData)
+			if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA: ", err) {
+				close(backoutSignal)
+			}
+			close(dataSignal)
+		}()
+		select {
+		case <-dataSignal:
+			err := conn.WriteMessage(websocket.BinaryMessage, data)
+			if checkError("(clientToBackend) error sending message to client:", err) {
+				close(backoutSignal)
+			}
+		case <-GLOBAL.turnGalaxyEnd:
+			logError("CRITICAL FAILURE - RAN OUT OF TIME PROCESSING PLAYERDATA")
+			close(backoutSignal)
+		case <-backoutSignal:
+			return
+		}
 
 	}()
 
@@ -88,6 +124,13 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	go func() {
 
 	}()
+
+	////////////////////////////////////////////////////////////
+	// do not finish terminating unless we receive signal
+	////////////////////////////////////////////////////////////
+
+	<-backoutSignal
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
