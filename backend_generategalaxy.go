@@ -67,7 +67,8 @@ func generateGalaxy(galaxyType int) {
 	for i := 1; i <= GLOBAL.numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
-		go generateSystemNames(i, startIndex, stopIndex)
+		coreID := i
+		go generateSystemNames(coreID, startIndex, stopIndex)
 	}
 	GLOBAL.waitForCores["galaxygen"].Wait()
 
@@ -81,7 +82,8 @@ func generateGalaxy(galaxyType int) {
 	for i := 1; i <= GLOBAL.numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
-		go generateEllipticalCoordinates(i, startIndex, stopIndex)
+		coreID := i
+		go generateEllipticalCoordinates(coreID, startIndex, stopIndex)
 	}
 	GLOBAL.waitForCores["galaxygen"].Wait()
 

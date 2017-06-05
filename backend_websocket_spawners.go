@@ -210,98 +210,195 @@ func spawnBackendToFrontend(host string) {
 	return
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 func spawnBackendToBackend(host string) {
+	fName := "(backendToBackend) "
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncinfo", nil)
-	if checkError("(handshakeBackend) unable to open _data_ websocket with backend:", err) {
-		return
-	}
-	defer conn.Close()
-}
-
-func spawnPingPongBackend(host string) {
-	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://"+host+":443/pingpong", nil)
-	if checkError("(pingPongBackend) unable to open _idle_ websocket with backend:", err) {
+	if checkError(fName+"unable to open _data_ websocket with backend:", err) {
 		return
 	}
 	defer conn.Close()
 
-	logDebug("(pingPongBackend) opening connection:", conn.RemoteAddr().String())
-	defer logDebug("(pingPongBackend) closing connection:", conn.RemoteAddr().String())
+	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
+	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
 
-	if kickoffChallengeResponse("pingPongBackend", conn) != true {
+	if kickoffChallengeResponse(fName, conn) != true {
 		return
 	}
 
 	for {
 
-		GLOBAL.connectedBackendsMutex.RLock()
-		for i := 0; i < len(GLOBAL.connectedBackends); i++ {
-			if GLOBAL.connectedBackends[i].ServerIP == host {
+		GLOBAL.fullBackendStatsMutex.RLock()
+		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
+			if GLOBAL.fullBackendStats[i].ServerIP == host {
 				return
 			}
 		}
-		GLOBAL.connectedBackendsMutex.RUnlock()
+		GLOBAL.fullBackendStatsMutex.RUnlock()
 
 		data := make([]byte, 8)
 		binary.LittleEndian.PutUint64(data, serverPriority)
 		startTime := time.Now().UnixNano()
 		err = conn.WriteMessage(websocket.BinaryMessage, data)
-		if checkError("(pingPongBackend) error sending message to _idle_ backend socket:", err) {
+		if checkError(fName+"error sending message to _data_ backend socket:", err) {
 			return
 		}
 
 		msgType, newData, err := conn.ReadMessage()
-		if checkError("(pingPongBackend) error receiving message:", err) {
+		if checkError(fName+"error receiving message:", err) {
 			return
 		}
 		endTime := time.Now().UnixNano()
 		if msgType != websocket.BinaryMessage {
-			logInfo("(pingPongBackend) messageType is invalid")
+			logInfo(fName + "messageType is invalid")
 			return
 		}
 
 		latency := (endTime - startTime) - (backendTickrate.Nanoseconds() / 2)
 		advertisedPriority := binary.LittleEndian.Uint64(newData)
 
-		GLOBAL.idleConnectedBackendsMutex.Lock()
-		idleBackendIndex := -1 // intentionally invalid
-		for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
-			if GLOBAL.idleConnectedBackends[i].ServerIP == host {
-				idleBackendIndex = i
+		GLOBAL.fullBackendStatsMutex.Lock()
+		backendIndex := -1 // intentionally invalid
+		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
+			if GLOBAL.fullBackendStats[i].ServerIP == host {
+				backendIndex = i
 				break
 			}
 		}
-		if idleBackendIndex == -1 {
-			data := backend{}
+		if backendIndex == -1 {
+			data := backendInfoStruct{}
 			data.ServerIP = host
 			data.AdvertisedPriority = advertisedPriority
 			data.Latency = ring.New(latencyRingLength)
 			data.Latency.Value = latency
 			data.Latency = data.Latency.Next()
-			GLOBAL.idleConnectedBackends = append(GLOBAL.idleConnectedBackends, data)
+			GLOBAL.fullBackendStats = append(GLOBAL.fullBackendStats, data)
 		} else {
-			GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Value = latency
-			GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Next()
-			if GLOBAL.idleConnectedBackends[idleBackendIndex].AdvertisedPriority != advertisedPriority {
-				logInfo("(pingPongBackend) advertisedPriority has changed (and isn't supposed to)")
+			GLOBAL.fullBackendStats[backendIndex].Latency.Value = latency
+			GLOBAL.fullBackendStats[backendIndex].Latency.Next()
+			if GLOBAL.fullBackendStats[backendIndex].AdvertisedPriority != advertisedPriority {
+				logInfo(fName + "advertisedPriority has changed (and isn't supposed to)")
 			}
 		}
-		GLOBAL.idleConnectedBackendsMutex.Unlock()
+		GLOBAL.fullBackendStatsMutex.Unlock()
 
-		GLOBAL.idleConnectedBackendsMutex.RLock()
+		GLOBAL.fullBackendStatsMutex.RLock()
 		count := 0
 		otherSideHasPriority := advertisedPriority > serverPriority
-		for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
-			if GLOBAL.idleConnectedBackends[i].ServerIP == host {
+		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
+			if GLOBAL.fullBackendStats[i].ServerIP == host {
 				count++
 			}
 			if count > 1 && otherSideHasPriority {
 				return
 			}
 		}
-		GLOBAL.idleConnectedBackendsMutex.RUnlock()
+		GLOBAL.fullBackendStatsMutex.RUnlock()
+
+		time.Sleep(backendTickrate / 2)
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func spawnPingPongBackend(host string) {
+	fName := "(pingPongBackend) "
+	var dialer *websocket.Dialer
+	conn, _, err := dialer.Dial("wss://"+host+":443/pingpong", nil)
+	if checkError(fName+"unable to open _idle_ websocket with backend:", err) {
+		return
+	}
+	defer conn.Close()
+
+	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
+	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
+
+	if kickoffChallengeResponse(fName, conn) != true {
+		return
+	}
+
+	for {
+
+		GLOBAL.fullBackendStatsMutex.RLock()
+		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
+			if GLOBAL.fullBackendStats[i].ServerIP == host {
+				return
+			}
+		}
+		GLOBAL.fullBackendStatsMutex.RUnlock()
+
+		GLOBAL.idleBackendStatsMutex.RLock()
+		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
+			if GLOBAL.idleBackendStats[i].ServerIP == host {
+				return
+			}
+		}
+		GLOBAL.idleBackendStatsMutex.RUnlock()
+
+		data := make([]byte, 8)
+		binary.LittleEndian.PutUint64(data, serverPriority)
+		startTime := time.Now().UnixNano()
+		err = conn.WriteMessage(websocket.BinaryMessage, data)
+		if checkError(fName+"error sending message to _idle_ backend socket:", err) {
+			return
+		}
+
+		msgType, newData, err := conn.ReadMessage()
+		if checkError(fName+"error receiving message:", err) {
+			return
+		}
+		endTime := time.Now().UnixNano()
+		if msgType != websocket.BinaryMessage {
+			logInfo(fName + "messageType is invalid")
+			return
+		}
+
+		latency := (endTime - startTime) - (backendTickrate.Nanoseconds() / 2)
+		advertisedPriority := binary.LittleEndian.Uint64(newData)
+
+		GLOBAL.idleBackendStatsMutex.Lock()
+		idleBackendIndex := -1 // intentionally invalid
+		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
+			if GLOBAL.idleBackendStats[i].ServerIP == host {
+				idleBackendIndex = i
+				break
+			}
+		}
+		if idleBackendIndex == -1 {
+			data := backendInfoStruct{}
+			data.ServerIP = host
+			data.AdvertisedPriority = advertisedPriority
+			data.Latency = ring.New(latencyRingLength)
+			data.Latency.Value = latency
+			data.Latency = data.Latency.Next()
+			GLOBAL.idleBackendStats = append(GLOBAL.idleBackendStats, data)
+		} else {
+			GLOBAL.idleBackendStats[idleBackendIndex].Latency.Value = latency
+			GLOBAL.idleBackendStats[idleBackendIndex].Latency.Next()
+			if GLOBAL.idleBackendStats[idleBackendIndex].AdvertisedPriority != advertisedPriority {
+				logInfo(fName + "advertisedPriority has changed (and isn't supposed to)")
+			}
+		}
+		GLOBAL.idleBackendStatsMutex.Unlock()
+
+		GLOBAL.idleBackendStatsMutex.RLock()
+		count := 0
+		otherSideHasPriority := advertisedPriority > serverPriority
+		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
+			if GLOBAL.idleBackendStats[i].ServerIP == host {
+				count++
+			}
+			if count > 1 && otherSideHasPriority {
+				return
+			}
+		}
+		GLOBAL.idleBackendStatsMutex.RUnlock()
 
 		time.Sleep(backendTickrate / 2)
 	}

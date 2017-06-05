@@ -27,14 +27,11 @@ func startBackendMode() {
 	GLOBAL.currentGalaxy = Galaxy{}
 	GLOBAL.futureGalaxy = Galaxy{}
 
-	// easy on/off handle for debugging purposes
-	var enabled bool
-
 	////////////////////////////////////////////////////////////
 	// generate randomNumber to determine server priority
 	////////////////////////////////////////////////////////////
 
-	enabled = true
+	enabled := true
 	if enabled {
 		serverPriority = generateRandomUint64()
 		logInfo(fmt.Sprintf("serverPriority = %d", serverPriority))
@@ -70,7 +67,6 @@ func startBackendMode() {
 	if enabled {
 		galaxyType := ELLIPTICAL
 		generateGalaxy(galaxyType)
-
 		logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
 		rtree = &rtreego.Rtree{}
 		rtreeObjects = []rtreego.Spatial{}
@@ -86,15 +82,39 @@ func startBackendMode() {
 	}
 
 	////////////////////////////////////////////////////////////
-	// game loop
+	// start handling incoming user requests
 	////////////////////////////////////////////////////////////
 
+	GLOBAL.bufferedRequests = []incomingRequest{}
 	go func() {
+		for {
+			GLOBAL.bufferedRequestsMutex.Lock()
+			someRequests := make([]incomingRequest, len(GLOBAL.bufferedRequests))
+			copy(someRequests, GLOBAL.bufferedRequests)
+			GLOBAL.bufferedRequests = []incomingRequest{}
+			GLOBAL.bufferedRequestsMutex.Unlock()
+			time.Sleep(10 * time.Millisecond)
+		}
 
-		GLOBAL.turnGalaxyStart = make(chan struct{})
-		close(GLOBAL.turnGalaxyEnd)
+	}()
 
-		GLOBAL.currentGalaxy = GLOBAL.futureGalaxy
+	////////////////////////////////////////////////////////////
+	// define functions to be used in main game loop
+	////////////////////////////////////////////////////////////
+
+	startSendingBufferedRequests := func() {
+
+	}
+
+	copyNewGalaxyToOld := func() {
+		x := proto.Clone(&GLOBAL.futureGalaxy)
+		GLOBAL.currentGalaxy = *x.(*Galaxy)
+		// data, _ := proto.Marshal(&GLOBAL.futureGalaxy)
+		// GLOBAL.currentGalaxy = Galaxy{}
+		// _ = proto.Unmarshal(data, &GLOBAL.currentGalaxy)
+	}
+
+	gatherSystemPtrsForClients := func() {
 		GLOBAL.waitForCores["parsedptrs"].Add(GLOBAL.numberOfCores)
 		numPlayers := len(GLOBAL.currentGalaxy.GetSolarsystemslice())
 		playersPerCore := numPlayers / GLOBAL.numberOfCores
@@ -103,10 +123,10 @@ func startBackendMode() {
 			coreNum := i + 1
 			stopIndex := playersPerCore * coreNum
 			startIndex := stopIndex - playersPerCore
-			go func() {
+			go func(i int) {
 				tempResults[i] = walkGalaxyForPlayers(startIndex, stopIndex)
 				GLOBAL.waitForCores["parsedptrs"].Done()
-			}()
+			}(i)
 		}
 		GLOBAL.waitForCores["parsedptrs"].Wait()
 		GLOBAL.parsedPlayerPtrs = map[string][]*SolarSystem{}
@@ -115,10 +135,41 @@ func startBackendMode() {
 				GLOBAL.parsedPlayerPtrs[key] = val
 			}
 		}
+	}
 
-		GLOBAL.turnGalaxyEnd = make(chan struct{})
-		close(GLOBAL.turnGalaxyStart)
+	////////////////////////////////////////////////////////////
+	// primary game loop
+	////////////////////////////////////////////////////////////
 
+	GLOBAL.turningDataSignal = make(chan struct{})
+	GLOBAL.processingSignal = make(chan struct{})
+
+	go func() {
+		for {
+
+			close(GLOBAL.turningDataSignal)
+			GLOBAL.turningDataSignal = make(chan struct{})
+
+			startSendingBufferedRequests()
+
+			copyNewGalaxyToOld()
+			gatherSystemPtrsForClients()
+
+			close(GLOBAL.processingSignal)
+			GLOBAL.processingSignal = make(chan struct{})
+
+			// send galaxyinfo to clients using currentGalaxy data
+			//     backend_websocket_handlers
+
+			// calculate galaxy environment changes (pop, battles, movement)
+			//     backend_update_galaxy
+
+			// AI rourintes using currentGalaxy to generate bufferedRequests
+			//     backend_ai_routine
+
+			// synchronize requests with other backends to move into confirmedRequests
+			//     backend_websocket_handlers
+		}
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -182,17 +233,9 @@ func startBackendMode() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Copypasta'd from:
-// https://rogpeppe.wordpress.com/2009/12/01/concurrent-idioms-1-broadcasting-values-in-go-with-linked-channels/
-// https://play.golang.org/p/HCbY04zIg3
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 func kickoffBackendCommunication() {
-	GLOBAL.connectedBackends = []backend{}
-	GLOBAL.idleConnectedBackends = []backend{}
+	GLOBAL.fullBackendStats = []backendInfoStruct{}
+	GLOBAL.idleBackendStats = []backendInfoStruct{}
 	// https://play.golang.org/p/pFWNe6CGxd
 
 	seed := func() rand.Source {
@@ -207,52 +250,57 @@ func kickoffBackendCommunication() {
 
 	for {
 
+		// to avoid contention we are only rlocking and accepting the risk that the
+		// information may be out of date and duplicate connections could be spawned
+		// > the websocket functions have sanity checks to mitigate.
+
 		GLOBAL.backendDataMutex.RLock()
-		copyOtherBackends := GLOBAL.backendData.Backends
+		potentialServers := []string{}
+		copy(potentialServers, GLOBAL.backendData.Backends)
 		GLOBAL.backendDataMutex.RUnlock()
 
-		GLOBAL.connectedBackendsMutex.RLock()
-		copyConnectedBackends := GLOBAL.connectedBackends
-		GLOBAL.connectedBackendsMutex.RUnlock()
-		numConnectedBackends := len(copyConnectedBackends)
-
-		GLOBAL.idleConnectedBackendsMutex.RLock()
-		copyIdleConnectedBackends := GLOBAL.idleConnectedBackends
-		GLOBAL.idleConnectedBackendsMutex.RUnlock()
-		numIdleConnectedBackends := len(copyIdleConnectedBackends)
-
-		// we want the list of reference backends to not include Servers we're already connected to
-		for i := 0; i < numConnectedBackends; i++ {
-			copyOtherBackends = removeStringIfPresent(copyOtherBackends, copyConnectedBackends[i].ServerIP)
+		GLOBAL.fullBackendStatsMutex.RLock()
+		fullServerConns := make([]string, len(GLOBAL.fullBackendStats))
+		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
+			fullServerConns = append(fullServerConns, GLOBAL.fullBackendStats[i].ServerIP)
 		}
-		numOtherBackends := len(copyOtherBackends)
+		GLOBAL.fullBackendStatsMutex.RUnlock()
 
-		// we want a list of backends that do not include Servers we have an idle connection with
-		copyOtherBackendsNotIdle := copyOtherBackends
-		for i := 0; i < numConnectedBackends; i++ {
-			copyOtherBackendsNotIdle = removeStringIfPresent(copyOtherBackendsNotIdle,
-				copyConnectedBackends[i].ServerIP)
+		GLOBAL.idleBackendStatsMutex.RLock()
+		idleServerConns := make([]string, len(GLOBAL.idleBackendStats))
+		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
+			idleServerConns = append(idleServerConns, GLOBAL.idleBackendStats[i].ServerIP)
 		}
-		numOtherBackendsNotIdle := len(copyOtherBackendsNotIdle)
+		GLOBAL.idleBackendStatsMutex.RUnlock()
 
-		if numIdleConnectedBackends < idleConnectedBackendsLimit {
-			numNewIdleConnections := idleConnectedBackendsLimit - numIdleConnectedBackends
-			randPerm := rnum.Perm(numOtherBackendsNotIdle)
-			for i := 0; i < numNewIdleConnections; i++ {
+		// we want the list of potentialConnections to not include
+		// servers we already have a _full_ connection with
+		for i := 0; i < len(fullServerConns); i++ {
+			potentialServers = removeStringIfPresent(potentialServers, fullServerConns[i])
+		}
+		numNewConns := connectedBackendsLimit - len(fullServerConns)
+		if numNewConns > 0 {
+			randPerm := rnum.Perm(len(potentialServers))
+			for i := 0; i < numNewConns; i++ {
 				randIndex := randPerm[i]
-				randBackendHost := copyOtherBackendsNotIdle[randIndex]
-				go spawnPingPongBackend(randBackendHost)
-			}
-			time.Sleep(1000 * time.Millisecond)
-		}
-
-		if numConnectedBackends < connectedBackendsLimit {
-			numNewConnections := connectedBackendsLimit - numConnectedBackends
-			randPerm := rnum.Perm(numOtherBackends)
-			for i := 0; i < numNewConnections; i++ {
-				randIndex := randPerm[i]
-				randBackendHost := copyOtherBackends[randIndex]
+				randBackendHost := potentialServers[randIndex]
 				go spawnBackendToBackend(randBackendHost)
+			}
+			continue // to get updated info
+		}
+
+		// we want the list of potentialConnections to not include
+		// servers we already have an _idle_ connection with
+		for i := 0; i < len(idleServerConns); i++ {
+			potentialServers = removeStringIfPresent(potentialServers, idleServerConns[i])
+		}
+		numNewConns = idleConnectedBackendsLimit - len(idleServerConns)
+		if numNewConns > 0 {
+			randPerm := rnum.Perm(len(potentialServers))
+			for i := 0; i < numNewConns; i++ {
+				randIndex := randPerm[i]
+				randBackendHost := potentialServers[randIndex]
+				go spawnPingPongBackend(randBackendHost)
 			}
 		}
 
@@ -298,10 +346,6 @@ func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 
 	return systemPtrs
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
 
 func gracefullyCloseBackend() {
 

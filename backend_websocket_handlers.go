@@ -74,7 +74,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	////////////////////////////////////////////////////////////
-	// create channel to backout of nested gofuncs
+	// create channel to backout of nested gofuncs and for loops
 	////////////////////////////////////////////////////////////
 
 	backoutSignal := make(chan struct{})
@@ -84,37 +84,38 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 
 	go func() {
+		for {
+			<-GLOBAL.processingSignal
 
-		<-GLOBAL.turnGalaxyStart
-
-		data := []byte{}
-		dataSignal := make(chan struct{})
-		go func() {
-			playerData := Galaxy{}
-			playerData.Name = GLOBAL.currentGalaxy.GetName()
-			playerData.GlobalX = GLOBAL.currentGalaxy.GetGlobalX()
-			playerData.GlobalY = GLOBAL.currentGalaxy.GetGlobalY()
-			playerData.Type = GLOBAL.currentGalaxy.GetType()
-			playerData.Solarsystemslice = GLOBAL.parsedPlayerPtrs[userid]
-			data, err = proto.Marshal(&playerData)
-			if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA: ", err) {
+			data := []byte{}
+			dataReadySignal := make(chan struct{})
+			go func() {
+				playerData := Galaxy{}
+				playerData.Name = GLOBAL.currentGalaxy.GetName()
+				playerData.GlobalX = GLOBAL.currentGalaxy.GetGlobalX()
+				playerData.GlobalY = GLOBAL.currentGalaxy.GetGlobalY()
+				playerData.Type = GLOBAL.currentGalaxy.GetType()
+				playerData.Solarsystemslice = GLOBAL.parsedPlayerPtrs[userid]
+				data, err = proto.Marshal(&playerData)
+				if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA: ", err) {
+					close(backoutSignal)
+				} else {
+					close(dataReadySignal)
+				}
+			}()
+			select {
+			case <-dataReadySignal:
+				err := conn.WriteMessage(websocket.BinaryMessage, data)
+				if checkError("(clientToBackend) error sending message to client:", err) {
+					close(backoutSignal)
+				}
+			case <-GLOBAL.turningDataSignal:
+				logError("CRITICAL FAILURE - RAN OUT OF TIME TO SEND PLAYERDATA")
 				close(backoutSignal)
+			case <-backoutSignal:
+				return
 			}
-			close(dataSignal)
-		}()
-		select {
-		case <-dataSignal:
-			err := conn.WriteMessage(websocket.BinaryMessage, data)
-			if checkError("(clientToBackend) error sending message to client:", err) {
-				close(backoutSignal)
-			}
-		case <-GLOBAL.turnGalaxyEnd:
-			logError("CRITICAL FAILURE - RAN OUT OF TIME PROCESSING PLAYERDATA")
-			close(backoutSignal)
-		case <-backoutSignal:
-			return
 		}
-
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -122,7 +123,15 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 
 	go func() {
+		for {
+			newRequest := incomingRequest{ClientID: userid}
 
+			GLOBAL.bufferedRequestsMutex.Lock()
+			GLOBAL.bufferedRequests = append(GLOBAL.bufferedRequests, newRequest)
+			GLOBAL.bufferedRequestsMutex.Unlock()
+
+			time.Sleep(time.Second / 25)
+		}
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -335,14 +344,6 @@ func handlePingPongBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	GLOBAL.connectedBackendsMutex.RLock()
-	for i := 0; i < len(GLOBAL.connectedBackends); i++ {
-		if GLOBAL.connectedBackends[i].ServerIP == client {
-			return
-		}
-	}
-	GLOBAL.connectedBackendsMutex.RUnlock()
-
 	var startTime int64
 	var endTime int64
 	var advertisedPriority uint64
@@ -350,6 +351,14 @@ func handlePingPongBackend(w http.ResponseWriter, r *http.Request) {
 	startTime = math.MaxInt64 // intentionally invalid
 
 	for {
+
+		GLOBAL.fullBackendStatsMutex.RLock()
+		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
+			if GLOBAL.fullBackendStats[i].ServerIP == client {
+				return
+			}
+		}
+		GLOBAL.fullBackendStatsMutex.RUnlock()
 
 		msgType, newData, err := conn.ReadMessage()
 		if checkError("(pingPongBackend) error receiving message:", err) {
@@ -364,44 +373,44 @@ func handlePingPongBackend(w http.ResponseWriter, r *http.Request) {
 			endTime = time.Now().UnixNano()
 			latency := (endTime - startTime) - (backendTickrate.Nanoseconds() / 2)
 			advertisedPriority = binary.LittleEndian.Uint64(newData)
-			GLOBAL.idleConnectedBackendsMutex.Lock()
+			GLOBAL.idleBackendStatsMutex.Lock()
 			idleBackendIndex := -1 // intentionally invalid
-			for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
-				if GLOBAL.idleConnectedBackends[i].ServerIP == client {
+			for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
+				if GLOBAL.idleBackendStats[i].ServerIP == client {
 					idleBackendIndex = i
 					break
 				}
 			}
 			if idleBackendIndex == -1 {
-				data := backend{}
+				data := backendInfoStruct{}
 				data.ServerIP = client
 				data.AdvertisedPriority = advertisedPriority
 				data.Latency = ring.New(latencyRingLength)
 				data.Latency.Value = latency
 				data.Latency = data.Latency.Next()
-				GLOBAL.idleConnectedBackends = append(GLOBAL.idleConnectedBackends, data)
+				GLOBAL.idleBackendStats = append(GLOBAL.idleBackendStats, data)
 			} else {
-				GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Value = latency
-				GLOBAL.idleConnectedBackends[idleBackendIndex].Latency.Next()
-				if GLOBAL.idleConnectedBackends[idleBackendIndex].AdvertisedPriority != advertisedPriority {
+				GLOBAL.idleBackendStats[idleBackendIndex].Latency.Value = latency
+				GLOBAL.idleBackendStats[idleBackendIndex].Latency.Next()
+				if GLOBAL.idleBackendStats[idleBackendIndex].AdvertisedPriority != advertisedPriority {
 					logInfo("(pingPongBackend) advertisedPriority has changed (and isn't supposed to)")
 				}
 			}
-			GLOBAL.idleConnectedBackendsMutex.Unlock()
+			GLOBAL.idleBackendStatsMutex.Unlock()
 		}
 
-		GLOBAL.idleConnectedBackendsMutex.RLock()
+		GLOBAL.idleBackendStatsMutex.RLock()
 		count := 0
 		otherSideHasPriority := advertisedPriority > serverPriority
-		for i := 0; i < len(GLOBAL.idleConnectedBackends); i++ {
-			if GLOBAL.idleConnectedBackends[i].ServerIP == client {
+		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
+			if GLOBAL.idleBackendStats[i].ServerIP == client {
 				count++
 			}
 			if count > 1 && otherSideHasPriority {
 				return
 			}
 		}
-		GLOBAL.idleConnectedBackendsMutex.RUnlock()
+		GLOBAL.idleBackendStatsMutex.RUnlock()
 
 		time.Sleep(backendTickrate / 2)
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/ring"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/base64"
@@ -38,8 +37,8 @@ func init() {
 	// sorry not sorry
 	GLOBAL = globalVars{}
 
-	// start logging routine
-	logInfoChan = make(chan string)
+	// kickoff global logging routine
+	logInfoChan = make(chan string, oneMillion)
 	logInfo("(initLogInfo) - init completed")
 	go handleLogging()
 
@@ -49,7 +48,7 @@ func init() {
 	// initializing global IP session count
 	GLOBAL.clientSessionCount = make(map[string]uint16)
 
-	//
+	// initializing global waitgroups
 	GLOBAL.waitForCores = map[string]*sync.WaitGroup{}
 
 	// define commandline flags to parse for
@@ -64,11 +63,7 @@ func init() {
 	GLOBAL.createGalaxyBool = *flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
 	GLOBAL.debugModeBool = *flag.Bool("debug", false, "enable debug logging")
 	GLOBAL.singleThreadedBool = *flag.Bool("singlethreaded", false, "force singlethreaded behavior")
-
-	// pull flags attached to CLI invocation
 	flag.Parse()
-
-	// handle default and/or invalid parameters
 	if GLOBAL.googleAudience == "" {
 		GLOBAL.googleAudience = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
 	}
@@ -87,7 +82,6 @@ func init() {
 		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
 	}
-
 	// singlethreaded mode for debugging (and emergencies)
 	if GLOBAL.singleThreadedBool {
 		GLOBAL.numberOfCores = 1
@@ -103,33 +97,19 @@ func init() {
 func main() {
 	if GLOBAL.frontendBool == true {
 		startFrontendMode()
-		for len(logInfoChan) != 0 {
-			time.Sleep(time.Second)
-		}
-		GLOBAL.loggingMutex.Lock()
-		fmt.Println("")
-		fmt.Println("##############################################")
-		fmt.Println("#     Frontend has finished executing!!!     #")
-		fmt.Println("##############################################")
-		fmt.Println("")
-		GLOBAL.loggingMutex.Unlock()
-		time.Sleep(1 * time.Hour)
-		os.Exit(1)
 	} else {
 		startBackendMode()
-		for len(logInfoChan) != 0 {
-			time.Sleep(time.Second)
-		}
-		GLOBAL.loggingMutex.Lock()
-		fmt.Println("")
-		fmt.Println("##############################################")
-		fmt.Println("#     Backend has finished executing!!!      #")
-		fmt.Println("##############################################")
-		fmt.Println("")
-		GLOBAL.loggingMutex.Unlock()
-		time.Sleep(1 * time.Hour)
-		os.Exit(1)
 	}
+	for len(logInfoChan) != 0 {
+		time.Sleep(time.Second)
+	}
+	GLOBAL.loggingMutex.Lock()
+	fmt.Println("##############################################")
+	fmt.Println("#      Program has finished executing!!!     #")
+	fmt.Println("##############################################")
+	GLOBAL.loggingMutex.Unlock()
+	time.Sleep(5 * time.Minute)
+	os.Exit(1)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,15 +172,7 @@ func checkFirewall(fName string, client string, check string) bool {
 
 func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid string) {
 
-	userid = ""
-
-	// string that will be appended to log messages
-	fName = "(" + fName + ") "
-
-	////////////////////////////////////////////////////////////
 	// receive JSON message from client
-	////////////////////////////////////////////////////////////
-
 	type incomingMessage struct {
 		LoginType string `json:"login_type"`
 		IDToken   string `json:"id_token"`
@@ -217,6 +189,7 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid
 	// send id_token to google oauth service
 	////////////////////////////////////////////////////////////
 
+	userid = ""
 	successful := false
 	var oauth2Service *oauth2.Service // will be used outside of 'for' loop
 	for i := 0; i < constGoogleAuth; i++ {
@@ -287,9 +260,6 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string) (result bool) {
-
-	// string that will be appended to log messages
-	fName = "(" + fName + ") "
 
 	////////////////////////////////////////////////////////////
 	// receive initial challenge from frontend
@@ -411,9 +381,6 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) {
-
-	// string that will be appended to log messages
-	fName = "(" + fName + ") "
 
 	// define function to generate 256 bits of randomness
 	newHMACKey := func() [32]byte {
@@ -602,7 +569,6 @@ func handleLogging() {
 	for {
 		var singleMessage string
 		singleMessage = <-logInfoChan
-
 		for i := 0; i < 10000; i++ {
 			select {
 			case anotherMessage, doesExist := <-logInfoChan:
@@ -781,196 +747,6 @@ func handleInputParameters(fName string) {
 	if doneMatching == false {
 		log.Fatalln(fName + "unknown inputfilename - skipping data import process")
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-// planettype
-const (
-	TERRAN int = iota
-	DESERT
-	VOLCANIC
-	ICE
-	BARREN
-	FERROUS
-	GREENHOUSE
-	OCEANIC
-	ASTEROID
-	DWARF
-)
-
-// spaceshiptype
-const (
-	SCOUT int = iota
-	COLONY
-	CARRIER
-	BATTLESHIP
-	TITAN
-)
-
-// solarsystemtype
-const (
-	BLUEGIANT int = iota
-	YELLOWGIANT
-	REDGIANT
-	WHITEDWARF
-	NEUTRONSTAR
-	BLACKHOLE
-)
-
-// spaceshipstatus
-const (
-	OPERATIONAL int = iota
-	LIGHTLYDAMAGED
-	HEAVILYDAMAGED
-	SEVERELYDAMAGED
-	HANGINGBYATHREAD
-)
-
-// galaxytype
-const (
-	ELLIPTICAL int = iota
-	SPIRAL
-	BARREDSPIRAL
-	IRREGULAR
-)
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-const (
-	constChallenge     = 1
-	constGoogleAuth    = 3
-	constClientSession = 25
-)
-
-const (
-	connectedBackendsLimit     = 3
-	idleConnectedBackendsLimit = 25
-	latencyRingLength          = 25
-	backendTickrate            = 1 * time.Second
-)
-
-const (
-	numDimensions   = 2
-	minBranchFactor = 2
-	maxBranchFactor = 2
-)
-
-const (
-	maxNumberOfPlayers            = 10000
-	numSystemsPerPlayer           = 100
-	totalNumSystems               = maxNumberOfPlayers * numSystemsPerPlayer
-	lightyear                     = fakeToRealMultiplier
-	minimumDistanceBetweenSystems = lightyear
-	galaxyRadius                  = math.MaxInt64
-	realGalaxyRadius              = 125000
-	fakeToRealMultiplier          = galaxyRadius / realGalaxyRadius
-	oneMillion                    = 1000000
-	oneBillion                    = 1000000000
-	oneTrillion                   = 1000000000000
-)
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-type firewallClientValues struct {
-	sync.RWMutex
-	FailedChallengeCount    uint16
-	FailedChallengeTime     int64
-	FailedGoogleAuthCount   uint16
-	FailedGoogleAuthTime    int64
-	FailedSessionLimitCount uint16
-	FailedSessionLimitTime  int64
-}
-
-type incomingRequest struct {
-	ClientID      string
-	ClientMessage string
-	ClientValues  []string
-	ServerMessage string
-}
-
-type backendDataStruct struct {
-	ClientIDs             []string
-	Frontends             []string
-	Backends              []string
-	HighestPriority       uint64
-	SecondHighestPriority uint64
-	GlobalX               int64
-	GlobalY               int64
-}
-
-type backend struct {
-	ServerIP           string
-	AdvertisedPriority uint64
-	Latency            *ring.Ring
-}
-
-type frontendDataStruct struct {
-	ListOfGalaxies []galInfo `json:"ListOfGalaxies"`
-	OtherFrontends []string  `json:"OtherFrontends"`
-	Message        string    `json:"Message"`
-	AnotherMessage string    `json:"AnotherMessage"`
-}
-type galInfo struct {
-	GalaxyName        string   `json:"GalaxyName"`
-	GlobalX           int64    `json:"GlobalX"`
-	GlobalY           int64    `json:"GlobalY"`
-	ClientIDs         []string `json:"ClientIDs"`
-	ClusterOfBackends []string `json:"ClusterOfBackends"`
-}
-
-// GLOBAL var allows me to clearly label which objects are global
-var GLOBAL globalVars
-
-type globalVars struct {
-	galaxyName         string
-	inputFile          string
-	outputFile         string
-	googleAudience     string
-	authPassword       string
-	staticFrontend     string
-	frontendBool       bool
-	backendBool        bool
-	createGalaxyBool   bool
-	debugModeBool      bool
-	singleThreadedBool bool
-
-	turnGalaxyStart chan struct{}
-	turnGalaxyEnd   chan struct{}
-	//tockChan       chan struct{}
-	numberOfCores  int
-	loggingMutex   sync.Mutex
-	waitForLogging sync.WaitGroup
-	waitForCores   map[string]*sync.WaitGroup
-
-	clientBlacklist         map[string]*firewallClientValues
-	clientBlacklistMutex    sync.RWMutex
-	clientSessionCount      map[string]uint16
-	clientSessionCountMutex sync.RWMutex
-
-	sequenceNumber          uint64
-	currentGalaxy           Galaxy
-	futureGalaxy            Galaxy
-	clientRequests          []incomingRequest
-	partitionedSolarSystems []sync.RWMutex
-	parsedPlayerPtrs        map[string][]*SolarSystem
-
-	backendData      backendDataStruct
-	backendDataMutex sync.RWMutex
-
-	connectedBackends          []backend
-	connectedBackendsMutex     sync.RWMutex
-	idleConnectedBackends      []backend
-	idleConnectedBackendsMutex sync.RWMutex
-
-	frontendData      frontendDataStruct
-	frontendDataMutex sync.RWMutex
 }
 
 // ByGalaxyName implements sort.Interface for []galInfo based on the GalaxyName field
