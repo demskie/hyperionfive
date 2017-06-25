@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -26,6 +28,7 @@ func startBackendMode() {
 	GLOBAL.backendData = backendDataStruct{}
 	GLOBAL.currentGalaxy = Galaxy{}
 	GLOBAL.futureGalaxy = Galaxy{}
+	GLOBAL.bufferedRequests = []incomingRequest{}
 
 	////////////////////////////////////////////////////////////
 	// generate randomNumber to determine server priority
@@ -33,8 +36,18 @@ func startBackendMode() {
 
 	enabled := true
 	if enabled {
-		serverPriority = generateRandomUint64()
-		logInfo(fmt.Sprintf("serverPriority = %d", serverPriority))
+		GLOBAL.serverPriority = generateRandomUint64()
+		logInfo(fmt.Sprintf("serverPriority = %d", GLOBAL.serverPriority))
+	}
+
+	////////////////////////////////////////////////////////////
+	// prepare to send unique requestIDs to other goroutines
+	////////////////////////////////////////////////////////////
+
+	enabled = true
+	if enabled {
+		GLOBAL.getUniqueRequestID = make(chan int64, 9999)
+		go seqNumGenerator(GLOBAL.getUniqueRequestID)
 	}
 
 	////////////////////////////////////////////////////////////
@@ -82,36 +95,28 @@ func startBackendMode() {
 	}
 
 	////////////////////////////////////////////////////////////
-	// start handling incoming user requests
+	// define functions to be used in primary game loop
 	////////////////////////////////////////////////////////////
 
-	GLOBAL.bufferedRequests = []incomingRequest{}
-	go func() {
-		for {
-			GLOBAL.bufferedRequestsMutex.Lock()
-			someRequests := make([]incomingRequest, len(GLOBAL.bufferedRequests))
-			copy(someRequests, GLOBAL.bufferedRequests)
-			GLOBAL.bufferedRequests = []incomingRequest{}
-			GLOBAL.bufferedRequestsMutex.Unlock()
-			time.Sleep(10 * time.Millisecond)
-		}
-
-	}()
-
-	////////////////////////////////////////////////////////////
-	// define functions to be used in main game loop
-	////////////////////////////////////////////////////////////
-
-	startSendingBufferedRequests := func() {
-
-	}
-
-	copyNewGalaxyToOld := func() {
+	copyFutureIntoCurrent := func() {
 		x := proto.Clone(&GLOBAL.futureGalaxy)
 		GLOBAL.currentGalaxy = *x.(*Galaxy)
-		// data, _ := proto.Marshal(&GLOBAL.futureGalaxy)
-		// GLOBAL.currentGalaxy = Galaxy{}
-		// _ = proto.Unmarshal(data, &GLOBAL.currentGalaxy)
+	}
+
+	generateCurrentGalaxyHash := func() {
+		data, err := proto.Marshal(&GLOBAL.currentGalaxy)
+		if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
+			os.Exit(1)
+		}
+		buffer := bytes.NewBuffer(data)
+		reader := bufio.NewReader(buffer)
+		scanner := bufio.NewScanner(reader)
+
+		hash := crc32.NewIEEE()
+		for scanner.Scan() {
+			hash.Write(scanner.Bytes())
+		}
+		GLOBAL.currentGalaxyHash = hash.Sum(nil)
 	}
 
 	gatherSystemPtrsForClients := func() {
@@ -142,7 +147,7 @@ func startBackendMode() {
 	////////////////////////////////////////////////////////////
 
 	GLOBAL.turningDataSignal = make(chan struct{})
-	GLOBAL.processingSignal = make(chan struct{})
+	GLOBAL.newTickSignal = make(chan struct{})
 
 	go func() {
 		for {
@@ -150,13 +155,12 @@ func startBackendMode() {
 			close(GLOBAL.turningDataSignal)
 			GLOBAL.turningDataSignal = make(chan struct{})
 
-			startSendingBufferedRequests()
-
-			copyNewGalaxyToOld()
+			copyFutureIntoCurrent()
+			generateCurrentGalaxyHash()
 			gatherSystemPtrsForClients()
 
-			close(GLOBAL.processingSignal)
-			GLOBAL.processingSignal = make(chan struct{})
+			close(GLOBAL.newTickSignal)
+			GLOBAL.newTickSignal = make(chan struct{})
 
 			// send galaxyinfo to clients using currentGalaxy data
 			//     backend_websocket_handlers
@@ -173,23 +177,16 @@ func startBackendMode() {
 	}()
 
 	////////////////////////////////////////////////////////////
-	// setup httpMux to avoid leaking default handlers
+	// setup HTTP and HTTPS server
 	////////////////////////////////////////////////////////////
 
 	muxSecure := http.NewServeMux()
 
-	////////////////////////////////////////////////////////////
 	// setup the websocket handlers
-	////////////////////////////////////////////////////////////
-
 	muxSecure.HandleFunc("/clientgalaxy", handleClientToBackend)
 	muxSecure.HandleFunc("/backendsync", handleBackendToBackend)
-	muxSecure.HandleFunc("/pingpong", handlePingPongBackend)
 
-	////////////////////////////////////////////////////////////
 	// tying the following http parameters to the handlers associated with 'muxSecure'
-	////////////////////////////////////////////////////////////
-
 	srvSecure := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -211,19 +208,15 @@ func startBackendMode() {
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 		},
-
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 	}
 
-	////////////////////////////////////////////////////////////
 	// serve HTTPS requests with config defined above
-	////////////////////////////////////////////////////////////
-
 	go func() {
 		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
 		if checkError("(ListenAndServeTLS) Something went wrong:", errServeTLS) {
 			GLOBAL.waitForLogging.Wait()
-			//os.Exit(1)
+			os.Exit(1)
 		}
 	}()
 
@@ -235,7 +228,6 @@ func startBackendMode() {
 
 func kickoffBackendCommunication() {
 	GLOBAL.fullBackendStats = []backendInfoStruct{}
-	GLOBAL.idleBackendStats = []backendInfoStruct{}
 	// https://play.golang.org/p/pFWNe6CGxd
 
 	seed := func() rand.Source {
@@ -249,6 +241,9 @@ func kickoffBackendCommunication() {
 	rnum := rand.New(seed())
 
 	for {
+
+		// TODO > Could refactor this and remove some complexity as the backend mesh
+		// should always be a full-mesh with the current design parameters.
 
 		// to avoid contention we are only rlocking and accepting the risk that the
 		// information may be out of date and duplicate connections could be spawned
@@ -266,13 +261,6 @@ func kickoffBackendCommunication() {
 		}
 		GLOBAL.fullBackendStatsMutex.RUnlock()
 
-		GLOBAL.idleBackendStatsMutex.RLock()
-		idleServerConns := make([]string, len(GLOBAL.idleBackendStats))
-		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
-			idleServerConns = append(idleServerConns, GLOBAL.idleBackendStats[i].ServerIP)
-		}
-		GLOBAL.idleBackendStatsMutex.RUnlock()
-
 		// we want the list of potentialConnections to not include
 		// servers we already have a _full_ connection with
 		for i := 0; i < len(fullServerConns); i++ {
@@ -287,21 +275,6 @@ func kickoffBackendCommunication() {
 				go spawnBackendToBackend(randBackendHost)
 			}
 			continue // to get updated info
-		}
-
-		// we want the list of potentialConnections to not include
-		// servers we already have an _idle_ connection with
-		for i := 0; i < len(idleServerConns); i++ {
-			potentialServers = removeStringIfPresent(potentialServers, idleServerConns[i])
-		}
-		numNewConns = idleConnectedBackendsLimit - len(idleServerConns)
-		if numNewConns > 0 {
-			randPerm := rnum.Perm(len(potentialServers))
-			for i := 0; i < numNewConns; i++ {
-				randIndex := randPerm[i]
-				randBackendHost := potentialServers[randIndex]
-				go spawnPingPongBackend(randBackendHost)
-			}
 		}
 
 		time.Sleep(100 * time.Millisecond)

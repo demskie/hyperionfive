@@ -544,8 +544,6 @@ func removeStringIfPresent(slice []string, s string) []string {
 	return slice
 }
 
-var serverPriority uint64
-
 func generateRandomUint64() uint64 {
 	seed := func() rand.Source {
 		var randomness int64
@@ -645,6 +643,22 @@ func logDebug(arrayOfStrings ...string) {
 		GLOBAL.loggingMutex.Lock()
 		color.Cyan(t + " " + message)
 		GLOBAL.loggingMutex.Unlock()
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+func seqNumGenerator(randNumChan chan int64) {
+	var number int64
+	b := make([]byte, 8)
+	cryptorand.Read(b)
+	buf := bytes.NewBuffer(b)
+	binary.Read(buf, binary.LittleEndian, &number)
+	for {
+		randNumChan <- number
+		number++
 	}
 }
 

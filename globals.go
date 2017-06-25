@@ -24,7 +24,8 @@ type globalVars struct {
 	singleThreadedBool bool
 
 	turningDataSignal chan struct{}
-	processingSignal  chan struct{}
+	newTickSignal     chan struct{}
+	serverPriority    uint64
 	numberOfCores     int
 	loggingMutex      sync.Mutex
 	waitForLogging    sync.WaitGroup
@@ -35,22 +36,22 @@ type globalVars struct {
 	clientSessionCount      map[string]uint16
 	clientSessionCountMutex sync.RWMutex
 
-	sequenceNumber          uint64
 	currentGalaxy           Galaxy
+	currentGalaxyHash       []byte
 	futureGalaxy            Galaxy
 	partitionedSolarSystems []sync.RWMutex
 	parsedPlayerPtrs        map[string][]*SolarSystem
 
-	bufferedRequests      []incomingRequest
-	bufferedRequestsMutex sync.RWMutex
-	confirmedRequests     []incomingRequest
+	getUniqueRequestID     chan int64
+	bufferedRequests       []incomingRequest
+	bufferedRequestsMutex  sync.RWMutex
+	confirmedRequests      map[string][]int64
+	confirmedRequestsMutex sync.RWMutex
 
 	backendData           backendDataStruct
 	backendDataMutex      sync.RWMutex
 	fullBackendStats      []backendInfoStruct
 	fullBackendStatsMutex sync.RWMutex
-	idleBackendStats      []backendInfoStruct
-	idleBackendStatsMutex sync.RWMutex
 
 	frontendData      frontendDataStruct
 	frontendDataMutex sync.RWMutex
@@ -67,10 +68,10 @@ type firewallClientValues struct {
 }
 
 type incomingRequest struct {
-	ClientID      string
-	ClientMessage string
-	ClientValues  []string
-	ServerMessage string
+	ClientID      string   `json:"clientID"`
+	UniqueID      int64    `json:"uniqueID"`
+	ClientMessage string   `json:"clientMessage"`
+	ClientValues  []string `json:"clientValues"`
 }
 
 type backendDataStruct struct {
@@ -90,17 +91,17 @@ type backendInfoStruct struct {
 }
 
 type frontendDataStruct struct {
-	ListOfGalaxies []galInfo `json:"ListOfGalaxies"`
-	OtherFrontends []string  `json:"OtherFrontends"`
-	Message        string    `json:"Message"`
-	AnotherMessage string    `json:"AnotherMessage"`
+	ListOfGalaxies []galInfo `json:"listOfGalaxies"`
+	OtherFrontends []string  `json:"otherFrontends"`
+	Message        string    `json:"message"`
+	AnotherMessage string    `json:"anotherMessage"`
 }
 type galInfo struct {
-	GalaxyName        string   `json:"GalaxyName"`
-	GlobalX           int64    `json:"GlobalX"`
-	GlobalY           int64    `json:"GlobalY"`
-	ClientIDs         []string `json:"ClientIDs"`
-	ClusterOfBackends []string `json:"ClusterOfBackends"`
+	GalaxyName        string   `json:"galaxyName"`
+	GlobalX           int64    `json:"globalX"`
+	GlobalY           int64    `json:"globalY"`
+	ClientIDs         []string `json:"clientIDs"`
+	ClusterOfBackends []string `json:"clusterOfBackends"`
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

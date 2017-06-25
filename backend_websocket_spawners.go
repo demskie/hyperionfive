@@ -2,34 +2,33 @@ package main
 
 import (
 	"bytes"
-	"container/ring"
-	"encoding/binary"
 	"encoding/gob"
 	"fmt"
 	"net"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 func spawnBackendToFrontend(host string) {
-
+	fName := " backendToFrontend"
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backend", nil)
-	if checkError("(handshakeFrontend) unable to open websocket with frontend loadbalancer:", err) {
+	if checkError(fName+"unable to open websocket with frontend loadbalancer:", err) {
 		return
 	}
 	defer conn.Close()
 
-	logDebug("(handshakeFrontend) opening connection:", conn.RemoteAddr().String())
-	defer logDebug("(handshakeFrontend) closing connection:", conn.RemoteAddr().String())
+	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
+	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
 
 	////////////////////////////////////////////////////////////
 	// do challenge-response handshake (defined in Main.go)
 	////////////////////////////////////////////////////////////
 
-	successful := kickoffChallengeResponse("handshakeFrontend", conn)
+	successful := kickoffChallengeResponse(fName, conn)
 	if successful == false {
 		return
 	}
@@ -86,7 +85,7 @@ func spawnBackendToFrontend(host string) {
 		////////////////////////////////////////////////////////////
 
 		galName := GLOBAL.currentGalaxy.Name
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) galName=\t\t", galName))
+		logDebug(fmt.Sprint(fName+"galName=\t\t", galName))
 
 		if galName == "" {
 			outMsgTemp.Message = newgalaxy
@@ -113,8 +112,8 @@ func spawnBackendToFrontend(host string) {
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
 
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgTemp=\t", outMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgReference=\t", outMsgReference))
+		logDebug(fmt.Sprint(fName+"outMsgTemp=\t", outMsgTemp))
+		logDebug(fmt.Sprint(fName+"outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) && galName != "" {
 			outMsgTemp = outgoingMessageFrontend{Message: sameaslasttime}
@@ -123,7 +122,7 @@ func spawnBackendToFrontend(host string) {
 		var networkOut bytes.Buffer
 		enc := gob.NewEncoder(&networkOut)
 		err := enc.Encode(outMsgTemp)
-		if checkError("(periodicUpdateFrontend) error encoding outgoing message", err) {
+		if checkError(fName+"error encoding outgoing message", err) {
 			return false
 		}
 		conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
@@ -133,17 +132,17 @@ func spawnBackendToFrontend(host string) {
 		////////////////////////////////////////////////////////////
 
 		msgType, newData, err := conn.ReadMessage()
-		if checkError("(periodicUpdateFrontend) error receiving message:", err) {
+		if checkError(fName+"error receiving message:", err) {
 			return false
 		}
 		if msgType != websocket.BinaryMessage {
-			logInfo("(periodicUpdateFrontend) messageType is invalid")
+			logInfo(fName + "messageType is invalid")
 			return false
 		}
 		networkIn := bytes.NewBuffer(newData)
 		dec := gob.NewDecoder(networkIn)
 		err = dec.Decode(&inMsgTemp)
-		if checkError("(periodicUpdateFrontend) error decoding incoming message", err) {
+		if checkError(fName+"error decoding incoming message", err) {
 			return false
 		}
 
@@ -152,15 +151,15 @@ func spawnBackendToFrontend(host string) {
 		////////////////////////////////////////////////////////////
 
 		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != sameaslasttime {
-			logInfo("(periodicUpdateFrontend) received duplicate message")
+			logInfo(fName + "received duplicate message")
 		}
 
 		if inMsgTemp.Message == sameaslasttime {
 			inMsgTemp = inMsgReference
 		}
 
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgTemp=\t\t", inMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgReference=\t", inMsgReference))
+		logDebug(fmt.Sprint(fName+"inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fmt.Sprint(fName+"inMsgReference=\t", inMsgReference))
 
 		if inMsgTemp.Message == yourgalaxyname && galName == "" {
 			galName = inMsgTemp.GalaxyName
@@ -168,15 +167,15 @@ func spawnBackendToFrontend(host string) {
 			GLOBAL.currentGalaxy.GlobalX = inMsgTemp.GlobalX
 			GLOBAL.currentGalaxy.GlobalY = inMsgTemp.GlobalY
 			GLOBAL.backendData = backendDataStruct{}
-			logInfo(fmt.Sprintf("(periodicUpdateFrontend) received 'your_galaxy_name' = %s", galName))
+			logInfo(fmt.Sprintf(fName+"received 'your_galaxy_name' = %s", galName))
 		}
 
 		if inMsgTemp.Message == yourgalaxyname && galName != "" {
-			logInfo("(periodicUpdateFrontend) received 'your_galaxy_name' after already being assigned one")
+			logInfo(fName + "received 'your_galaxy_name' after already being assigned one")
 		}
 
 		if inMsgTemp.Message == diediedie {
-			logInfo("(periodicUpdateFrontend) received 'diediedie'")
+			logInfo(fName + "received 'diediedie'")
 			gracefullyCloseBackend()
 		}
 
@@ -226,180 +225,140 @@ func spawnBackendToBackend(host string) {
 	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
 	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
 
-	if kickoffChallengeResponse(fName, conn) != true {
-		return
-	}
-
-	for {
-
-		GLOBAL.fullBackendStatsMutex.RLock()
-		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
-			if GLOBAL.fullBackendStats[i].ServerIP == host {
-				return
-			}
-		}
-		GLOBAL.fullBackendStatsMutex.RUnlock()
-
-		data := make([]byte, 8)
-		binary.LittleEndian.PutUint64(data, serverPriority)
-		startTime := time.Now().UnixNano()
-		err = conn.WriteMessage(websocket.BinaryMessage, data)
-		if checkError(fName+"error sending message to _data_ backend socket:", err) {
-			return
-		}
-
-		msgType, newData, err := conn.ReadMessage()
-		if checkError(fName+"error receiving message:", err) {
-			return
-		}
-		endTime := time.Now().UnixNano()
-		if msgType != websocket.BinaryMessage {
-			logInfo(fName + "messageType is invalid")
-			return
-		}
-
-		latency := (endTime - startTime) - (backendTickrate.Nanoseconds() / 2)
-		advertisedPriority := binary.LittleEndian.Uint64(newData)
-
-		GLOBAL.fullBackendStatsMutex.Lock()
-		backendIndex := -1 // intentionally invalid
-		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
-			if GLOBAL.fullBackendStats[i].ServerIP == host {
-				backendIndex = i
-				break
-			}
-		}
-		if backendIndex == -1 {
-			data := backendInfoStruct{}
-			data.ServerIP = host
-			data.AdvertisedPriority = advertisedPriority
-			data.Latency = ring.New(latencyRingLength)
-			data.Latency.Value = latency
-			data.Latency = data.Latency.Next()
-			GLOBAL.fullBackendStats = append(GLOBAL.fullBackendStats, data)
-		} else {
-			GLOBAL.fullBackendStats[backendIndex].Latency.Value = latency
-			GLOBAL.fullBackendStats[backendIndex].Latency.Next()
-			if GLOBAL.fullBackendStats[backendIndex].AdvertisedPriority != advertisedPriority {
-				logInfo(fName + "advertisedPriority has changed (and isn't supposed to)")
-			}
-		}
-		GLOBAL.fullBackendStatsMutex.Unlock()
-
-		GLOBAL.fullBackendStatsMutex.RLock()
-		count := 0
-		otherSideHasPriority := advertisedPriority > serverPriority
-		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
-			if GLOBAL.fullBackendStats[i].ServerIP == host {
-				count++
-			}
-			if count > 1 && otherSideHasPriority {
-				return
-			}
-		}
-		GLOBAL.fullBackendStatsMutex.RUnlock()
-
-		time.Sleep(backendTickrate / 2)
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func spawnPingPongBackend(host string) {
-	fName := "(pingPongBackend) "
-	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://"+host+":443/pingpong", nil)
-	if checkError(fName+"unable to open _idle_ websocket with backend:", err) {
-		return
-	}
-	defer conn.Close()
-
-	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
-	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
+	////////////////////////////////////////////////////////////
+	// initiate challenge-response handshake
+	////////////////////////////////////////////////////////////
 
 	if kickoffChallengeResponse(fName, conn) != true {
 		return
 	}
 
-	for {
+	////////////////////////////////////////////////////////////
+	// create channel to backout of nested gofuncs and for loops
+	////////////////////////////////////////////////////////////
 
-		GLOBAL.fullBackendStatsMutex.RLock()
-		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
-			if GLOBAL.fullBackendStats[i].ServerIP == host {
-				return
-			}
-		}
-		GLOBAL.fullBackendStatsMutex.RUnlock()
-
-		GLOBAL.idleBackendStatsMutex.RLock()
-		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
-			if GLOBAL.idleBackendStats[i].ServerIP == host {
-				return
-			}
-		}
-		GLOBAL.idleBackendStatsMutex.RUnlock()
-
-		data := make([]byte, 8)
-		binary.LittleEndian.PutUint64(data, serverPriority)
-		startTime := time.Now().UnixNano()
-		err = conn.WriteMessage(websocket.BinaryMessage, data)
-		if checkError(fName+"error sending message to _idle_ backend socket:", err) {
-			return
-		}
-
-		msgType, newData, err := conn.ReadMessage()
-		if checkError(fName+"error receiving message:", err) {
-			return
-		}
-		endTime := time.Now().UnixNano()
-		if msgType != websocket.BinaryMessage {
-			logInfo(fName + "messageType is invalid")
-			return
-		}
-
-		latency := (endTime - startTime) - (backendTickrate.Nanoseconds() / 2)
-		advertisedPriority := binary.LittleEndian.Uint64(newData)
-
-		GLOBAL.idleBackendStatsMutex.Lock()
-		idleBackendIndex := -1 // intentionally invalid
-		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
-			if GLOBAL.idleBackendStats[i].ServerIP == host {
-				idleBackendIndex = i
-				break
-			}
-		}
-		if idleBackendIndex == -1 {
-			data := backendInfoStruct{}
-			data.ServerIP = host
-			data.AdvertisedPriority = advertisedPriority
-			data.Latency = ring.New(latencyRingLength)
-			data.Latency.Value = latency
-			data.Latency = data.Latency.Next()
-			GLOBAL.idleBackendStats = append(GLOBAL.idleBackendStats, data)
-		} else {
-			GLOBAL.idleBackendStats[idleBackendIndex].Latency.Value = latency
-			GLOBAL.idleBackendStats[idleBackendIndex].Latency.Next()
-			if GLOBAL.idleBackendStats[idleBackendIndex].AdvertisedPriority != advertisedPriority {
-				logInfo(fName + "advertisedPriority has changed (and isn't supposed to)")
-			}
-		}
-		GLOBAL.idleBackendStatsMutex.Unlock()
-
-		GLOBAL.idleBackendStatsMutex.RLock()
-		count := 0
-		otherSideHasPriority := advertisedPriority > serverPriority
-		for i := 0; i < len(GLOBAL.idleBackendStats); i++ {
-			if GLOBAL.idleBackendStats[i].ServerIP == host {
-				count++
-			}
-			if count > 1 && otherSideHasPriority {
-				return
-			}
-		}
-		GLOBAL.idleBackendStatsMutex.RUnlock()
-
-		time.Sleep(backendTickrate / 2)
+	backoutSignal := make(chan struct{})
+	var backoutOnce sync.Once
+	killFunc := func() {
+		close(backoutSignal)
 	}
+	defer backoutOnce.Do(killFunc)
+
+	////////////////////////////////////////////////////////////
+	// create loop to both send/receive
+	////////////////////////////////////////////////////////////
+
+	type message struct {
+		Priority          uint64
+		CurrentGalaxyHash []byte
+		Requests          []incomingRequest
+		RogerWilko        []int64
+	}
+
+	////////////////////////////////////////////////////////////
+	// send data to backend
+	////////////////////////////////////////////////////////////
+
+	go func() {
+		for {
+
+			// do not continue if we already have a full connection active
+			GLOBAL.fullBackendStatsMutex.RLock()
+			for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
+				if GLOBAL.fullBackendStats[i].ServerIP == host {
+					return
+				}
+			}
+			GLOBAL.fullBackendStatsMutex.RUnlock()
+
+			dataReadySignal := make(chan struct{})
+			rawData := []byte{}
+			go func() {
+				// wait for new tick
+				<-GLOBAL.newTickSignal
+				// put together data
+				outMsg := message{}
+				outMsg.Priority = GLOBAL.serverPriority
+				outMsg.CurrentGalaxyHash = GLOBAL.currentGalaxyHash
+				GLOBAL.bufferedRequestsMutex.RLock()
+				outMsg.Requests = GLOBAL.bufferedRequests
+				GLOBAL.bufferedRequestsMutex.RUnlock()
+				GLOBAL.confirmedRequestsMutex.Lock()
+				outMsg.RogerWilko = GLOBAL.confirmedRequests[host]
+				GLOBAL.confirmedRequestsMutex.Unlock()
+
+				// create buffer and begin serializing the data
+				var networkOut bytes.Buffer
+				networkOut.Reset()
+				enc := gob.NewEncoder(&networkOut)
+				err = enc.Encode(outMsg)
+				if checkError(fName+"error encoding outgoing message", err) {
+					backoutOnce.Do(killFunc)
+					return
+				}
+
+				// convert buffer to raw bytes
+				rawData = networkOut.Bytes()
+
+				// When the data is received from the server
+				// we are going to push
+
+				close(dataReadySignal)
+			}()
+
+			select {
+			case <-dataReadySignal:
+				conn.WriteMessage(websocket.BinaryMessage, rawData)
+				if checkError(fName+"error sending message to client:", err) {
+					backoutOnce.Do(killFunc)
+					return
+				}
+			case <-GLOBAL.turningDataSignal:
+				logError("WARNING - RAN OUT OF TIME TO SEND DATA TO BACKENDSERVER")
+				return
+			case <-backoutSignal:
+				return
+			}
+		}
+	}()
+
+	////////////////////////////////////////////////////////////
+	// receive requests from client
+	////////////////////////////////////////////////////////////
+
+	go func() {
+		for {
+			select {
+			default:
+				inMsg := message{}
+				msgType, newData, err := conn.ReadMessage()
+				if checkError(fName+"error receiving message:", err) {
+					backoutOnce.Do(killFunc)
+					return
+				}
+				if msgType != websocket.BinaryMessage {
+					logInfo(fName + "messageType is invalid")
+					backoutOnce.Do(killFunc)
+					return
+				}
+				networkIn := bytes.NewBuffer(newData)
+				dec := gob.NewDecoder(networkIn)
+				err = dec.Decode(&inMsg)
+				if checkError(fName+"error decoding incoming message", err) {
+					backoutOnce.Do(killFunc)
+					return
+				}
+
+			case <-backoutSignal:
+				return
+			}
+		}
+	}()
+
+	////////////////////////////////////////////////////////////
+	// do not finish terminating unless we receive signal
+	////////////////////////////////////////////////////////////
+
+	<-backoutSignal
+	return
 }

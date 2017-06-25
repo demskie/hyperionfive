@@ -181,7 +181,6 @@ func generateSystemNames(coreID int, startIndex int, stopIndex int) {
 }
 
 func generateSpiralCoordinates(coreID int, startIndex int, stopIndex int, numArms int) {
-
 	roundFloat := func(val float64) float64 {
 		if val < 0 {
 			return float64(int64(val - 0.5))
