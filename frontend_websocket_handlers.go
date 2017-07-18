@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"reflect"
-	"sort"
 
 	cryptorand "crypto/rand"
 
@@ -51,19 +50,19 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	GLOBAL.clientSessionCountMutex.Lock()
-	_, ok := GLOBAL.clientSessionCount[client]
+	GLOBAL.clientBlacklist.Lock()
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
 	if ok {
-		GLOBAL.clientSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[client]++
 	} else {
-		GLOBAL.clientSessionCount[client] = 1
+		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
 	}
-	GLOBAL.clientSessionCountMutex.Unlock()
+	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
-		GLOBAL.clientSessionCountMutex.Lock()
-		GLOBAL.clientSessionCount[client]--
-		GLOBAL.clientSessionCountMutex.Unlock()
+		GLOBAL.clientBlacklist.Lock()
+		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.Unlock()
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -96,9 +95,11 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 
 func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 
+	fName := "(backendToFrontend) "
+
 	// if client is blocked - backout of this http connection with 'return'
 	client, _, _ := net.SplitHostPort(r.RemoteAddr)
-	thisCheckPassed := checkFirewall("handshakeBackend", client, "challenge")
+	thisCheckPassed := checkFirewall(fName, client, "challenge")
 	if thisCheckPassed != true {
 		return
 	}
@@ -114,7 +115,7 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError("(handshakeBackend) upgrade error:", err) {
+	if checkError(fName+"upgrade error:", err) {
 		return
 	}
 
@@ -124,31 +125,29 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	GLOBAL.clientSessionCountMutex.Lock()
-	_, ok := GLOBAL.clientSessionCount[client]
+	GLOBAL.clientBlacklist.Lock()
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
 	if ok {
-		GLOBAL.clientSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[client]++
 	} else {
-		GLOBAL.clientSessionCount[client] = 1
-		logDebug("(handshakeBackend) setting 'clientSessionCount' to ONE",
-			"for this client:", client)
+		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
 	}
-	GLOBAL.clientSessionCountMutex.Unlock()
+	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
-		GLOBAL.clientSessionCountMutex.Lock()
-		GLOBAL.clientSessionCount[client]--
-		GLOBAL.clientSessionCountMutex.Unlock()
+		GLOBAL.clientBlacklist.Lock()
+		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.Unlock()
 	}()
 
-	logDebug("(handshakeBackend) opening socket:", string(r.RemoteAddr))
-	defer logDebug("(handshakeBackend) closing connection:", client)
+	logDebug(fName+"opening socket:", string(r.RemoteAddr))
+	defer logDebug(fName+"closing connection:", client)
 
 	////////////////////////////////////////////////////////////
 	// do challenge-response handshake (defined in Main.go)
 	////////////////////////////////////////////////////////////
 
-	successful := handleChallengeResponse("handshakeBackend", conn, client)
+	successful := handleChallengeResponse(fName, conn, client)
 	if successful == false {
 		return
 	}
@@ -157,32 +156,11 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 	// define data structures for upcoming back/forth communication
 	////////////////////////////////////////////////////////////
 
-	type incomingMessageBackend struct {
-		ServerAddress     string   `json:"ServerAddress"`
-		GalaxyName        string   `json:"GalaxyName"`
-		ActiveClientCount int      `json:"ActiveClientCount"`
-		TotalClientCount  int      `json:"TotalClientCount"`
-		OtherFrontends    []string `json:"OtherFrontends"`
-		OtherBackends     []string `json:"OtherBackends"`
-		Message           string   `json:"Message"`
-		AnotherMessage    string   `json:"AnotherMessage"`
-	}
-
-	type outgoingMessageBackend struct {
-		GalaxyName     string   `json:"GalaxyName"`
-		GlobalX        int64    `json:"GlobalX"`
-		GlobalY        int64    `json:"GlobalY"`
-		OtherFrontends []string `json:"OtherFrontends"`
-		OtherBackends  []string `json:"OtherBackends"`
-		Message        string   `json:"Message"`
-		AnotherMessage string   `json:"AnotherMessage"`
-	}
-
 	var (
-		inMsgTemp       = incomingMessageBackend{}
-		inMsgReference  = incomingMessageBackend{}
-		outMsgTemp      = outgoingMessageBackend{}
-		outMsgReference = outgoingMessageBackend{}
+		inMsgTemp       = backendToFrontendMessage{}
+		inMsgReference  = backendToFrontendMessage{}
+		outMsgTemp      = frontendToBackendMessage{}
+		outMsgReference = frontendToBackendMessage{}
 	)
 
 	for {
@@ -191,25 +169,25 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// zeroing out temp messages (important)
 		////////////////////////////////////////////////////////////
 
-		inMsgTemp = incomingMessageBackend{}
-		outMsgTemp = outgoingMessageBackend{}
+		inMsgTemp = backendToFrontendMessage{}
+		outMsgTemp = frontendToBackendMessage{}
 
 		////////////////////////////////////////////////////////////
 		// wait for message from Backend
 		////////////////////////////////////////////////////////////
 
 		msgType, newData, err := conn.ReadMessage()
-		if checkError("(periodicUpdateBackend) error receiving message:", err) {
+		if checkError(fName+"error receiving message:", err) {
 			return
 		}
 		if msgType != websocket.BinaryMessage {
-			logInfo("(periodicUpdateBackend) messageType is invalid")
+			logInfo(fName + "messageType is invalid")
 			return
 		}
 		network := bytes.NewBuffer(newData)
 		dec := gob.NewDecoder(network)
 		err = dec.Decode(&inMsgTemp)
-		if checkError("(periodicUpdateBackend) error decoding incoming message", err) {
+		if checkError(fName+"error decoding incoming message", err) {
 			return
 		}
 
@@ -279,19 +257,19 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		galName := outMsgReference.GalaxyName
-		logDebug(fmt.Sprint("(periodicUpdateBackend) galName=\t\t", galName))
+		logDebug(fmt.Sprint(fName+"galName=\t\t", galName))
 		// TODO // need to reference galaxyInfo instead
 
 		if inMsgTemp.Message == sameaslasttime {
 			inMsgTemp = inMsgReference
 		}
 
-		logDebug(fmt.Sprint("(periodicUpdateBackend) inMsgTemp=\t\t", inMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateBackend) inMsgReference=\t", inMsgReference))
+		logDebug(fmt.Sprint(fName+"inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fmt.Sprint(fName+"inMsgReference=\t", inMsgReference))
 
 		if inMsgTemp.Message == sameaslasttime && galName != "" {
 			if reflect.DeepEqual(inMsgTemp, inMsgReference) {
-				logInfo("(periodicUpdateBackend) received duplicate message")
+				logInfo(fName + "received duplicate message")
 			}
 		}
 
@@ -300,43 +278,41 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		if inMsgTemp.Message == newgalaxy {
-			logInfo("(periodicUpdateBackend) received 'new_galaxy' from backend")
+			logInfo(fName + "received 'new_galaxy' from backend")
 			myGalName, glblX, glblY := generateGlobalGalaxyInfo(client)
 
 			galName = myGalName
 			outMsgTemp.GalaxyName = galName
 			outMsgTemp.Message = yourgalaxyname
 
-			GLOBAL.frontendDataMutex.RLock()
-			galIndex := -1
-			for i := 0; i < len(GLOBAL.frontendData.ListOfGalaxies); i++ {
-				if GLOBAL.frontendData.ListOfGalaxies[i].GalaxyName == galName {
-					galIndex = i
+			galaxyIsNotDefined := true
+			GLOBAL.frontendData.RLock()
+			for gn := range GLOBAL.frontendData.GalGalaxyType {
+				if gn == galName {
+					galaxyIsNotDefined = false
 					break
 				}
 			}
-			GLOBAL.frontendDataMutex.RUnlock()
-			if galIndex == -1 {
-				GLOBAL.frontendDataMutex.Lock()
-				newObjectForSlice := galInfo{}
-				newObjectForSlice.GalaxyName = galName
-				newObjectForSlice.GlobalX = glblX
-				newObjectForSlice.GlobalY = glblY
-				newObjectForSlice.ClientIDs = []string{}
-				newObjectForSlice.ClusterOfBackends = []string{client}
-				// TODO // need to remove backend from galaxyInfo.Backends on disconnect
-				GLOBAL.frontendData.ListOfGalaxies = append(GLOBAL.frontendData.ListOfGalaxies, newObjectForSlice)
-				GLOBAL.frontendDataMutex.Unlock()
+			GLOBAL.frontendData.RLock()
+
+			if galaxyIsNotDefined {
+				GLOBAL.frontendData.Lock()
+				GLOBAL.frontendData.GalGlobalX[galName] = glblX
+				GLOBAL.frontendData.GalGlobalY[galName] = glblY
+				GLOBAL.frontendData.GalGalaxyType[galName] = 99 // TODO: IMPLEMENT
+				GLOBAL.frontendData.GalClientIDs[galName] = []string{}
+				GLOBAL.frontendData.GalBackends[galName] = []string{client}
+				GLOBAL.frontendData.Unlock()
 			} else {
-				logInfo("(periodicUpdateBackend) galaxy that we JUST generated already exists (fatalerror)")
+				logError(fName + "just tried to generate a galaxy that already exists!")
 				return
 			}
-			logInfo(fmt.Sprintf("(periodicUpdateBackend) generated the following galInfo:"+
+			logInfo(fmt.Sprintf(fName+"generated the following galInfo:"+
 				"\n\t\tgalName=%s\n\t\tglblX=%d\n\t\tglblY=%d", galName, glblX, glblY))
 		}
 
 		if inMsgTemp.Message == diediedie {
-			logInfo("(periodicUpdateBackend) received 'diediedie' from backend *ignoring*")
+			logInfo(fName + "received 'diediedie' from backend *ignoring*")
 			// TODO // add sanity logic to 'diediedie' message
 		}
 
@@ -345,52 +321,46 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		if galName == "" && inMsgTemp.GalaxyName != "" {
-			logInfo(fmt.Sprintf("(periodicUpdateBackend) something is horribly wrong..."+
+			logInfo(fmt.Sprintf(fName+"something is horribly wrong..."+
 				" backend %s is asserting unknown galName", client))
 			return
 		}
 
 		if galName == "" && inMsgTemp.Message != newgalaxy {
-			logInfo("(periodicUpdateBackend) invalid incoming request: empty galName and invalid message.newGalaxy")
+			logInfo(fName + "invalid incoming request: empty galName and invalid message.newGalaxy")
 			return
 		}
 
 		if galName == "" {
-			logInfo("(periodicUpdateBackend) something is terribly wrong... galaxy was not created/initialized")
+			logInfo(fName + "something is terribly wrong... galaxy was not created/initialized")
 			return
 		}
 
 		outMsgTemp.GalaxyName = galName
-
-		GLOBAL.frontendDataMutex.RLock()
-		galIndex := -1
-		for i := 0; i < len(GLOBAL.frontendData.ListOfGalaxies); i++ {
-			if GLOBAL.frontendData.ListOfGalaxies[i].GalaxyName == galName {
-				galIndex = i
-				break
-			}
-		}
-		outMsgTemp.GlobalX = GLOBAL.frontendData.ListOfGalaxies[galIndex].GlobalX
-		outMsgTemp.GlobalY = GLOBAL.frontendData.ListOfGalaxies[galIndex].GlobalY
+		GLOBAL.frontendData.RLock()
+		outMsgTemp.GlobalX = GLOBAL.frontendData.GalGlobalX[galName]
+		outMsgTemp.GlobalY = GLOBAL.frontendData.GalGlobalY[galName]
 		outMsgTemp.OtherFrontends = GLOBAL.frontendData.OtherFrontends
-		outMsgTemp.OtherBackends = GLOBAL.frontendData.ListOfGalaxies[galIndex].ClusterOfBackends
-		GLOBAL.frontendDataMutex.RUnlock()
+		outMsgTemp.OtherBackends = GLOBAL.frontendData.GalBackends[galName]
+		GLOBAL.frontendData.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
 
-		logDebug(fmt.Sprint("(periodicUpdateBackend) outMsgTemp=\t", outMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateBackend) outMsgReference=\t", outMsgReference))
+		logDebug(fmt.Sprint(fName+"outMsgTemp=\t", outMsgTemp))
+		logDebug(fmt.Sprint(fName+"outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			outMsgTemp = outgoingMessageBackend{Message: sameaslasttime}
+			outMsgTemp = frontendToBackendMessage{
+				Message: sameaslasttime,
+			}
 		}
 
 		var networkOut bytes.Buffer
 		enc := gob.NewEncoder(&networkOut)
 		err = enc.Encode(outMsgTemp)
-		if checkError("(periodicUpdateBackend) error encoding outgoing message", err) {
+		if checkError(fName+"error encoding outgoing message", err) {
 			return
 		}
 		conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
@@ -432,7 +402,6 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 	if checkError("(handshakeFrontend) upgrade error:", err) {
 		return
 	}
-	defer conn.Close()
 
 	// log client IP address
 	logInfo("(handshakeFrontend) opening socket:", string(r.RemoteAddr))
@@ -442,21 +411,21 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 	// modify sessionCount accordingly
 	////////////////////////////////////////////////////////////
 
-	GLOBAL.clientSessionCountMutex.Lock()
-	_, ok := GLOBAL.clientSessionCount[client]
+	defer conn.Close()
+
+	GLOBAL.clientBlacklist.Lock()
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
 	if ok {
-		GLOBAL.clientSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[client]++
 	} else {
-		GLOBAL.clientSessionCount[client] = 1
-		logDebug("(handshakeFrontend) setting 'clientSessionCount' to ONE",
-			"for this client:", client)
+		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
 	}
-	GLOBAL.clientSessionCountMutex.Unlock()
+	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
-		GLOBAL.clientSessionCountMutex.Lock()
-		GLOBAL.clientSessionCount[client]--
-		GLOBAL.clientSessionCountMutex.Unlock()
+		GLOBAL.clientBlacklist.Lock()
+		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.Unlock()
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -473,10 +442,10 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 
 	var (
-		inMsgTemp       = frontendDataStruct{}
-		inMsgReference  = frontendDataStruct{}
-		outMsgTemp      = frontendDataStruct{}
-		outMsgReference = frontendDataStruct{}
+		inMsgTemp       = frontendToFrontendMessage{}
+		inMsgReference  = frontendToFrontendMessage{}
+		outMsgTemp      = frontendToFrontendMessage{}
+		outMsgReference = frontendToFrontendMessage{}
 	)
 
 	////////////////////////////////////////////////////////////
@@ -489,8 +458,8 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// zeroing out temp messages (important)
 		////////////////////////////////////////////////////////////
 
-		inMsgTemp = frontendDataStruct{}
-		outMsgTemp = frontendDataStruct{}
+		inMsgTemp = frontendToFrontendMessage{}
+		outMsgTemp = frontendToFrontendMessage{}
 
 		////////////////////////////////////////////////////////////
 		// wait for message from Frontend
@@ -539,170 +508,112 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// append incoming frontend slice to local slice
 		////////////////////////////////////////////////////////////
 
-		GLOBAL.frontendDataMutex.RLock()
-		copyOfFrontendSlice := make([]string, len(GLOBAL.frontendData.OtherFrontends))
-		copy(copyOfFrontendSlice, GLOBAL.frontendData.OtherFrontends)
-		copyOfGalaxySlice := make([]galInfo, len(GLOBAL.frontendData.ListOfGalaxies))
-		copy(copyOfGalaxySlice, GLOBAL.frontendData.ListOfGalaxies)
-		GLOBAL.frontendDataMutex.RUnlock()
-
-		newInfoFound := false
-		for i := 0; i < len(inMsgTemp.OtherFrontends); i++ {
-			if newInfoFound == true {
-				break
-			}
-			remoteElem := inMsgTemp.OtherFrontends[i]
-			for x := 0; x < len(copyOfFrontendSlice); x++ {
-				localElem := copyOfFrontendSlice[x]
-				if remoteElem == localElem {
-					break
-				}
-				if x >= len(copyOfFrontendSlice)-1 {
-					newInfoFound = true
+		GLOBAL.frontendData.RLock()
+		alpha := reflect.DeepEqual(inMsgTemp.GalGlobalX, GLOBAL.frontendData.GalGlobalX)
+		beta := reflect.DeepEqual(inMsgTemp.GalGlobalY, GLOBAL.frontendData.GalGlobalY)
+		charlie := reflect.DeepEqual(inMsgTemp.GalGalaxyType, GLOBAL.frontendData.GalGalaxyType)
+		delta := reflect.DeepEqual(inMsgTemp.GalClientIDs, GLOBAL.frontendData.GalClientIDs)
+		echo := reflect.DeepEqual(inMsgTemp.GalBackends, GLOBAL.frontendData.GalBackends)
+		foxtrot := reflect.DeepEqual(inMsgTemp.OtherFrontends, GLOBAL.frontendData.OtherFrontends)
+		golf := func() bool {
+			myIPaddr, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+			for _, val := range inMsgTemp.OtherFrontends {
+				if val == myIPaddr {
+					return true
 				}
 			}
-		}
+			return false
+		}()
+		GLOBAL.frontendData.RUnlock()
 
-		if newInfoFound == true {
-			GLOBAL.frontendDataMutex.Lock()
-			for i := 0; i < len(GLOBAL.frontendData.OtherFrontends); i++ {
-				GLOBAL.frontendData.OtherFrontends = appendStringIfMissing(GLOBAL.frontendData.OtherFrontends,
-					GLOBAL.frontendData.OtherFrontends[i])
-			}
-			GLOBAL.frontendDataMutex.Unlock()
-		}
-
-		////////////////////////////////////////////////////////////
-		// sort the galaxies by galaxyName
-		////////////////////////////////////////////////////////////
-
-		sort.Sort(ByGalaxyName(copyOfGalaxySlice))
-		sort.Sort(ByGalaxyName(inMsgTemp.ListOfGalaxies))
-
-		if reflect.DeepEqual(copyOfGalaxySlice, inMsgTemp.ListOfGalaxies) {
-			logDebug("(periodicUpdateFrontend) localSlice of galaxies and incomingSlice are both properly sorted")
-		} else {
-			logDebug("(periodicUpdateFrontend) localSlice of galaxies needed to be sorted")
-			GLOBAL.frontendDataMutex.Lock()
-			sort.Sort(ByGalaxyName(GLOBAL.frontendData.ListOfGalaxies))
-			GLOBAL.frontendDataMutex.Unlock()
-		}
-
-		////////////////////////////////////////////////////////////
-		// check if galaxy exists and if it doesn't - add it to the slice
-		////////////////////////////////////////////////////////////
-
-		for i := 0; i < len(inMsgTemp.ListOfGalaxies); i++ {
-			remoteElem := inMsgTemp.ListOfGalaxies[i].GalaxyName
-			for x := 0; x < len(copyOfGalaxySlice); x++ {
-				localElem := copyOfGalaxySlice[x].GalaxyName
-				if remoteElem == localElem {
-					break
-				}
-				if x >= len(copyOfGalaxySlice)-1 {
-					GLOBAL.frontendDataMutex.Lock()
-					GLOBAL.frontendData.ListOfGalaxies = append(GLOBAL.frontendData.ListOfGalaxies,
-						inMsgTemp.ListOfGalaxies[i])
-					GLOBAL.frontendDataMutex.Unlock()
+		if !alpha || !beta || !charlie || !delta || !echo || !foxtrot || !golf {
+			GLOBAL.frontendData.Lock()
+			if !alpha {
+				for galName, value := range inMsgTemp.GalGlobalX {
+					_, ok := GLOBAL.frontendData.GalGlobalX[galName]
+					if !ok {
+						GLOBAL.frontendData.GalGlobalX[galName] = value
+					}
 				}
 			}
-		}
-
-		////////////////////////////////////////////////////////////
-		// append incoming galaxy specific slices to local slices
-		////////////////////////////////////////////////////////////
-
-		//	Simplified Example/Test:
-		//	https://play.golang.org/p/ovy37tY29R
-
-		for i := 0; i < len(inMsgTemp.ListOfGalaxies); i++ {
-			thisGalaxysNewClientIDs := []string{}
-
-			for x := 0; x < len(inMsgTemp.ListOfGalaxies[i].ClientIDs); x++ {
-				remoteElem := inMsgTemp.ListOfGalaxies[i].ClientIDs[x]
-				//fmt.Printf("i: %d \t remoteElem: %s \n", i, remoteElem)
-
-				for y := 0; y < len(copyOfGalaxySlice); y++ {
-					for z := 0; z < len(copyOfGalaxySlice[y].ClientIDs); z++ {
-						localElem := copyOfGalaxySlice[y].ClientIDs[z]
-						//fmt.Printf("i: %d \t localElem: %s \n", i, localElem)
-
-						if remoteElem == localElem {
-							break
-						}
-
-						if z >= len(copyOfGalaxySlice[y].ClientIDs)-1 {
-							thisGalaxysNewClientIDs = append(thisGalaxysNewClientIDs, remoteElem)
+			if !beta {
+				for galName, value := range inMsgTemp.GalGlobalY {
+					_, ok := GLOBAL.frontendData.GalGlobalY[galName]
+					if !ok {
+						GLOBAL.frontendData.GalGlobalY[galName] = value
+					}
+				}
+			}
+			if !charlie {
+				for galName, value := range inMsgTemp.GalGalaxyType {
+					_, ok := GLOBAL.frontendData.GalGalaxyType[galName]
+					if !ok {
+						GLOBAL.frontendData.GalGalaxyType[galName] = value
+					}
+				}
+			}
+			if !delta {
+				for galName, remoteUUIDs := range inMsgTemp.GalClientIDs {
+					_, ok := GLOBAL.frontendData.GalClientIDs[galName]
+					if !ok {
+						GLOBAL.frontendData.GalClientIDs[galName] = remoteUUIDs
+					} else {
+						for _, ID := range remoteUUIDs {
+							appendStringIfMissing(GLOBAL.frontendData.GalClientIDs[galName], ID)
 						}
 					}
 				}
 			}
-			if len(thisGalaxysNewClientIDs) != 0 {
-				GLOBAL.frontendDataMutex.Lock()
-				existingData := &GLOBAL.frontendData.ListOfGalaxies[i].ClientIDs
-				*existingData = append(*existingData, thisGalaxysNewClientIDs...)
-				//fmt.Println("newFrontendData:", frontendData)
-				GLOBAL.frontendDataMutex.Unlock()
-			}
-		}
-
-		for i := 0; i < len(inMsgTemp.ListOfGalaxies); i++ {
-
-			thisGalaxysNewBackends := []string{}
-			for x := 0; x < len(inMsgTemp.ListOfGalaxies[i].ClusterOfBackends); x++ {
-
-				remoteElem := inMsgTemp.ListOfGalaxies[i].ClusterOfBackends[x]
-				//fmt.Printf("i: %d \t remoteElem: %s \n", i, remoteElem)
-				for y := 0; y < len(copyOfGalaxySlice); y++ {
-
-					for z := 0; z < len(copyOfGalaxySlice[y].ClusterOfBackends); z++ {
-						localElem := copyOfGalaxySlice[y].ClusterOfBackends[z]
-						//fmt.Printf("i: %d \t localElem: %s \n", i, localElem)
-
-						if remoteElem == localElem {
-							break
-						}
-
-						if z >= len(copyOfGalaxySlice[y].ClusterOfBackends)-1 {
-							thisGalaxysNewBackends = append(thisGalaxysNewBackends, remoteElem)
+			if !echo {
+				for galName, remoteBackends := range inMsgTemp.GalBackends {
+					_, ok := GLOBAL.frontendData.GalBackends[galName]
+					if !ok {
+						GLOBAL.frontendData.GalBackends[galName] = remoteBackends
+					} else {
+						for _, backend := range remoteBackends {
+							appendStringIfMissing(GLOBAL.frontendData.GalBackends[galName], backend)
 						}
 					}
 				}
 			}
-			if len(thisGalaxysNewBackends) != 0 {
-				GLOBAL.frontendDataMutex.Lock()
-				existingData := &GLOBAL.frontendData.ListOfGalaxies[i].ClusterOfBackends
-				*existingData = append(*existingData, thisGalaxysNewBackends...)
-				//fmt.Println("newFrontendData:", frontendData)
-				GLOBAL.frontendDataMutex.Unlock()
+			if !foxtrot {
+				for _, remoteFrontend := range inMsgTemp.OtherFrontends {
+					appendStringIfMissing(GLOBAL.frontendData.OtherFrontends, remoteFrontend)
+				}
 			}
+			if !golf {
+				myIPaddr, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+				GLOBAL.frontendData.OtherFrontends = append(GLOBAL.frontendData.OtherFrontends, myIPaddr)
+			}
+			GLOBAL.frontendData.Unlock()
 		}
 
 		////////////////////////////////////////////////////////////
 		// finish putting together outgoing message
 		////////////////////////////////////////////////////////////
 
-		GLOBAL.frontendDataMutex.RLock()
-
-		foundMatch := false
-		myIPaddr, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-		for i := 0; i < len(GLOBAL.frontendData.OtherFrontends); i++ {
-			if GLOBAL.frontendData.OtherFrontends[i] == myIPaddr {
-				foundMatch = true
-				break
-			}
+		GLOBAL.frontendData.RLock()
+		for k, v := range GLOBAL.frontendData.GalGlobalX {
+			outMsgTemp.GalGlobalX[k] = v
 		}
-		if foundMatch == false {
-			outMsgTemp.OtherFrontends = append(GLOBAL.frontendData.OtherFrontends, myIPaddr)
+		for k, v := range GLOBAL.frontendData.GalGlobalY {
+			outMsgTemp.GalGlobalY[k] = v
 		}
-
-		for i := 0; i < len(copyOfGalaxySlice); i++ {
-			outMsgTemp.ListOfGalaxies[i].GalaxyName = GLOBAL.frontendData.ListOfGalaxies[i].GalaxyName
-			outMsgTemp.ListOfGalaxies[i].GlobalX = GLOBAL.frontendData.ListOfGalaxies[i].GlobalX
-			outMsgTemp.ListOfGalaxies[i].GlobalY = GLOBAL.frontendData.ListOfGalaxies[i].GlobalY
+		for k, v := range GLOBAL.frontendData.GalGalaxyType {
+			outMsgTemp.GalGalaxyType[k] = v
 		}
-
-		GLOBAL.frontendDataMutex.RUnlock()
+		for k, vals := range GLOBAL.frontendData.GalClientIDs {
+			newSlice := []string{}
+			copy(newSlice, vals)
+			outMsgTemp.GalClientIDs[k] = newSlice
+		}
+		for k, vals := range GLOBAL.frontendData.GalBackends {
+			newSlice := []string{}
+			copy(newSlice, vals)
+			outMsgTemp.GalBackends[k] = newSlice
+		}
+		copy(outMsgTemp.OtherFrontends, GLOBAL.frontendData.OtherFrontends)
+		GLOBAL.frontendData.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
@@ -712,7 +623,9 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
-			outMsgTemp = frontendDataStruct{Message: sameaslasttime}
+			outMsgTemp = frontendToFrontendMessage{
+				Message: sameaslasttime,
+			}
 		}
 
 		var networkOut bytes.Buffer

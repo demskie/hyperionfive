@@ -43,10 +43,7 @@ func init() {
 	go handleLogging()
 
 	// initializing global IP blacklist
-	GLOBAL.clientBlacklist = map[string]*firewallClientValues{}
-
-	// initializing global IP session count
-	GLOBAL.clientSessionCount = make(map[string]uint16)
+	GLOBAL.clientBlacklist = clientBlacklist{}
 
 	// initializing global waitgroups
 	GLOBAL.waitForCores = map[string]*sync.WaitGroup{}
@@ -118,49 +115,65 @@ func main() {
 
 func checkFirewall(fName string, client string, check string) bool {
 
-	fName = "(" + fName + ") "
+	var limit int
+	var count uint16
+	var lastTime int64
+	var alpha, beta, charlie, delta, echo, foxtrot bool
 
-	GLOBAL.clientBlacklist[client].RLock()
-	_, exists := GLOBAL.clientBlacklist[client]
+	GLOBAL.clientBlacklist.RLock()
+	switch check {
+	case "challenge":
+		limit = constChallenge
+		count, alpha = GLOBAL.clientBlacklist.FailedChallengeCount[client]
+		lastTime, beta = GLOBAL.clientBlacklist.FailedChallengeTime[client]
+	case "googleAuth":
+		limit = constGoogleAuth
+		count, charlie = GLOBAL.clientBlacklist.FailedGoogleAuthCount[client]
+		lastTime, delta = GLOBAL.clientBlacklist.FailedGoogleAuthTime[client]
+	case "sessionLimit":
+		limit = constClientSession
+		count, echo = GLOBAL.clientBlacklist.FailedSessionLimitCount[client]
+		lastTime, foxtrot = GLOBAL.clientBlacklist.FailedSessionLimitTime[client]
+	default:
+		logError(fName + "> gave > checkFirewallHistory an invalid 'check' parameter")
+		GLOBAL.clientBlacklist.RUnlock()
+		return true // fail open
+	}
+	GLOBAL.clientBlacklist.RUnlock()
 
-	if exists == true {
-		var limit int
-		var count uint16
-		var lastTime int64
-		switch check {
-		case "challenge":
-			limit = constChallenge
-			count = GLOBAL.clientBlacklist[client].FailedChallengeCount
-			lastTime = GLOBAL.clientBlacklist[client].FailedChallengeTime
-		case "googleAuth":
-			limit = constGoogleAuth
-			count = GLOBAL.clientBlacklist[client].FailedGoogleAuthCount
-			lastTime = GLOBAL.clientBlacklist[client].FailedGoogleAuthTime
-		case "sessionLimit":
-			limit = constClientSession
-			count = GLOBAL.clientBlacklist[client].FailedSessionLimitCount
-			lastTime = GLOBAL.clientBlacklist[client].FailedSessionLimitTime
-		default:
-			logInfo(fName + "checkFirewallHistory was given an invalid 'check' parameter")
-			return false
+	currentTime := time.Now().Unix()
+	timeSinceBlacklist := currentTime - lastTime
+	blacklistExpGrowth := int64((count) / uint16(limit))
+	currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
+	if timeSinceBlacklist < currentBlacklistGiven {
+		logInfo(fName+"blacklisted client attempting to connect:", client,
+			"\n\tblacklistedFor:", string(timeSinceBlacklist),
+			"\n\treason:", check,
+			"\n\tnumberOfOffenses:", string(count))
+		return false
+	}
+
+	if !alpha || !beta || !charlie || !delta || !echo || !foxtrot {
+		GLOBAL.clientBlacklist.Lock()
+		if !alpha {
+			GLOBAL.clientBlacklist.FailedChallengeCount[client] = 0
 		}
-		currentTime := time.Now().Unix()
-		timeSinceBlacklist := currentTime - lastTime
-		blacklistExpGrowth := int64((count) / uint16(limit))
-		currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
-		if timeSinceBlacklist < currentBlacklistGiven {
-			logInfo(fName+"blacklisted client attempting to connect:", client,
-				"\n\tblacklistedFor:", string(timeSinceBlacklist),
-				"\n\treason:", check,
-				"\n\tnumberOfOffenses:", string(count))
-			return false
+		if !beta {
+			GLOBAL.clientBlacklist.FailedChallengeTime[client] = math.MinInt64
 		}
-		GLOBAL.clientBlacklist[client].RUnlock()
-	} else {
-		GLOBAL.clientBlacklistMutex.Lock()
-		GLOBAL.clientBlacklist[client] = &firewallClientValues{}
-		GLOBAL.clientBlacklistMutex.Unlock()
-		return true
+		if !charlie {
+			GLOBAL.clientBlacklist.FailedGoogleAuthCount[client] = 0
+		}
+		if !delta {
+			GLOBAL.clientBlacklist.FailedGoogleAuthTime[client] = math.MinInt64
+		}
+		if !echo {
+			GLOBAL.clientBlacklist.FailedSessionLimitCount[client] = 0
+		}
+		if !foxtrot {
+			GLOBAL.clientBlacklist.FailedSessionLimitTime[client] = math.MinInt64
+		}
+		GLOBAL.clientBlacklist.Unlock()
 	}
 
 	return true
@@ -171,6 +184,10 @@ func checkFirewall(fName string, client string, check string) bool {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid string) {
+
+	// default userid
+	// this MUST be checked on the other side
+	userid = ""
 
 	// receive JSON message from client
 	type incomingMessage struct {
@@ -189,7 +206,6 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid
 	// send id_token to google oauth service
 	////////////////////////////////////////////////////////////
 
-	userid = ""
 	successful := false
 	var oauth2Service *oauth2.Service // will be used outside of 'for' loop
 	for i := 0; i < constGoogleAuth; i++ {
@@ -215,27 +231,16 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid
 
 	triggerFailState := func() {
 		currentTime := time.Now().Unix()
-		GLOBAL.clientBlacklist[client].Lock()
-		GLOBAL.clientBlacklist[client].FailedGoogleAuthCount += constGoogleAuth
-		GLOBAL.clientBlacklist[client].FailedGoogleAuthTime = currentTime
-		GLOBAL.clientBlacklist[client].Unlock()
-	}
-	type reportErrorMessage struct {
-		Error string `json:"error"`
+		GLOBAL.clientBlacklist.Lock()
+		GLOBAL.clientBlacklist.FailedGoogleAuthCount[client]++
+		GLOBAL.clientBlacklist.FailedGoogleAuthTime[client] = currentTime
+		GLOBAL.clientBlacklist.Unlock()
 	}
 	if tokenInfo.VerifiedEmail != true {
-		var outMsgResponse reportErrorMessage
-		outMsgResponse.Error = "EmailNotVerified"
-		err = conn.WriteJSON(outMsgResponse)
-		checkError(fName+"error sending response:", err)
 		triggerFailState()
 		return userid
 	}
 	if tokenInfo.Audience != GLOBAL.googleAudience {
-		var outMsgResponse reportErrorMessage
-		outMsgResponse.Error = "AudienceMismatch"
-		err = conn.WriteJSON(outMsgResponse)
-		checkError(fName+"error sending response:", err)
 		triggerFailState()
 		return userid
 	}
@@ -284,16 +289,11 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 		logDebug(fName+"received a challenge with invalid length:",
 			string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
-		GLOBAL.clientBlacklistMutex.RLock()
-		_, exists := GLOBAL.clientBlacklist[clientIP]
-		GLOBAL.clientBlacklistMutex.RUnlock()
-		if exists == true {
-			GLOBAL.clientBlacklist[clientIP].Lock()
-			GLOBAL.clientBlacklist[clientIP].FailedChallengeCount++
-			GLOBAL.clientBlacklist[clientIP].FailedChallengeTime = currentTime
-			GLOBAL.clientBlacklist[clientIP].Unlock()
-			return false
-		}
+		GLOBAL.clientBlacklist.Lock()
+		GLOBAL.clientBlacklist.FailedChallengeCount[clientIP]++
+		GLOBAL.clientBlacklist.FailedChallengeTime[clientIP] = currentTime
+		GLOBAL.clientBlacklist.Unlock()
+		return false
 	}
 
 	////////////////////////////////////////////////////////////
@@ -762,10 +762,3 @@ func handleInputParameters(fName string) {
 		log.Fatalln(fName + "unknown inputfilename - skipping data import process")
 	}
 }
-
-// ByGalaxyName implements sort.Interface for []galInfo based on the GalaxyName field
-type ByGalaxyName []galInfo
-
-func (gn ByGalaxyName) Len() int           { return len(gn) }
-func (gn ByGalaxyName) Swap(i, j int)      { gn[i], gn[j] = gn[j], gn[i] }
-func (gn ByGalaxyName) Less(i, j int) bool { return gn[i].GalaxyName < gn[j].GalaxyName }

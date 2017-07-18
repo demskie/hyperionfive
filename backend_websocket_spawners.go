@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"container/ring"
 	"encoding/gob"
 	"fmt"
 	"net"
@@ -92,21 +93,21 @@ func spawnBackendToFrontend(host string) {
 		}
 
 		if galName != "" {
-			GLOBAL.backendDataMutex.Lock()
+			GLOBAL.backendData.RLock()
 			outMsgTemp.GalaxyName = galName
-			outMsgTemp.TotalClientCount = len(GLOBAL.backendData.ClientIDs)
+			//outMsgTemp.TotalClientCount = len(GLOBAL.backendData.ClientIDs)
 			outMsgTemp.OtherFrontends = GLOBAL.backendData.Frontends
-			outMsgTemp.OtherBackends = GLOBAL.backendData.Backends
-			GLOBAL.backendDataMutex.Unlock()
+			otherBackends := []string{}
+			for serverIP := range GLOBAL.backendData.BackendSystemHashes {
+				otherBackends = append(otherBackends, serverIP)
+			}
+			outMsgTemp.OtherBackends = otherBackends
+			GLOBAL.backendData.RUnlock()
 		}
 
 		netAddr := conn.LocalAddr()
 		ipAddress, _, _ := net.SplitHostPort(netAddr.String())
 		outMsgTemp.ServerAddress = ipAddress
-
-		GLOBAL.clientSessionCountMutex.RLock()
-		outMsgTemp.ActiveClientCount = len(GLOBAL.clientSessionCount)
-		GLOBAL.clientSessionCountMutex.RUnlock()
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
@@ -166,7 +167,7 @@ func spawnBackendToFrontend(host string) {
 			GLOBAL.currentGalaxy.Name = galName
 			GLOBAL.currentGalaxy.GlobalX = inMsgTemp.GlobalX
 			GLOBAL.currentGalaxy.GlobalY = inMsgTemp.GlobalY
-			GLOBAL.backendData = backendDataStruct{}
+			//GLOBAL.backendData = backendDataStruct{}
 			logInfo(fmt.Sprintf(fName+"received 'your_galaxy_name' = %s", galName))
 		}
 
@@ -245,15 +246,8 @@ func spawnBackendToBackend(host string) {
 	defer backoutOnce.Do(killFunc)
 
 	////////////////////////////////////////////////////////////
-	// create loop to both send/receive
+	// define data struct to send/receive
 	////////////////////////////////////////////////////////////
-
-	type message struct {
-		Priority          uint64
-		CurrentGalaxyHash []byte
-		Requests          []incomingRequest
-		RogerWilko        []int64
-	}
 
 	////////////////////////////////////////////////////////////
 	// send data to backend
@@ -261,35 +255,39 @@ func spawnBackendToBackend(host string) {
 
 	go func() {
 		for {
-
 			// do not continue if we already have a full connection active
-			GLOBAL.fullBackendStatsMutex.RLock()
-			for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
-				if GLOBAL.fullBackendStats[i].ServerIP == host {
+			GLOBAL.backendData.RLock()
+			for key := range GLOBAL.backendData.BackendSystemHashes {
+				if key == host {
 					return
 				}
 			}
-			GLOBAL.fullBackendStatsMutex.RUnlock()
+			GLOBAL.backendData.RUnlock()
 
 			dataReadySignal := make(chan struct{})
+			networkOut := bytes.Buffer{}
 			rawData := []byte{}
 			go func() {
 				// wait for new tick
 				<-GLOBAL.newTickSignal
+
 				// put together data
-				outMsg := message{}
+				outMsg := backendToBackendMessage{}
 				outMsg.Priority = GLOBAL.serverPriority
-				outMsg.CurrentGalaxyHash = GLOBAL.currentGalaxyHash
+				outMsg.CurrentSystemHashes = GLOBAL.currentSystemHashes
 				GLOBAL.bufferedRequestsMutex.RLock()
-				outMsg.Requests = GLOBAL.bufferedRequests
+				outMsg.BufferedRequests = GLOBAL.bufferedRequests
 				GLOBAL.bufferedRequestsMutex.RUnlock()
 				GLOBAL.confirmedRequestsMutex.Lock()
-				outMsg.RogerWilko = GLOBAL.confirmedRequests[host]
+				outMsg.ConfirmedRequests = GLOBAL.confirmedRequests[host]
 				GLOBAL.confirmedRequestsMutex.Unlock()
 
-				// create buffer and begin serializing the data
-				var networkOut bytes.Buffer
-				networkOut.Reset()
+				for i := range GLOBAL.currentGalaxy.Solarsystemslice {
+					outMsg.SystemData = append(outMsg.SystemData,
+						*GLOBAL.currentGalaxy.Solarsystemslice[i])
+				}
+
+				// begin serializing the data
 				enc := gob.NewEncoder(&networkOut)
 				err = enc.Encode(outMsg)
 				if checkError(fName+"error encoding outgoing message", err) {
@@ -300,9 +298,7 @@ func spawnBackendToBackend(host string) {
 				// convert buffer to raw bytes
 				rawData = networkOut.Bytes()
 
-				// When the data is received from the server
-				// we are going to push
-
+				// signal to the select branch, unblocking execution
 				close(dataReadySignal)
 			}()
 
@@ -323,14 +319,15 @@ func spawnBackendToBackend(host string) {
 	}()
 
 	////////////////////////////////////////////////////////////
-	// receive requests from client
+	// receive requests from other Backend server
 	////////////////////////////////////////////////////////////
 
 	go func() {
 		for {
 			select {
+			case <-backoutSignal:
+				return
 			default:
-				inMsg := message{}
 				msgType, newData, err := conn.ReadMessage()
 				if checkError(fName+"error receiving message:", err) {
 					backoutOnce.Do(killFunc)
@@ -343,14 +340,34 @@ func spawnBackendToBackend(host string) {
 				}
 				networkIn := bytes.NewBuffer(newData)
 				dec := gob.NewDecoder(networkIn)
+				inMsg := backendToBackendMessage{}
 				err = dec.Decode(&inMsg)
 				if checkError(fName+"error decoding incoming message", err) {
 					backoutOnce.Do(killFunc)
 					return
 				}
 
-			case <-backoutSignal:
-				return
+				host := conn.RemoteAddr().String()
+				GLOBAL.backendData.RLock()
+				_, ok := GLOBAL.backendData.BackendSystemHashes[host]
+				oldPriority := GLOBAL.backendData.BackendAdvertisedPriority[host]
+				GLOBAL.backendData.RUnlock()
+
+				GLOBAL.backendData.Lock()
+				GLOBAL.backendData.BackendSystemHashes[host] = inMsg.CurrentSystemHashes
+				if ok != true {
+					GLOBAL.backendData.BackendAdvertisedPriority[host] = inMsg.Priority
+					GLOBAL.backendData.BackendLatency[host] = &ring.Ring{}
+				}
+				GLOBAL.backendData.Frontends = append(GLOBAL.backendData.Frontends,
+					inMsg.Frontends...)
+				GLOBAL.backendData.Unlock()
+
+				if oldPriority != inMsg.Priority {
+					logError(fName + "ERROR: The Advertised Priority changed from: " + host)
+					backoutOnce.Do(killFunc)
+					return
+				}
 			}
 		}
 	}()
@@ -360,5 +377,6 @@ func spawnBackendToBackend(host string) {
 	////////////////////////////////////////////////////////////
 
 	<-backoutSignal
+	// TODO: NEED TO CLEANUP DATA AND INFO STRUCTS
 	return
 }

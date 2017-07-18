@@ -45,19 +45,19 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	GLOBAL.clientSessionCountMutex.Lock()
-	_, ok := GLOBAL.clientSessionCount[client]
+	GLOBAL.clientBlacklist.Lock()
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
 	if ok {
-		GLOBAL.clientSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[client]++
 	} else {
-		GLOBAL.clientSessionCount[client] = 1
+		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
 	}
-	GLOBAL.clientSessionCountMutex.Unlock()
+	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
-		GLOBAL.clientSessionCountMutex.Lock()
-		GLOBAL.clientSessionCount[client]--
-		GLOBAL.clientSessionCountMutex.Unlock()
+		GLOBAL.clientBlacklist.Lock()
+		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.Unlock()
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -98,6 +98,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 				playerData.GlobalY = GLOBAL.currentGalaxy.GetGlobalY()
 				playerData.Type = GLOBAL.currentGalaxy.GetType()
 				playerData.Solarsystemslice = GLOBAL.parsedPlayerPtrs[userid]
+
 				data, err = proto.Marshal(&playerData)
 				if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA: ", err) {
 					backoutOnce.Do(killFunc)
@@ -131,8 +132,10 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		for {
 			select {
+			case <-backoutSignal:
+				return
 			default:
-				inMsg := incomingRequest{}
+				inMsg := incomingClientRequest{}
 				err = conn.ReadJSON(&inMsg)
 
 				inMsg.ClientID = userid
@@ -148,13 +151,11 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 					backoutOnce.Do(killFunc)
 					return
 				}
-				inMsg.UniqueID = <-GLOBAL.getUniqueRequestID
+				inMsg.UniqueID = <-GLOBAL.uniqueRequestID
 
 				GLOBAL.bufferedRequestsMutex.Lock()
 				GLOBAL.bufferedRequests = append(GLOBAL.bufferedRequests, inMsg)
 				GLOBAL.bufferedRequestsMutex.Unlock()
-			case <-backoutSignal:
-				return
 			}
 		}
 	}()
@@ -199,21 +200,19 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 
 	defer conn.Close()
 
-	GLOBAL.clientSessionCountMutex.Lock()
-	_, ok := GLOBAL.clientSessionCount[client]
+	GLOBAL.clientBlacklist.Lock()
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
 	if ok {
-		GLOBAL.clientSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[client]++
 	} else {
-		GLOBAL.clientSessionCount[client] = 1
-		logDebug(fName+"setting 'clientSessionCount' to ONE",
-			"for this client:", client)
+		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
 	}
-	GLOBAL.clientSessionCountMutex.Unlock()
+	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
-		GLOBAL.clientSessionCountMutex.Lock()
-		GLOBAL.clientSessionCount[client]--
-		GLOBAL.clientSessionCountMutex.Unlock()
+		GLOBAL.clientBlacklist.Lock()
+		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.Unlock()
 	}()
 
 	logDebug(fName+"opening socket:", string(r.RemoteAddr))
@@ -239,8 +238,8 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		inMsg  = message{}
-		outMsg = message{}
+		inMsg = message{}
+		//outMsg = message{}
 	)
 
 	////////////////////////////////////////////////////////////
@@ -269,7 +268,5 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 	// put together outgoing message
 	////////////////////////////////////////////////////////////
-
-	outMsg.currentGalaxyHash = GLOBAL.currentGalaxyHash
 
 }

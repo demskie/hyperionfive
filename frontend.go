@@ -11,7 +11,7 @@ import (
 func startFrontendMode() {
 
 	// initialize frontendData
-	GLOBAL.frontendData = frontendDataStruct{}
+	GLOBAL.frontendData = frontendData{}
 
 	// setup httpMux to avoid leaking default handlers
 	muxSecure := http.NewServeMux()

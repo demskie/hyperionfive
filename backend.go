@@ -25,10 +25,11 @@ import (
 func startBackendMode() {
 
 	// initialize primary data structures
-	GLOBAL.backendData = backendDataStruct{}
+	GLOBAL.backendData = backendData{}
 	GLOBAL.currentGalaxy = Galaxy{}
 	GLOBAL.futureGalaxy = Galaxy{}
-	GLOBAL.bufferedRequests = []incomingRequest{}
+	GLOBAL.bufferedRequests = []incomingClientRequest{}
+	GLOBAL.confirmedRequests = map[string][]int64{}
 
 	////////////////////////////////////////////////////////////
 	// generate randomNumber to determine server priority
@@ -46,8 +47,8 @@ func startBackendMode() {
 
 	enabled = true
 	if enabled {
-		GLOBAL.getUniqueRequestID = make(chan int64, 9999)
-		go seqNumGenerator(GLOBAL.getUniqueRequestID)
+		GLOBAL.uniqueRequestID = make(chan int64, 9999)
+		go seqNumGenerator(GLOBAL.uniqueRequestID)
 	}
 
 	////////////////////////////////////////////////////////////
@@ -103,20 +104,24 @@ func startBackendMode() {
 		GLOBAL.currentGalaxy = *x.(*Galaxy)
 	}
 
-	generateCurrentGalaxyHash := func() {
-		data, err := proto.Marshal(&GLOBAL.currentGalaxy)
-		if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
-			os.Exit(1)
+	generateCurrentSystemHashes := func() {
+		GLOBAL.currentSystemHashes = make(map[string][]byte,
+			len(GLOBAL.currentGalaxy.Solarsystemslice))
+		for i := range GLOBAL.currentGalaxy.Solarsystemslice {
+			data, err := proto.Marshal(GLOBAL.currentGalaxy.Solarsystemslice[i])
+			if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
+				os.Exit(1)
+			}
+			buffer := bytes.NewBuffer(data)
+			reader := bufio.NewReader(buffer)
+			scanner := bufio.NewScanner(reader)
+			hash := crc32.NewIEEE()
+			for scanner.Scan() {
+				hash.Write(scanner.Bytes())
+			}
+			systemName := GLOBAL.currentGalaxy.Solarsystemslice[i].Name
+			GLOBAL.currentSystemHashes[systemName] = hash.Sum(nil)
 		}
-		buffer := bytes.NewBuffer(data)
-		reader := bufio.NewReader(buffer)
-		scanner := bufio.NewScanner(reader)
-
-		hash := crc32.NewIEEE()
-		for scanner.Scan() {
-			hash.Write(scanner.Bytes())
-		}
-		GLOBAL.currentGalaxyHash = hash.Sum(nil)
 	}
 
 	gatherSystemPtrsForClients := func() {
@@ -156,7 +161,7 @@ func startBackendMode() {
 			GLOBAL.turningDataSignal = make(chan struct{})
 
 			copyFutureIntoCurrent()
-			generateCurrentGalaxyHash()
+			generateCurrentSystemHashes()
 			gatherSystemPtrsForClients()
 
 			close(GLOBAL.newTickSignal)
@@ -227,7 +232,6 @@ func startBackendMode() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func kickoffBackendCommunication() {
-	GLOBAL.fullBackendStats = []backendInfoStruct{}
 	// https://play.golang.org/p/pFWNe6CGxd
 
 	seed := func() rand.Source {
@@ -241,28 +245,24 @@ func kickoffBackendCommunication() {
 	rnum := rand.New(seed())
 
 	for {
+		// To avoid contention we are only rlocking and accepting the risk that the
+		// information may be out of date and duplicate connections could be spawned.
+		// Please note, the websocket functions have sanity checks to mitigate.
 
-		// TODO > Could refactor this and remove some complexity as the backend mesh
-		// should always be a full-mesh with the current design parameters.
-
-		// to avoid contention we are only rlocking and accepting the risk that the
-		// information may be out of date and duplicate connections could be spawned
-		// > the websocket functions have sanity checks to mitigate.
-
-		GLOBAL.backendDataMutex.RLock()
+		GLOBAL.backendData.RLock()
 		potentialServers := []string{}
-		copy(potentialServers, GLOBAL.backendData.Backends)
-		GLOBAL.backendDataMutex.RUnlock()
-
-		GLOBAL.fullBackendStatsMutex.RLock()
-		fullServerConns := make([]string, len(GLOBAL.fullBackendStats))
-		for i := 0; i < len(GLOBAL.fullBackendStats); i++ {
-			fullServerConns = append(fullServerConns, GLOBAL.fullBackendStats[i].ServerIP)
+		for serverIP := range GLOBAL.backendData.BackendSystemHashes {
+			potentialServers = append(potentialServers, serverIP)
 		}
-		GLOBAL.fullBackendStatsMutex.RUnlock()
+		fullServerConns := []string{}
+		for serverIP := range GLOBAL.backendData.BackendLatency {
+			fullServerConns = append(fullServerConns, serverIP)
+		}
+		GLOBAL.backendData.RUnlock()
 
 		// we want the list of potentialConnections to not include
 		// servers we already have a _full_ connection with
+
 		for i := 0; i < len(fullServerConns); i++ {
 			potentialServers = removeStringIfPresent(potentialServers, fullServerConns[i])
 		}

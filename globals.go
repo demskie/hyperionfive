@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// GLOBAL var allows me to clearly label which objects are global
+// GLOBAL declaration allows easy access to these truly global variables
 var GLOBAL globalVars
 
 type globalVars struct {
@@ -31,77 +31,112 @@ type globalVars struct {
 	waitForLogging    sync.WaitGroup
 	waitForCores      map[string]*sync.WaitGroup
 
-	clientBlacklist         map[string]*firewallClientValues
-	clientBlacklistMutex    sync.RWMutex
-	clientSessionCount      map[string]uint16
-	clientSessionCountMutex sync.RWMutex
+	clientBlacklist clientBlacklist
 
 	currentGalaxy           Galaxy
-	currentGalaxyHash       []byte
+	currentSystemHashes     map[string][]byte
 	futureGalaxy            Galaxy
 	partitionedSolarSystems []sync.RWMutex
 	parsedPlayerPtrs        map[string][]*SolarSystem
+	uniqueRequestID         chan int64
 
-	getUniqueRequestID     chan int64
-	bufferedRequests       []incomingRequest
+	bufferedRequests       []incomingClientRequest
 	bufferedRequestsMutex  sync.RWMutex
 	confirmedRequests      map[string][]int64
 	confirmedRequestsMutex sync.RWMutex
 
-	backendData           backendDataStruct
-	backendDataMutex      sync.RWMutex
-	fullBackendStats      []backendInfoStruct
-	fullBackendStatsMutex sync.RWMutex
+	backendData backendData
 
-	frontendData      frontendDataStruct
-	frontendDataMutex sync.RWMutex
+	frontendData frontendData
 }
 
-type firewallClientValues struct {
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+type clientBlacklist struct {
 	sync.RWMutex
-	FailedChallengeCount    uint16
-	FailedChallengeTime     int64
-	FailedGoogleAuthCount   uint16
-	FailedGoogleAuthTime    int64
-	FailedSessionLimitCount uint16
-	FailedSessionLimitTime  int64
+	TotalSessionCount       map[string]uint16
+	FailedChallengeCount    map[string]uint16
+	FailedChallengeTime     map[string]int64
+	FailedGoogleAuthCount   map[string]uint16
+	FailedGoogleAuthTime    map[string]int64
+	FailedSessionLimitCount map[string]uint16
+	FailedSessionLimitTime  map[string]int64
 }
 
-type incomingRequest struct {
+type incomingClientRequest struct {
 	ClientID      string   `json:"clientID"`
 	UniqueID      int64    `json:"uniqueID"`
 	ClientMessage string   `json:"clientMessage"`
 	ClientValues  []string `json:"clientValues"`
 }
 
-type backendDataStruct struct {
-	ClientIDs             []string
-	Frontends             []string
-	Backends              []string
-	HighestPriority       uint64
-	SecondHighestPriority uint64
-	GlobalX               int64
-	GlobalY               int64
+type backendData struct {
+	sync.RWMutex
+	Frontends                 []string
+	ClientIDs                 map[string][]string
+	BackendSystemHashes       map[string]map[string][]byte
+	BackendAdvertisedPriority map[string]uint64
+	BackendLatency            map[string]*ring.Ring
 }
 
-type backendInfoStruct struct {
-	ServerIP           string
-	AdvertisedPriority uint64
-	Latency            *ring.Ring
+type frontendData struct {
+	sync.RWMutex
+	GalGlobalX     map[string]int64
+	GalGlobalY     map[string]int64
+	GalGalaxyType  map[string]int32
+	GalClientIDs   map[string][]string
+	GalBackends    map[string][]string
+	OtherFrontends []string
+	Message        string
+	AnotherMessage string
 }
 
-type frontendDataStruct struct {
-	ListOfGalaxies []galInfo `json:"listOfGalaxies"`
-	OtherFrontends []string  `json:"otherFrontends"`
-	Message        string    `json:"message"`
-	AnotherMessage string    `json:"anotherMessage"`
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+type backendToBackendMessage struct {
+	Frontends           []string
+	Backends            []string
+	Priority            uint64
+	CurrentSystemHashes map[string][]byte
+	BufferedRequests    []incomingClientRequest
+	ConfirmedRequests   []int64
+	SystemData          []SolarSystem
 }
-type galInfo struct {
-	GalaxyName        string   `json:"galaxyName"`
-	GlobalX           int64    `json:"globalX"`
-	GlobalY           int64    `json:"globalY"`
-	ClientIDs         []string `json:"clientIDs"`
-	ClusterOfBackends []string `json:"clusterOfBackends"`
+
+type frontendToFrontendMessage struct {
+	GalGlobalX     map[string]int64
+	GalGlobalY     map[string]int64
+	GalGalaxyType  map[string]int32
+	GalClientIDs   map[string][]string
+	GalBackends    map[string][]string
+	OtherFrontends []string
+	Message        string
+	AnotherMessage string
+}
+
+type backendToFrontendMessage struct {
+	ServerAddress     string   `json:"ServerAddress"`
+	GalaxyName        string   `json:"GalaxyName"`
+	ActiveClientCount int      `json:"ActiveClientCount"`
+	TotalClientCount  int      `json:"TotalClientCount"`
+	OtherFrontends    []string `json:"OtherFrontends"`
+	OtherBackends     []string `json:"OtherBackends"`
+	Message           string   `json:"Message"`
+	AnotherMessage    string   `json:"AnotherMessage"`
+}
+
+type frontendToBackendMessage struct {
+	GalaxyName     string   `json:"GalaxyName"`
+	GlobalX        int64    `json:"GlobalX"`
+	GlobalY        int64    `json:"GlobalY"`
+	OtherFrontends []string `json:"OtherFrontends"`
+	OtherBackends  []string `json:"OtherBackends"`
+	Message        string   `json:"Message"`
+	AnotherMessage string   `json:"AnotherMessage"`
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
