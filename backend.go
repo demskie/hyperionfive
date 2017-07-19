@@ -112,6 +112,8 @@ func startBackendMode() {
 			if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
 				os.Exit(1)
 			}
+			systemName := GLOBAL.currentGalaxy.Solarsystemslice[i].Name
+			GLOBAL.currentSystemBytes[systemName] = data
 			buffer := bytes.NewBuffer(data)
 			reader := bufio.NewReader(buffer)
 			scanner := bufio.NewScanner(reader)
@@ -119,9 +121,9 @@ func startBackendMode() {
 			for scanner.Scan() {
 				hash.Write(scanner.Bytes())
 			}
-			systemName := GLOBAL.currentGalaxy.Solarsystemslice[i].Name
 			GLOBAL.currentSystemHashes[systemName] = hash.Sum(nil)
 		}
+
 	}
 
 	gatherSystemPtrsForClients := func() {

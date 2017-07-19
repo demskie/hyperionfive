@@ -33,8 +33,10 @@ type globalVars struct {
 
 	clientBlacklist clientBlacklist
 
-	currentGalaxy           Galaxy
-	currentSystemHashes     map[string][]byte
+	currentGalaxy       Galaxy
+	currentSystemHashes map[string][]byte
+	currentSystemBytes  map[string][]byte
+
 	futureGalaxy            Galaxy
 	partitionedSolarSystems []sync.RWMutex
 	parsedPlayerPtrs        map[string][]*SolarSystem
@@ -104,7 +106,7 @@ type backendToBackendMessage struct {
 	CurrentSystemHashes map[string][]byte
 	BufferedRequests    []incomingClientRequest
 	ConfirmedRequests   []int64
-	SystemData          []SolarSystem
+	SystemData          [][]byte
 }
 
 type frontendToFrontendMessage struct {

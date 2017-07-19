@@ -113,7 +113,7 @@ func main() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func checkFirewall(fName string, client string, check string) bool {
+func checkFirewall(fName string, remoteIPAddr string, check string) bool {
 
 	var limit int
 	var count uint16
@@ -124,16 +124,16 @@ func checkFirewall(fName string, client string, check string) bool {
 	switch check {
 	case "challenge":
 		limit = constChallenge
-		count, alpha = GLOBAL.clientBlacklist.FailedChallengeCount[client]
-		lastTime, beta = GLOBAL.clientBlacklist.FailedChallengeTime[client]
+		count, alpha = GLOBAL.clientBlacklist.FailedChallengeCount[remoteIPAddr]
+		lastTime, beta = GLOBAL.clientBlacklist.FailedChallengeTime[remoteIPAddr]
 	case "googleAuth":
 		limit = constGoogleAuth
-		count, charlie = GLOBAL.clientBlacklist.FailedGoogleAuthCount[client]
-		lastTime, delta = GLOBAL.clientBlacklist.FailedGoogleAuthTime[client]
+		count, charlie = GLOBAL.clientBlacklist.FailedGoogleAuthCount[remoteIPAddr]
+		lastTime, delta = GLOBAL.clientBlacklist.FailedGoogleAuthTime[remoteIPAddr]
 	case "sessionLimit":
 		limit = constClientSession
-		count, echo = GLOBAL.clientBlacklist.FailedSessionLimitCount[client]
-		lastTime, foxtrot = GLOBAL.clientBlacklist.FailedSessionLimitTime[client]
+		count, echo = GLOBAL.clientBlacklist.FailedSessionLimitCount[remoteIPAddr]
+		lastTime, foxtrot = GLOBAL.clientBlacklist.FailedSessionLimitTime[remoteIPAddr]
 	default:
 		logError(fName + "> gave > checkFirewallHistory an invalid 'check' parameter")
 		GLOBAL.clientBlacklist.RUnlock()
@@ -146,7 +146,7 @@ func checkFirewall(fName string, client string, check string) bool {
 	blacklistExpGrowth := int64((count) / uint16(limit))
 	currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
 	if timeSinceBlacklist < currentBlacklistGiven {
-		logInfo(fName+"blacklisted client attempting to connect:", client,
+		logInfo(fName+"blacklisted client attempting to connect:", remoteIPAddr,
 			"\n\tblacklistedFor:", string(timeSinceBlacklist),
 			"\n\treason:", check,
 			"\n\tnumberOfOffenses:", string(count))
@@ -156,22 +156,22 @@ func checkFirewall(fName string, client string, check string) bool {
 	if !alpha || !beta || !charlie || !delta || !echo || !foxtrot {
 		GLOBAL.clientBlacklist.Lock()
 		if !alpha {
-			GLOBAL.clientBlacklist.FailedChallengeCount[client] = 0
+			GLOBAL.clientBlacklist.FailedChallengeCount[remoteIPAddr] = 0
 		}
 		if !beta {
-			GLOBAL.clientBlacklist.FailedChallengeTime[client] = math.MinInt64
+			GLOBAL.clientBlacklist.FailedChallengeTime[remoteIPAddr] = math.MinInt64
 		}
 		if !charlie {
-			GLOBAL.clientBlacklist.FailedGoogleAuthCount[client] = 0
+			GLOBAL.clientBlacklist.FailedGoogleAuthCount[remoteIPAddr] = 0
 		}
 		if !delta {
-			GLOBAL.clientBlacklist.FailedGoogleAuthTime[client] = math.MinInt64
+			GLOBAL.clientBlacklist.FailedGoogleAuthTime[remoteIPAddr] = math.MinInt64
 		}
 		if !echo {
-			GLOBAL.clientBlacklist.FailedSessionLimitCount[client] = 0
+			GLOBAL.clientBlacklist.FailedSessionLimitCount[remoteIPAddr] = 0
 		}
 		if !foxtrot {
-			GLOBAL.clientBlacklist.FailedSessionLimitTime[client] = math.MinInt64
+			GLOBAL.clientBlacklist.FailedSessionLimitTime[remoteIPAddr] = math.MinInt64
 		}
 		GLOBAL.clientBlacklist.Unlock()
 	}

@@ -38,31 +38,11 @@ func spawnBackendToFrontend(host string) {
 	// define data structure for messages we'll be sending/receiving
 	////////////////////////////////////////////////////////////
 
-	type incomingMessageFrontend struct {
-		GalaxyName     string   `json:"GalaxyName"`
-		GlobalX        int64    `json:"GlobalX"`
-		GlobalY        int64    `json:"GlobalY"`
-		OtherFrontends []string `json:"OtherFrontends"`
-		OtherBackends  []string `json:"OtherBackends"`
-		Message        string   `json:"Message"`
-		AnotherMessage string   `json:"AnotherMessage"`
-	}
-	type outgoingMessageFrontend struct {
-		ServerAddress     string   `json:"ServerAddress"`
-		GalaxyName        string   `json:"GalaxyName"`
-		ActiveClientCount int      `json:"ActiveClientCount"`
-		TotalClientCount  int      `json:"TotalClientCount"`
-		OtherFrontends    []string `json:"OtherFrontends"`
-		OtherBackends     []string `json:"OtherBackends"`
-		Message           string   `json:"Message"`
-		AnotherMessage    string   `json:"AnotherMessage"`
-	}
-
 	var (
-		inMsgTemp       = incomingMessageFrontend{}
-		inMsgReference  = incomingMessageFrontend{}
-		outMsgTemp      = outgoingMessageFrontend{}
-		outMsgReference = outgoingMessageFrontend{}
+		inMsgTemp       = frontendToBackendMessage{}
+		inMsgReference  = frontendToBackendMessage{}
+		outMsgTemp      = backendToFrontendMessage{}
+		outMsgReference = backendToFrontendMessage{}
 	)
 
 	////////////////////////////////////////////////////////////
@@ -71,8 +51,8 @@ func spawnBackendToFrontend(host string) {
 
 	periodicUpdate := func() bool {
 
-		inMsgTemp = incomingMessageFrontend{}
-		outMsgTemp = outgoingMessageFrontend{}
+		inMsgTemp = frontendToBackendMessage{}
+		outMsgTemp = backendToFrontendMessage{}
 
 		const (
 			newgalaxy      = "new_galaxy"
@@ -106,8 +86,8 @@ func spawnBackendToFrontend(host string) {
 		}
 
 		netAddr := conn.LocalAddr()
-		ipAddress, _, _ := net.SplitHostPort(netAddr.String())
-		outMsgTemp.ServerAddress = ipAddress
+		myIPAddr, _, _ := net.SplitHostPort(netAddr.String())
+		outMsgTemp.ServerAddress = myIPAddr
 
 		////////////////////////////////////////////////////////////
 		// send outgoingMessage
@@ -117,7 +97,9 @@ func spawnBackendToFrontend(host string) {
 		logDebug(fmt.Sprint(fName+"outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) && galName != "" {
-			outMsgTemp = outgoingMessageFrontend{Message: sameaslasttime}
+			outMsgTemp = backendToFrontendMessage{
+				Message: sameaslasttime,
+			}
 		}
 
 		var networkOut bytes.Buffer
@@ -246,10 +228,6 @@ func spawnBackendToBackend(host string) {
 	defer backoutOnce.Do(killFunc)
 
 	////////////////////////////////////////////////////////////
-	// define data struct to send/receive
-	////////////////////////////////////////////////////////////
-
-	////////////////////////////////////////////////////////////
 	// send data to backend
 	////////////////////////////////////////////////////////////
 
@@ -273,19 +251,42 @@ func spawnBackendToBackend(host string) {
 
 				// put together data
 				outMsg := backendToBackendMessage{}
+
 				outMsg.Priority = GLOBAL.serverPriority
-				outMsg.CurrentSystemHashes = GLOBAL.currentSystemHashes
+
+				netAddr := conn.LocalAddr()
+				myIPAddr, _, _ := net.SplitHostPort(netAddr.String())
+				GLOBAL.backendData.Lock()
+				for sysName, hash := range GLOBAL.currentSystemHashes {
+					GLOBAL.backendData.BackendSystemHashes[myIPAddr][sysName] = hash
+					outMsg.CurrentSystemHashes[sysName] = hash
+				}
+				GLOBAL.backendData.Unlock()
+
 				GLOBAL.bufferedRequestsMutex.RLock()
-				outMsg.BufferedRequests = GLOBAL.bufferedRequests
+				copy(outMsg.BufferedRequests, GLOBAL.bufferedRequests)
 				GLOBAL.bufferedRequestsMutex.RUnlock()
+
 				GLOBAL.confirmedRequestsMutex.Lock()
-				outMsg.ConfirmedRequests = GLOBAL.confirmedRequests[host]
+				copy(outMsg.ConfirmedRequests, GLOBAL.confirmedRequests[host])
+				GLOBAL.confirmedRequests[host] = []int64{}
 				GLOBAL.confirmedRequestsMutex.Unlock()
 
-				for i := range GLOBAL.currentGalaxy.Solarsystemslice {
-					outMsg.SystemData = append(outMsg.SystemData,
-						*GLOBAL.currentGalaxy.Solarsystemslice[i])
+				// put together first 100 serialized systems requested by remote side
+				GLOBAL.backendData.RLock()
+				count := 0
+				for sysName, remoteHash := range GLOBAL.backendData.BackendSystemHashes[host] {
+					localHash := GLOBAL.backendData.BackendSystemHashes[myIPAddr][sysName]
+					if reflect.DeepEqual(remoteHash, localHash) == false {
+						outMsg.SystemData = append(outMsg.SystemData,
+							GLOBAL.currentSystemBytes[sysName])
+					}
+					count++
+					if count >= 100 {
+						break
+					}
 				}
+				GLOBAL.backendData.RUnlock()
 
 				// begin serializing the data
 				enc := gob.NewEncoder(&networkOut)
@@ -378,5 +379,6 @@ func spawnBackendToBackend(host string) {
 
 	<-backoutSignal
 	// TODO: NEED TO CLEANUP DATA AND INFO STRUCTS
+
 	return
 }

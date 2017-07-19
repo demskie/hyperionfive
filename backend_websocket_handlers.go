@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"net"
 	"net/http"
@@ -20,8 +18,8 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	// check that the host is not currently blacklisted
 	////////////////////////////////////////////////////////////
 
-	client, _, _ := net.SplitHostPort(r.RemoteAddr)
-	if checkFirewall(fName, client, "challenge") != true {
+	remoteIPAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+	if checkFirewall(fName, remoteIPAddr, "challenge") != true {
 		return
 	}
 
@@ -46,17 +44,17 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	GLOBAL.clientBlacklist.Lock()
-	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]
 	if ok {
-		GLOBAL.clientBlacklist.TotalSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]++
 	} else {
-		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr] = 1
 	}
 	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
 		GLOBAL.clientBlacklist.Lock()
-		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]--
 		GLOBAL.clientBlacklist.Unlock()
 	}()
 
@@ -64,7 +62,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	// receive and process google authentication
 	////////////////////////////////////////////////////////////
 
-	userid := handleGoogleAuth(fName, conn, client)
+	userid := handleGoogleAuth(fName, conn, remoteIPAddr)
 	if userid == "" {
 		return
 	}
@@ -91,6 +89,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 			go func() {
 				// wait for new tick
 				<-GLOBAL.newTickSignal
+
 				// put together data
 				playerData := Galaxy{}
 				playerData.Name = GLOBAL.currentGalaxy.GetName()
@@ -99,11 +98,13 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 				playerData.Type = GLOBAL.currentGalaxy.GetType()
 				playerData.Solarsystemslice = GLOBAL.parsedPlayerPtrs[userid]
 
+				// serialize this information
 				data, err = proto.Marshal(&playerData)
 				if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA: ", err) {
 					backoutOnce.Do(killFunc)
 					return
 				}
+
 				// signal that data is ready
 				close(dataReadySignal)
 			}()
@@ -231,35 +232,9 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	// define data structures for upcoming back/forth communication
 	////////////////////////////////////////////////////////////
 
-	type message struct {
-		Priority          uint64
-		currentGalaxyHash []byte
-		ChangedGalaxyData *Galaxy
-	}
-
-	var (
-		inMsg = message{}
-		//outMsg = message{}
-	)
-
 	////////////////////////////////////////////////////////////
 	// wait for message from Backend
 	////////////////////////////////////////////////////////////
-
-	msgType, newData, err := conn.ReadMessage()
-	if checkError(fName+"error receiving message:", err) {
-		return
-	}
-	if msgType != websocket.BinaryMessage {
-		logInfo(fName + "messageType is invalid")
-		return
-	}
-	network := bytes.NewBuffer(newData)
-	dec := gob.NewDecoder(network)
-	err = dec.Decode(&inMsg)
-	if checkError(fName+"error decoding incoming message", err) {
-		return
-	}
 
 	////////////////////////////////////////////////////////////
 	// process incoming message
