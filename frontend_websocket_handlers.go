@@ -18,14 +18,16 @@ import (
 
 func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 
+	fName := "(clientToFrontend) "
+
 	////////////////////////////////////////////////////////////
 	// check that the host is not currently blacklisted
 	////////////////////////////////////////////////////////////
 
-	client, _, _ := net.SplitHostPort(r.RemoteAddr)
+	remoteIPAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
 
 	// checking blacklist and acting on it accordingly
-	if checkFirewall("clientToFrontend", client, "challenge") != true {
+	if checkFirewall(fName, remoteIPAddr, "challenge") != true {
 		return
 	}
 
@@ -39,10 +41,10 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 		EnableCompression: true,
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError("(clientToFrontend) upgrade error:", err) {
+	if checkError(fName+"upgrade error:", err) {
 		return
 	}
-	logDebug("(clientToFrontend) opening socket:", string(r.RemoteAddr))
+	logDebug(fName+"opening socket:", string(r.RemoteAddr))
 
 	////////////////////////////////////////////////////////////
 	// DEFER STATEMENTS
@@ -51,17 +53,17 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	GLOBAL.clientBlacklist.Lock()
-	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]
 	if ok {
-		GLOBAL.clientBlacklist.TotalSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]++
 	} else {
-		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr] = 1
 	}
 	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
 		GLOBAL.clientBlacklist.Lock()
-		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]--
 		GLOBAL.clientBlacklist.Unlock()
 	}()
 
@@ -69,7 +71,7 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 	// receive and process google authentication
 	////////////////////////////////////////////////////////////
 
-	userid := handleGoogleAuth("clientToFrontend", conn, client)
+	userid := handleGoogleAuth(fName, conn, remoteIPAddr)
 	if userid == "" {
 		return
 	}
@@ -86,11 +88,11 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 		Servers []PotentialServers
 	}
 
-	/////////////////////
-	/// not completed ///
-	/////////////////////
+	////////////////////////////////////////////////////////////
+	// TODO: RESPONSE TO CLIENT NOT YET IMPLEMENTED
+	////////////////////////////////////////////////////////////
 
-	logDebug("(clientToFrontend) closing socket:", string(r.RemoteAddr))
+	logDebug(fName+"closing socket:", string(r.RemoteAddr))
 }
 
 func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {

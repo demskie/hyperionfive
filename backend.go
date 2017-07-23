@@ -153,9 +153,6 @@ func startBackendMode() {
 	// primary game loop
 	////////////////////////////////////////////////////////////
 
-	GLOBAL.turningDataSignal = make(chan struct{})
-	GLOBAL.newTickSignal = make(chan struct{})
-
 	go func() {
 		for {
 
@@ -253,11 +250,11 @@ func kickoffBackendCommunication() {
 
 		GLOBAL.backendData.RLock()
 		potentialServers := []string{}
-		for serverIP := range GLOBAL.backendData.BackendSystemHashes {
+		for serverIP := range GLOBAL.backendData.RemoteSystemHashes {
 			potentialServers = append(potentialServers, serverIP)
 		}
 		fullServerConns := []string{}
-		for serverIP := range GLOBAL.backendData.BackendLatency {
+		for serverIP := range GLOBAL.backendData.RemoteLatency {
 			fullServerConns = append(fullServerConns, serverIP)
 		}
 		GLOBAL.backendData.RUnlock()
@@ -287,7 +284,6 @@ func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 	systemPtrs := map[string][]*SolarSystem{}
 	for i := startIndex; i < stopIndex; i++ {
 		solarsystem := GLOBAL.currentGalaxy.Solarsystemslice[i]
-
 		addOwner := func(owner string) {
 			if owner == "" {
 				return
@@ -307,7 +303,6 @@ func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 				}
 			}
 		}
-
 		for _, planet := range solarsystem.Planetslice {
 			addOwner(planet.GetOwner())
 		}
@@ -318,8 +313,45 @@ func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 			addOwner(otherobject.GetOwner())
 		}
 	}
-
 	return systemPtrs
+}
+
+func getCurrentSystemHashes() map[string][]byte {
+	for {
+		dataReadySignal := make(chan struct{})
+		localHashes := map[string][]byte{}
+		go func() {
+			for key, val := range GLOBAL.currentSystemHashes {
+				localHashes[key] = val
+			}
+			close(dataReadySignal)
+		}()
+		select {
+		case <-dataReadySignal:
+			return localHashes
+		case <-GLOBAL.turningDataSignal:
+			<-dataReadySignal
+		}
+	}
+}
+
+func getRemoteHashForSystem(sysName string) []byte {
+	GLOBAL.backendData.RLock()
+	tmpData := map[[4]byte]int{}
+	for remoteIPAddr := range GLOBAL.backendData.RemoteSystemHashes {
+		hash := [4]byte{}
+		copy(hash[:], GLOBAL.backendData.RemoteSystemHashes[remoteIPAddr][sysName])
+		tmpData[hash]++
+	}
+	bestCount := 0
+	bestHash := [4]byte{}
+	for hash, count := range tmpData {
+		if count > bestCount {
+			bestHash = hash
+		}
+	}
+	GLOBAL.backendData.RUnlock()
+	return bestHash[:]
 }
 
 func gracefullyCloseBackend() {

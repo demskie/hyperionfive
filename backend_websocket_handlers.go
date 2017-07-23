@@ -28,8 +28,9 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	////////////////////////////////////////////////////////////
 
 	upgrader := websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
+		ReadBufferSize:    1024,
+		WriteBufferSize:   1024,
+		EnableCompression: true,
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if checkError(fName+"upgrade error:", err) {
@@ -57,6 +58,9 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]--
 		GLOBAL.clientBlacklist.Unlock()
 	}()
+
+	logDebug(fName+"opening socket:", remoteIPAddr)
+	defer logDebug(fName+"closing connection:", remoteIPAddr)
 
 	////////////////////////////////////////////////////////////
 	// receive and process google authentication
@@ -95,12 +99,12 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 				playerData.Name = GLOBAL.currentGalaxy.GetName()
 				playerData.GlobalX = GLOBAL.currentGalaxy.GetGlobalX()
 				playerData.GlobalY = GLOBAL.currentGalaxy.GetGlobalY()
-				playerData.Type = GLOBAL.currentGalaxy.GetType()
 				playerData.Solarsystemslice = GLOBAL.parsedPlayerPtrs[userid]
+				playerData.Type = GLOBAL.currentGalaxy.GetType()
 
 				// serialize this information
 				data, err = proto.Marshal(&playerData)
-				if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA: ", err) {
+				if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA:", err) {
 					backoutOnce.Do(killFunc)
 					return
 				}
@@ -147,8 +151,8 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 				logDebug(fName+"received the following JSON client request:\n",
 					fmt.Sprintf("%v\n", inMsg))
 
-				if inMsg.UniqueID == 0 {
-					logError(fName + "Client tried to set the UniqueID")
+				if inMsg.UniqueID != 0 {
+					logError(fName + "Client tried to set the UniqueID - " + remoteIPAddr)
 					backoutOnce.Do(killFunc)
 					return
 				}
@@ -178,8 +182,8 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	fName := "(backendToBackend) "
 
 	// if client is blocked - backout of this http connection
-	client, _, _ := net.SplitHostPort(r.RemoteAddr)
-	thisCheckPassed := checkFirewall(fName, client, "challenge")
+	remoteIPAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+	thisCheckPassed := checkFirewall(fName, remoteIPAddr, "challenge")
 	if thisCheckPassed != true {
 		return
 	}
@@ -202,28 +206,28 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	GLOBAL.clientBlacklist.Lock()
-	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[client]
+	_, ok := GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]
 	if ok {
-		GLOBAL.clientBlacklist.TotalSessionCount[client]++
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]++
 	} else {
-		GLOBAL.clientBlacklist.TotalSessionCount[client] = 1
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr] = 1
 	}
 	GLOBAL.clientBlacklist.Unlock()
 
 	defer func() {
 		GLOBAL.clientBlacklist.Lock()
-		GLOBAL.clientBlacklist.TotalSessionCount[client]--
+		GLOBAL.clientBlacklist.TotalSessionCount[remoteIPAddr]--
 		GLOBAL.clientBlacklist.Unlock()
 	}()
 
-	logDebug(fName+"opening socket:", string(r.RemoteAddr))
-	defer logDebug(fName+"closing connection:", client)
+	logDebug(fName+"opening socket:", remoteIPAddr)
+	defer logDebug(fName+"closing connection:", remoteIPAddr)
 
 	////////////////////////////////////////////////////////////
 	// do challenge-response handshake (defined in Main.go)
 	////////////////////////////////////////////////////////////
 
-	successful := handleChallengeResponse(fName, conn, client)
+	successful := handleChallengeResponse(fName, conn, remoteIPAddr)
 	if successful == false {
 		return
 	}

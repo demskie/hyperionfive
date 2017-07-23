@@ -23,29 +23,30 @@ type globalVars struct {
 	debugModeBool      bool
 	singleThreadedBool bool
 
-	turningDataSignal chan struct{}
-	newTickSignal     chan struct{}
-	serverPriority    uint64
-	numberOfCores     int
-	loggingMutex      sync.Mutex
-	waitForLogging    sync.WaitGroup
-	waitForCores      map[string]*sync.WaitGroup
+	logInfoChan chan string
+
+	serverPriority uint64
+	numberOfCores  int
+	loggingMutex   sync.Mutex
+	waitForLogging sync.WaitGroup
+	waitForCores   map[string]*sync.WaitGroup
 
 	clientBlacklist clientBlacklist
 
-	currentGalaxy       Galaxy
-	currentSystemHashes map[string][]byte
-	currentSystemBytes  map[string][]byte
+	turningDataSignal chan struct{}
+	newTickSignal     chan struct{}
 
-	futureGalaxy            Galaxy
-	partitionedSolarSystems []sync.RWMutex
-	parsedPlayerPtrs        map[string][]*SolarSystem
-	uniqueRequestID         chan int64
-
-	bufferedRequests       []incomingClientRequest
-	bufferedRequestsMutex  sync.RWMutex
+	currentGalaxy          Galaxy
+	currentSystemHashes    map[string][]byte
+	currentSystemBytes     map[string][]byte
+	parsedPlayerPtrs       map[string][]*SolarSystem
 	confirmedRequests      map[string][]int64
 	confirmedRequestsMutex sync.RWMutex
+
+	futureGalaxy          Galaxy
+	uniqueRequestID       chan int64
+	bufferedRequests      []incomingClientRequest
+	bufferedRequestsMutex sync.RWMutex
 
 	backendData backendData
 
@@ -76,11 +77,12 @@ type incomingClientRequest struct {
 
 type backendData struct {
 	sync.RWMutex
-	Frontends                 []string
-	ClientIDs                 map[string][]string
-	BackendSystemHashes       map[string]map[string][]byte
-	BackendAdvertisedPriority map[string]uint64
-	BackendLatency            map[string]*ring.Ring
+	Frontends                   []string
+	ClientIDs                   map[string][]string
+	RemoteSystemHashes          map[string]map[string][]byte
+	RemoteAdvertisedPriority    map[string]uint64
+	RemoteLatency               map[string]*ring.Ring
+	LocalHistoricalSystemHashes map[string][][]byte
 }
 
 type frontendData struct {

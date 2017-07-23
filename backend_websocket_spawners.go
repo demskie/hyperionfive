@@ -3,18 +3,24 @@ package main
 import (
 	"bytes"
 	"container/ring"
+	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"math/rand"
 	"net"
 	"reflect"
 	"sync"
 	"time"
 
+	cryptorand "crypto/rand"
+
 	"github.com/gorilla/websocket"
 )
 
 func spawnBackendToFrontend(host string) {
-	fName := " backendToFrontend"
+
+	fName := "(backendToFrontend) "
+
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backend", nil)
 	if checkError(fName+"unable to open websocket with frontend loadbalancer:", err) {
@@ -22,6 +28,7 @@ func spawnBackendToFrontend(host string) {
 	}
 	defer conn.Close()
 
+	// remoteIPAddr, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
 	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
 
@@ -56,7 +63,7 @@ func spawnBackendToFrontend(host string) {
 
 		const (
 			newgalaxy      = "new_galaxy"
-			diediedie      = "diediedie"
+			diediedie      = "diediedie" // TODO: ADD UNDERSCORES
 			sameaslasttime = "same_as_last_time"
 			yourgalaxyname = "your_galaxy_name"
 		)
@@ -78,7 +85,7 @@ func spawnBackendToFrontend(host string) {
 			//outMsgTemp.TotalClientCount = len(GLOBAL.backendData.ClientIDs)
 			outMsgTemp.OtherFrontends = GLOBAL.backendData.Frontends
 			otherBackends := []string{}
-			for serverIP := range GLOBAL.backendData.BackendSystemHashes {
+			for serverIP := range GLOBAL.backendData.RemoteSystemHashes {
 				otherBackends = append(otherBackends, serverIP)
 			}
 			outMsgTemp.OtherBackends = otherBackends
@@ -149,7 +156,6 @@ func spawnBackendToFrontend(host string) {
 			GLOBAL.currentGalaxy.Name = galName
 			GLOBAL.currentGalaxy.GlobalX = inMsgTemp.GlobalX
 			GLOBAL.currentGalaxy.GlobalY = inMsgTemp.GlobalY
-			//GLOBAL.backendData = backendDataStruct{}
 			logInfo(fmt.Sprintf(fName+"received 'your_galaxy_name' = %s", galName))
 		}
 
@@ -197,13 +203,18 @@ func spawnBackendToFrontend(host string) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func spawnBackendToBackend(host string) {
+
 	fName := "(backendToBackend) "
+
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backendsyncinfo", nil)
 	if checkError(fName+"unable to open _data_ websocket with backend:", err) {
 		return
 	}
 	defer conn.Close()
+
+	localIPAddr, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+	remoteIPAddr, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
 	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
 	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
@@ -235,12 +246,21 @@ func spawnBackendToBackend(host string) {
 		for {
 			// do not continue if we already have a full connection active
 			GLOBAL.backendData.RLock()
-			for key := range GLOBAL.backendData.BackendSystemHashes {
-				if key == host {
+			for key := range GLOBAL.backendData.RemoteSystemHashes {
+				if key == remoteIPAddr {
 					return
 				}
 			}
+			// initialize nested maps if necessary
+			_, ok := GLOBAL.backendData.RemoteSystemHashes[remoteIPAddr]
 			GLOBAL.backendData.RUnlock()
+			if !ok {
+				GLOBAL.backendData.Lock()
+				if !ok {
+					GLOBAL.backendData.RemoteSystemHashes[remoteIPAddr] = map[string][]byte{}
+				}
+				GLOBAL.backendData.Unlock()
+			}
 
 			dataReadySignal := make(chan struct{})
 			networkOut := bytes.Buffer{}
@@ -254,37 +274,47 @@ func spawnBackendToBackend(host string) {
 
 				outMsg.Priority = GLOBAL.serverPriority
 
-				netAddr := conn.LocalAddr()
-				myIPAddr, _, _ := net.SplitHostPort(netAddr.String())
-				GLOBAL.backendData.Lock()
 				for sysName, hash := range GLOBAL.currentSystemHashes {
-					GLOBAL.backendData.BackendSystemHashes[myIPAddr][sysName] = hash
 					outMsg.CurrentSystemHashes[sysName] = hash
 				}
-				GLOBAL.backendData.Unlock()
 
 				GLOBAL.bufferedRequestsMutex.RLock()
 				copy(outMsg.BufferedRequests, GLOBAL.bufferedRequests)
 				GLOBAL.bufferedRequestsMutex.RUnlock()
 
 				GLOBAL.confirmedRequestsMutex.Lock()
-				copy(outMsg.ConfirmedRequests, GLOBAL.confirmedRequests[host])
-				GLOBAL.confirmedRequests[host] = []int64{}
+				copy(outMsg.ConfirmedRequests, GLOBAL.confirmedRequests[localIPAddr])
+				GLOBAL.confirmedRequests[localIPAddr] = []int64{}
 				GLOBAL.confirmedRequestsMutex.Unlock()
 
-				// put together first 100 serialized systems requested by remote side
+				localHashes := getCurrentSystemHashes()
+				systemNames := []string{}
+				maxBytes := 125000000 / 25 // .025gbit
+				currentBytes := 0
 				GLOBAL.backendData.RLock()
-				count := 0
-				for sysName, remoteHash := range GLOBAL.backendData.BackendSystemHashes[host] {
-					localHash := GLOBAL.backendData.BackendSystemHashes[myIPAddr][sysName]
+				for sysName, remoteHash := range GLOBAL.backendData.RemoteSystemHashes[remoteIPAddr] {
+					localHash := localHashes[sysName]
 					if reflect.DeepEqual(remoteHash, localHash) == false {
-						outMsg.SystemData = append(outMsg.SystemData,
-							GLOBAL.currentSystemBytes[sysName])
+						systemNames = append(systemNames, sysName)
+						currentBytes += len(localHashes[sysName])
 					}
-					count++
-					if count >= 100 {
+					if currentBytes > maxBytes {
 						break
 					}
+				}
+				seed := func() rand.Source {
+					var randomness int64
+					b := make([]byte, 8)
+					cryptorand.Read(b)
+					buf := bytes.NewBuffer(b)
+					binary.Read(buf, binary.LittleEndian, &randomness)
+					return rand.NewSource(randomness)
+				}
+				rnum := rand.New(seed())
+				randomizedIndexes := rnum.Perm(len(systemNames) - 1)
+				for _, rndIdx := range randomizedIndexes {
+					sysName := systemNames[rndIdx]
+					outMsg.SystemData = append(outMsg.SystemData, GLOBAL.currentSystemBytes[sysName])
 				}
 				GLOBAL.backendData.RUnlock()
 
@@ -312,6 +342,7 @@ func spawnBackendToBackend(host string) {
 				}
 			case <-GLOBAL.turningDataSignal:
 				logError("WARNING - RAN OUT OF TIME TO SEND DATA TO BACKENDSERVER")
+				<-dataReadySignal
 				return
 			case <-backoutSignal:
 				return
@@ -348,24 +379,23 @@ func spawnBackendToBackend(host string) {
 					return
 				}
 
-				host := conn.RemoteAddr().String()
-				GLOBAL.backendData.RLock()
-				_, ok := GLOBAL.backendData.BackendSystemHashes[host]
-				oldPriority := GLOBAL.backendData.BackendAdvertisedPriority[host]
-				GLOBAL.backendData.RUnlock()
-
 				GLOBAL.backendData.Lock()
-				GLOBAL.backendData.BackendSystemHashes[host] = inMsg.CurrentSystemHashes
-				if ok != true {
-					GLOBAL.backendData.BackendAdvertisedPriority[host] = inMsg.Priority
-					GLOBAL.backendData.BackendLatency[host] = &ring.Ring{}
+				GLOBAL.backendData.RemoteSystemHashes[remoteIPAddr] = inMsg.CurrentSystemHashes
+				_, ok := GLOBAL.backendData.RemoteAdvertisedPriority[remoteIPAddr]
+				if !ok {
+					GLOBAL.backendData.RemoteAdvertisedPriority[remoteIPAddr] = inMsg.Priority
+				}
+				_, ok = GLOBAL.backendData.RemoteAdvertisedPriority[remoteIPAddr]
+				if !ok {
+					GLOBAL.backendData.RemoteLatency[remoteIPAddr] = &ring.Ring{}
 				}
 				GLOBAL.backendData.Frontends = append(GLOBAL.backendData.Frontends,
 					inMsg.Frontends...)
+				oldPriority := GLOBAL.backendData.RemoteAdvertisedPriority[remoteIPAddr]
 				GLOBAL.backendData.Unlock()
 
 				if oldPriority != inMsg.Priority {
-					logError(fName + "ERROR: The Advertised Priority changed from: " + host)
+					logError(fName + "ERROR: The Advertised Priority changed from: " + remoteIPAddr)
 					backoutOnce.Do(killFunc)
 					return
 				}

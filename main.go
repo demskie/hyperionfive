@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"container/ring"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/base64"
@@ -32,21 +33,72 @@ import (
 	cryptorand "crypto/rand"
 )
 
-func init() {
+func main() {
+	if GLOBAL.frontendBool == true {
+		// goto frontend.go
+		startFrontendMode()
+	} else {
+		// goto backend.go
+		startBackendMode()
+	}
+	for len(GLOBAL.logInfoChan) != 0 {
+		time.Sleep(time.Second)
+	}
+	GLOBAL.loggingMutex.Lock()
+	fmt.Println("##############################################")
+	fmt.Println("#      Program has finished executing!!!     #")
+	fmt.Println("##############################################")
+	GLOBAL.loggingMutex.Unlock()
+	time.Sleep(5 * time.Minute)
+	os.Exit(1)
+}
 
+func init() {
 	// sorry not sorry
 	GLOBAL = globalVars{}
 
-	// kickoff global logging routine
-	logInfoChan = make(chan string, oneMillion)
+	// initialize and kickoff global logging routine
+	GLOBAL.logInfoChan = make(chan string, oneMillion)
 	logInfo("(initLogInfo) - init completed")
 	go handleLogging()
 
-	// initializing global IP blacklist
-	GLOBAL.clientBlacklist = clientBlacklist{}
-
-	// initializing global waitgroups
+	// initializing everything else
+	GLOBAL.serverPriority = 0
+	GLOBAL.numberOfCores = 0
+	GLOBAL.loggingMutex = sync.Mutex{}
+	GLOBAL.waitForLogging = sync.WaitGroup{}
 	GLOBAL.waitForCores = map[string]*sync.WaitGroup{}
+
+	GLOBAL.clientBlacklist = clientBlacklist{}
+	GLOBAL.clientBlacklist.TotalSessionCount = map[string]uint16{}
+	GLOBAL.clientBlacklist.FailedChallengeCount = map[string]uint16{}
+	GLOBAL.clientBlacklist.FailedChallengeTime = map[string]int64{}
+	GLOBAL.clientBlacklist.FailedGoogleAuthCount = map[string]uint16{}
+	GLOBAL.clientBlacklist.FailedGoogleAuthTime = map[string]int64{}
+	GLOBAL.clientBlacklist.FailedSessionLimitCount = map[string]uint16{}
+	GLOBAL.clientBlacklist.FailedSessionLimitTime = map[string]int64{}
+
+	GLOBAL.turningDataSignal = make(chan struct{})
+	GLOBAL.newTickSignal = make(chan struct{})
+
+	GLOBAL.currentGalaxy = Galaxy{}
+	GLOBAL.currentSystemHashes = map[string][]byte{}
+	GLOBAL.currentSystemBytes = map[string][]byte{}
+	GLOBAL.parsedPlayerPtrs = map[string][]*SolarSystem{}
+	GLOBAL.confirmedRequests = map[string][]int64{}
+	GLOBAL.confirmedRequestsMutex = sync.RWMutex{}
+
+	GLOBAL.futureGalaxy = Galaxy{}
+	GLOBAL.uniqueRequestID = make(chan int64)
+	GLOBAL.bufferedRequests = make([]incomingClientRequest, oneMillion)
+	GLOBAL.bufferedRequestsMutex = sync.RWMutex{}
+
+	GLOBAL.backendData = backendData{}
+	GLOBAL.backendData.Frontends = []string{}
+	GLOBAL.backendData.ClientIDs = map[string][]string{}
+	GLOBAL.backendData.RemoteSystemHashes = map[string]map[string][]byte{}
+	GLOBAL.backendData.RemoteAdvertisedPriority = map[string]uint64{}
+	GLOBAL.backendData.RemoteLatency = map[string]*ring.Ring{}
 
 	// define commandline flags to parse for
 	GLOBAL.galaxyName = *flag.String("galaxyname", "", "specify galaxy name")
@@ -61,17 +113,22 @@ func init() {
 	GLOBAL.debugModeBool = *flag.Bool("debug", false, "enable debug logging")
 	GLOBAL.singleThreadedBool = *flag.Bool("singlethreaded", false, "force singlethreaded behavior")
 	flag.Parse()
+
 	if GLOBAL.googleAudience == "" {
 		GLOBAL.googleAudience = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
 	}
+
+	// sanity check that a password was provided
 	if GLOBAL.authPassword == "" {
 		logInfo("(init) FATALERROR: no password provided")
 		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
 	}
+
+	// sanity check operating mode specified via Booleans
 	switch {
 	case GLOBAL.backendBool == false && GLOBAL.frontendBool == false:
-		logInfo("(init) FATALERROR: no backend/frontend mode specified")
+		logInfo("(init) FATALERROR: neither 'backend' or 'frontend' operating mode was specified")
 		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
 	case GLOBAL.backendBool == true && GLOBAL.frontendBool == true:
@@ -79,34 +136,13 @@ func init() {
 		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
 	}
+
 	// singlethreaded mode for debugging (and emergencies)
 	if GLOBAL.singleThreadedBool {
 		GLOBAL.numberOfCores = 1
 	} else {
 		GLOBAL.numberOfCores = runtime.NumCPU()
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func main() {
-	if GLOBAL.frontendBool == true {
-		startFrontendMode()
-	} else {
-		startBackendMode()
-	}
-	for len(logInfoChan) != 0 {
-		time.Sleep(time.Second)
-	}
-	GLOBAL.loggingMutex.Lock()
-	fmt.Println("##############################################")
-	fmt.Println("#      Program has finished executing!!!     #")
-	fmt.Println("##############################################")
-	GLOBAL.loggingMutex.Unlock()
-	time.Sleep(5 * time.Minute)
-	os.Exit(1)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +173,8 @@ func checkFirewall(fName string, remoteIPAddr string, check string) bool {
 	default:
 		logError(fName + "> gave > checkFirewallHistory an invalid 'check' parameter")
 		GLOBAL.clientBlacklist.RUnlock()
-		return true // fail open
+		// fail open
+		return true
 	}
 	GLOBAL.clientBlacklist.RUnlock()
 
@@ -146,7 +183,7 @@ func checkFirewall(fName string, remoteIPAddr string, check string) bool {
 	blacklistExpGrowth := int64((count) / uint16(limit))
 	currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
 	if timeSinceBlacklist < currentBlacklistGiven {
-		logInfo(fName+"blacklisted client attempting to connect:", remoteIPAddr,
+		logError(fName+"blacklisted client attempting to connect:", remoteIPAddr,
 			"\n\tblacklistedFor:", string(timeSinceBlacklist),
 			"\n\treason:", check,
 			"\n\tnumberOfOffenses:", string(count))
@@ -183,9 +220,8 @@ func checkFirewall(fName string, remoteIPAddr string, check string) bool {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid string) {
+func handleGoogleAuth(fName string, conn *websocket.Conn, remoteIPAddr string) (userid string) {
 
-	// default userid
 	// this MUST be checked on the other side
 	userid = ""
 
@@ -207,7 +243,7 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid
 	////////////////////////////////////////////////////////////
 
 	successful := false
-	var oauth2Service *oauth2.Service // will be used outside of 'for' loop
+	var oauth2Service *oauth2.Service
 	for i := 0; i < constGoogleAuth; i++ {
 		var httpClient = &http.Client{}
 		oauth2Service, err = oauth2.New(httpClient)
@@ -232,15 +268,18 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid
 	triggerFailState := func() {
 		currentTime := time.Now().Unix()
 		GLOBAL.clientBlacklist.Lock()
-		GLOBAL.clientBlacklist.FailedGoogleAuthCount[client]++
-		GLOBAL.clientBlacklist.FailedGoogleAuthTime[client] = currentTime
+		GLOBAL.clientBlacklist.FailedGoogleAuthCount[remoteIPAddr]++
+		GLOBAL.clientBlacklist.FailedGoogleAuthTime[remoteIPAddr] = currentTime
 		GLOBAL.clientBlacklist.Unlock()
 	}
 	if tokenInfo.VerifiedEmail != true {
+		logError(fName + "tokenInfo.VerifiedEmail is not 'true' " + remoteIPAddr)
 		triggerFailState()
 		return userid
 	}
 	if tokenInfo.Audience != GLOBAL.googleAudience {
+		logError(fName + "tokenInfo.Audience (" + tokenInfo.Audience +
+			") does not match googleAudience (" + GLOBAL.googleAudience + ")" + remoteIPAddr)
 		triggerFailState()
 		return userid
 	}
@@ -266,10 +305,7 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, client string) (userid
 
 func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string) (result bool) {
 
-	////////////////////////////////////////////////////////////
 	// receive initial challenge from frontend
-	////////////////////////////////////////////////////////////
-
 	_, dataChallenge, err := conn.ReadMessage()
 	if checkError(fName+"error receiving challenge from backend:", err) {
 		return false
@@ -286,7 +322,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	if len(dataChallenge) == 32 {
 		copy(dataChallengeArray[:], dataChallenge)
 	} else {
-		logDebug(fName+"received a challenge with invalid length:",
+		logError(fName+"received a challenge with invalid length:",
 			string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
 		GLOBAL.clientBlacklist.Lock()
@@ -300,14 +336,12 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	// compute our response
 	////////////////////////////////////////////////////////////
 
-	// define function to produce symmetric signature using a shared secret key
 	generateHMAC := func(data []byte, key [32]byte) []byte {
 		h := hmac.New(sha512.New512_256, key[:])
 		h.Write(data)
 		return h.Sum(nil)
 	}
 
-	// generate response hash based on challenge and our secret password
 	response := generateHMAC([]byte(GLOBAL.authPassword), dataChallengeArray)
 	logDebug(fName+"computed the following response:",
 		"\n", base64.StdEncoding.EncodeToString(response))
@@ -316,7 +350,6 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	// create a challenge
 	////////////////////////////////////////////////////////////
 
-	// define function to generate 256 bits of randomness
 	newHMACKey := func() [32]byte {
 		key := [32]byte{}
 		_, err = io.ReadFull(cryptorand.Reader, key[:])
@@ -326,7 +359,6 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 		return key
 	}
 
-	// call above function and store value
 	randomBytes := newHMACKey()
 	logDebug(fName+"generated the following challenge:",
 		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
@@ -352,23 +384,19 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	// wait for response to challenge
 	////////////////////////////////////////////////////////////
 
-	// receive data from backend
 	_, remoteHash, err := conn.ReadMessage()
 	if checkError(fName+"error receiving response:", err) {
 		return false
 	}
 
-	// convert data to array
 	var remoteHashArray [32]byte
 	copy(remoteHashArray[:], randomBytes[:])
 
-	// generate localHash to compare
 	var correctResponse []byte
 	correctResponse = generateHMAC([]byte(GLOBAL.authPassword), remoteHashArray)
 
-	// check for equality
 	if hmac.Equal(correctResponse, remoteHash) != true {
-		logInfo(fName+"initial challenge-response failed",
+		logError(fName+"initial challenge-response failed",
 			"\n", base64.StdEncoding.EncodeToString(correctResponse),
 			"\n", base64.StdEncoding.EncodeToString(remoteHash))
 		return false
@@ -382,7 +410,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 
 func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) {
 
-	// define function to generate 256 bits of randomness
+	// create a challenge
 	newHMACKey := func() [32]byte {
 		key := [32]byte{}
 		_, err := io.ReadFull(cryptorand.Reader, key[:])
@@ -392,12 +420,10 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 		return key
 	}
 
-	// call above function and store value
 	randomBytes := newHMACKey()
 	logDebug(fName+"sending the following challenge:",
 		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
 
-	// send random string to frontend
 	err := conn.WriteMessage(websocket.BinaryMessage, randomBytes[:])
 	if checkError(fName+"error sending message to frontend loadbalancer:", err) {
 		return false
@@ -407,12 +433,12 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 	// parse incoming response
 	////////////////////////////////////////////////////////////
 
-	type incomingChallengeResponse struct {
+	type incomingMessage struct {
 		Challenge string `json:"challenge"`
 		Response  string `json:"response"`
 	}
 
-	var inMsg incomingChallengeResponse
+	var inMsg incomingMessage
 	err = conn.ReadJSON(&inMsg)
 	if checkError(fName+"error receiving initial response from frontend loadbalancer:", err) {
 		return false
@@ -425,25 +451,21 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 	// validate incoming response to our challenge
 	////////////////////////////////////////////////////////////
 
-	// define function to produce symmetric signature using a shared secret key
 	generateHMAC := func(data []byte, key [32]byte) []byte {
 		h := hmac.New(sha512.New512_256, key[:])
 		h.Write(data)
 		return h.Sum(nil)
 	}
 
-	// convert data to array
 	var dataChallengeArray [32]byte
 	copy(dataChallengeArray[:], randomBytes[:])
 
-	// generate response hash based on challenge and our secret password
 	var correctResponse []byte
 	correctResponse = generateHMAC([]byte(GLOBAL.authPassword), dataChallengeArray)
 
-	// compare locally generated hash to received hash
 	remoteHash, _ := base64.StdEncoding.DecodeString(inMsg.Response)
 	if hmac.Equal(correctResponse, remoteHash) != true {
-		logInfo(fName+"initial challenge-response failed:",
+		logError(fName+"initial challenge-response failed:",
 			"\n", base64.StdEncoding.EncodeToString(correctResponse),
 			"\n", base64.StdEncoding.EncodeToString(remoteHash))
 		return false
@@ -453,19 +475,15 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 	// respond to challenge sent to us
 	////////////////////////////////////////////////////////////
 
-	// decode into binary
 	remoteChallenge, _ := base64.StdEncoding.DecodeString(inMsg.Challenge)
 
-	// convert data to array
 	var remoteChallengeArray [32]byte
 	copy(remoteChallengeArray[:], remoteChallenge)
 
-	// generate response hash based on challenge and our secret password
 	ourResponse := generateHMAC([]byte(GLOBAL.authPassword), remoteChallengeArray)
 	logDebug(fName+"local hash for challenge sent by LoadBalancer:",
 		"\n", base64.StdEncoding.EncodeToString(ourResponse))
 
-	// send response to frontend
 	err = conn.WriteMessage(websocket.BinaryMessage, ourResponse)
 	if checkError(fName+"error sending message to frontend loadbalancer:", err) {
 		return false
@@ -561,15 +579,13 @@ func generateRandomUint64() uint64 {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-var logInfoChan chan string
-
 func handleLogging() {
 	for {
 		var singleMessage string
-		singleMessage = <-logInfoChan
+		singleMessage = <-GLOBAL.logInfoChan
 		for i := 0; i < 10000; i++ {
 			select {
-			case anotherMessage, doesExist := <-logInfoChan:
+			case anotherMessage, doesExist := <-GLOBAL.logInfoChan:
 				if doesExist {
 					singleMessage += "\n" + anotherMessage
 				}
@@ -593,7 +609,7 @@ func logInfo(arrayOfStrings ...string) {
 	}
 	go func() {
 		t := time.Now().UTC().Format("2006-01-02 15:04:05")
-		logInfoChan <- string(t + " " + message)
+		GLOBAL.logInfoChan <- string(t + " " + message)
 	}()
 }
 
