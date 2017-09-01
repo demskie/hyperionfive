@@ -24,48 +24,11 @@ import (
 
 func startBackendMode() {
 
-	// initialize primary data structures
-	GLOBAL.backendData = backendData{}
-	GLOBAL.currentGalaxy = Galaxy{}
-	GLOBAL.futureGalaxy = Galaxy{}
-	GLOBAL.bufferedRequests = []incomingClientRequest{}
-	GLOBAL.confirmedRequests = map[string][]int64{}
-
-	////////////////////////////////////////////////////////////
-	// generate randomNumber to determine server priority
-	////////////////////////////////////////////////////////////
-
-	enabled := true
-	if enabled {
-		GLOBAL.serverPriority = generateRandomUint64()
-		logInfo(fmt.Sprintf("serverPriority = %d", GLOBAL.serverPriority))
-	}
-
-	////////////////////////////////////////////////////////////
-	// prepare to send unique requestIDs to other goroutines
-	////////////////////////////////////////////////////////////
-
-	enabled = true
-	if enabled {
-		GLOBAL.uniqueRequestID = make(chan int64, 9999)
-		go seqNumGenerator(GLOBAL.uniqueRequestID)
-	}
-
-	////////////////////////////////////////////////////////////
-	// handle CLI parameters
-	////////////////////////////////////////////////////////////
-
-	enabled = false
-	if enabled {
+	if false {
 		handleInputParameters("startBackendMode")
 	}
 
-	////////////////////////////////////////////////////////////
-	// start communication with Frontend
-	////////////////////////////////////////////////////////////
-
-	enabled = true
-	if enabled {
+	if true {
 		go func() {
 			for {
 				spawnBackendToFrontend("hyperion5.com")
@@ -73,12 +36,7 @@ func startBackendMode() {
 		}()
 	}
 
-	////////////////////////////////////////////////////////////
-	// generate Galaxy
-	////////////////////////////////////////////////////////////
-
-	enabled = false
-	if enabled {
+	if false {
 		galaxyType := ELLIPTICAL
 		generateGalaxy(galaxyType)
 		logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
@@ -86,34 +44,52 @@ func startBackendMode() {
 		rtreeObjects = []rtreego.Spatial{}
 	}
 
-	////////////////////////////////////////////////////////////
-	// start communication with other Backend servers
-	////////////////////////////////////////////////////////////
-
-	enabled = true
-	if enabled {
-		go kickoffBackendCommunication()
+	if true {
+		go func() {
+			for {
+				kickoffBackendCommunication()
+			}
+		}()
 	}
 
 	////////////////////////////////////////////////////////////
 	// define functions to be used in primary game loop
 	////////////////////////////////////////////////////////////
 
-	copyFutureIntoCurrent := func() {
+	checkValidityOfHashes := func() {
+		GLOBAL.backendData.RLock()
+
+		GLOBAL.backendData.RUnlock()
+	}
+
+	copyFutureIntoCurrentGalaxy := func() {
 		x := proto.Clone(&GLOBAL.futureGalaxy)
 		GLOBAL.currentGalaxy = *x.(*Galaxy)
 	}
 
 	generateCurrentSystemHashes := func() {
-		GLOBAL.currentSystemHashes = make(map[string][]byte,
-			len(GLOBAL.currentGalaxy.Solarsystemslice))
+		GLOBAL.backendData.Lock()
+		for i := range GLOBAL.backendData.SystemHashes {
+			x := i - 1
+			if x < 0 {
+				continue
+			}
+			for sysName, localHash := range GLOBAL.backendData.SystemHashes[i]["0.0.0.0"] {
+				GLOBAL.backendData.SystemHashes[x]["0.0.0.0"][sysName] = localHash
+			}
+		}
+		// https://play.golang.org/p/MkJvT-ngmQ
+		newSlice := [16]map[string]map[string][4]byte{}
+		for i := 0; i < len(GLOBAL.backendData.SystemHashes)-1; i++ {
+			newSlice[i+1] = GLOBAL.backendData.SystemHashes[i]
+		}
 		for i := range GLOBAL.currentGalaxy.Solarsystemslice {
 			data, err := proto.Marshal(GLOBAL.currentGalaxy.Solarsystemslice[i])
 			if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
 				os.Exit(1)
 			}
 			systemName := GLOBAL.currentGalaxy.Solarsystemslice[i].Name
-			GLOBAL.currentSystemBytes[systemName] = data
+			GLOBAL.backendData.SystemBytes[systemName] = data
 			buffer := bytes.NewBuffer(data)
 			reader := bufio.NewReader(buffer)
 			scanner := bufio.NewScanner(reader)
@@ -121,9 +97,55 @@ func startBackendMode() {
 			for scanner.Scan() {
 				hash.Write(scanner.Bytes())
 			}
-			GLOBAL.currentSystemHashes[systemName] = hash.Sum(nil)
+			hashSum := hash.Sum(nil)
+			tmpArray := [4]byte{}
+			copy(tmpArray[:], hashSum)
+			newSlice[0]["0.0.0.0"][systemName] = tmpArray
 		}
+		copy(GLOBAL.backendData.SystemHashes[:], newSlice[:])
+		GLOBAL.backendData.Unlock()
+	}
 
+	processOutstandingUserRequests := func() {
+		validRequestIDs := []int64{}
+		GLOBAL.backendData.Lock()
+		for _, allIDs := range GLOBAL.backendData.ConfirmedRequestIDs {
+			for _, potentialRequestID := range allIDs {
+				validRequest := true
+				for neighbor := range GLOBAL.backendData.ConfirmedRequestIDs {
+					if validRequest == false {
+						break
+					}
+					foundMatch := false
+					for _, id := range GLOBAL.backendData.ConfirmedRequestIDs[neighbor] {
+						if id == potentialRequestID {
+							foundMatch = true
+							break
+						}
+					}
+					if foundMatch == false {
+						validRequest = false
+					}
+				}
+				if validRequest == true {
+					foundMatch := false
+					for _, id := range validRequestIDs {
+						if id == potentialRequestID {
+							foundMatch = true
+						}
+					}
+					if foundMatch == false {
+						validRequestIDs = append(validRequestIDs, potentialRequestID)
+					}
+				}
+			}
+		}
+		GLOBAL.backendData.ConfirmedRequestIDs = map[string][]int64{}
+		GLOBAL.backendData.Unlock()
+
+		// TODO: process these requestIDs
+		// TODO: remove these requestIDs from bufferedRequests
+		// TODO: remove these requestIDs from confirmedRequests
 	}
 
 	gatherSystemPtrsForClients := func() {
@@ -141,12 +163,14 @@ func startBackendMode() {
 			}(i)
 		}
 		GLOBAL.waitForCores["parsedptrs"].Wait()
-		GLOBAL.parsedPlayerPtrs = map[string][]*SolarSystem{}
+		GLOBAL.backendData.Lock()
+		GLOBAL.backendData.ParsedPlayerPtrs = map[string][]*SolarSystem{}
 		for i := range tempResults {
 			for key, val := range tempResults[i] {
-				GLOBAL.parsedPlayerPtrs[key] = val
+				GLOBAL.backendData.ParsedPlayerPtrs[key] = val
 			}
 		}
+		GLOBAL.backendData.Unlock()
 	}
 
 	////////////////////////////////////////////////////////////
@@ -156,27 +180,40 @@ func startBackendMode() {
 	go func() {
 		for {
 
+			// record current time and start timeout tickers
+			start := time.Now().UnixNano()
+			minimumTimeBlocker := time.NewTimer(time.Second / 30)
+			maximumTimeBlocker := time.NewTimer(time.Second / 2)
+
+			// signal that data is now being mutated and is not safe for consumption
 			close(GLOBAL.turningDataSignal)
 			GLOBAL.turningDataSignal = make(chan struct{})
 
-			copyFutureIntoCurrent()
+			// major steps in the gameloop workflow
+			checkValidityOfHashes()
+			copyFutureIntoCurrentGalaxy()
 			generateCurrentSystemHashes()
+			processOutstandingUserRequests() // gamelogic here
 			gatherSystemPtrsForClients()
 
+			// triggers backend_websockets to send message to neighbors
 			close(GLOBAL.newTickSignal)
 			GLOBAL.newTickSignal = make(chan struct{})
 
-			// send galaxyinfo to clients using currentGalaxy data
-			//     backend_websocket_handlers
+			// wait for confirmation from every neighbor
+			select {
+			case <-GLOBAL.allServersReadySignal:
+			case <-maximumTimeBlocker.C:
+				logError("ERROR: RAN OUT OF TIME TO WAIT FOR BACKEND MESSAGE")
+			}
 
-			// calculate galaxy environment changes (pop, battles, movement)
-			//     backend_update_galaxy
+			// will block if minTime hasn't been met - this enforces a maximum tickRate
+			<-minimumTimeBlocker.C
 
-			// AI rourintes using currentGalaxy to generate bufferedRequests
-			//     backend_ai_routine
+			//
+			end := time.Now().UnixNano()
+			GLOBAL.backendData.TickTime = start - end
 
-			// synchronize requests with other backends to move into confirmedRequests
-			//     backend_websocket_handlers
 		}
 	}()
 
@@ -232,7 +269,6 @@ func startBackendMode() {
 
 func kickoffBackendCommunication() {
 	// https://play.golang.org/p/pFWNe6CGxd
-
 	seed := func() rand.Source {
 		var randomness int64
 		b := make([]byte, 8)
@@ -242,26 +278,25 @@ func kickoffBackendCommunication() {
 		return rand.NewSource(randomness)
 	}
 	rnum := rand.New(seed())
-
+	// TODO - NEED TO REWRITE - THIS WILL BE FULL-MESH GOING FORWARD
 	for {
 		// To avoid contention we are only rlocking and accepting the risk that the
 		// information may be out of date and duplicate connections could be spawned.
 		// Please note, the websocket functions have sanity checks to mitigate.
-
 		GLOBAL.backendData.RLock()
 		potentialServers := []string{}
-		for serverIP := range GLOBAL.backendData.RemoteSystemHashes {
-			potentialServers = append(potentialServers, serverIP)
+		for serverIP := range GLOBAL.backendData.SystemHashes[0] {
+			if serverIP != "0.0.0.0" {
+				potentialServers = append(potentialServers, serverIP)
+			}
 		}
 		fullServerConns := []string{}
-		for serverIP := range GLOBAL.backendData.RemoteLatency {
+		for serverIP := range GLOBAL.backendData.Latencies {
 			fullServerConns = append(fullServerConns, serverIP)
 		}
 		GLOBAL.backendData.RUnlock()
-
 		// we want the list of potentialConnections to not include
 		// servers we already have a _full_ connection with
-
 		for i := 0; i < len(fullServerConns); i++ {
 			potentialServers = removeStringIfPresent(potentialServers, fullServerConns[i])
 		}
@@ -275,7 +310,6 @@ func kickoffBackendCommunication() {
 			}
 			continue // to get updated info
 		}
-
 		time.Sleep(100 * time.Millisecond)
 	}
 }
@@ -316,46 +350,40 @@ func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 	return systemPtrs
 }
 
-func getCurrentSystemHashes() map[string][]byte {
-	for {
-		dataReadySignal := make(chan struct{})
-		localHashes := map[string][]byte{}
-		go func() {
-			for key, val := range GLOBAL.currentSystemHashes {
-				localHashes[key] = val
+func recordReceiptOfMessage(remoteIPAddr string) {
+	foundMatch := false
+	for _, neigh := range GLOBAL.backendData.ReceivedMessageFrom {
+		if neigh == remoteIPAddr {
+			foundMatch = true
+			break
+		}
+	}
+	if foundMatch == false {
+		GLOBAL.backendData.ReceivedMessageFrom = append(GLOBAL.backendData.ReceivedMessageFrom,
+			remoteIPAddr)
+	}
+	missedMatch := false
+	for _, knownBackend := range GLOBAL.backendData.Backends {
+		foundMatch = false
+		for _, aliveBackend := range GLOBAL.backendData.ReceivedMessageFrom {
+			if knownBackend == aliveBackend {
+				foundMatch = true
+				break
 			}
-			close(dataReadySignal)
-		}()
-		select {
-		case <-dataReadySignal:
-			return localHashes
-		case <-GLOBAL.turningDataSignal:
-			<-dataReadySignal
+		}
+		if foundMatch == false {
+			missedMatch = true
+			break
 		}
 	}
-}
-
-func getRemoteHashForSystem(sysName string) []byte {
-	GLOBAL.backendData.RLock()
-	tmpData := map[[4]byte]int{}
-	for remoteIPAddr := range GLOBAL.backendData.RemoteSystemHashes {
-		hash := [4]byte{}
-		copy(hash[:], GLOBAL.backendData.RemoteSystemHashes[remoteIPAddr][sysName])
-		tmpData[hash]++
+	if missedMatch == false {
+		close(GLOBAL.allServersReadySignal)
+		GLOBAL.allServersReadySignal = make(chan struct{})
+		GLOBAL.backendData.ReceivedMessageFrom = []string{"0.0.0.0"}
 	}
-	bestCount := 0
-	bestHash := [4]byte{}
-	for hash, count := range tmpData {
-		if count > bestCount {
-			bestHash = hash
-		}
-	}
-	GLOBAL.backendData.RUnlock()
-	return bestHash[:]
 }
 
 func gracefullyCloseBackend() {
-
 	foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.outputFile)
 	if GLOBAL.outputFile == "" || foundMatch {
 		protoOut, err := proto.Marshal(&GLOBAL.currentGalaxy)
@@ -374,12 +402,9 @@ func gracefullyCloseBackend() {
 			log.Fatalln("Failed to write Galaxy:", err)
 		}
 	}
-
 	// wait for logging to complete
 	logInfo("PROGRAM EXITING GRACEFULLY")
 	GLOBAL.waitForLogging.Wait()
-
 	// halt all further execution
 	os.Exit(1)
-
 }

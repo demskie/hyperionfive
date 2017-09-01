@@ -35,10 +35,10 @@ import (
 
 func main() {
 	if GLOBAL.frontendBool == true {
-		// goto frontend.go
+		// frontend.go
 		startFrontendMode()
 	} else {
-		// goto backend.go
+		// backend.go
 		startBackendMode()
 	}
 	for len(GLOBAL.logInfoChan) != 0 {
@@ -57,13 +57,12 @@ func init() {
 	// sorry not sorry
 	GLOBAL = globalVars{}
 
-	// initialize and kickoff global logging routine
 	GLOBAL.logInfoChan = make(chan string, oneMillion)
 	logInfo("(initLogInfo) - init completed")
 	go handleLogging()
 
-	// initializing everything else
-	GLOBAL.serverPriority = 0
+	GLOBAL.serverPriority = generateRandomUint64()
+	logInfo(fmt.Sprintf("serverPriority = %d", GLOBAL.serverPriority))
 	GLOBAL.numberOfCores = 0
 	GLOBAL.loggingMutex = sync.Mutex{}
 	GLOBAL.waitForLogging = sync.WaitGroup{}
@@ -80,25 +79,27 @@ func init() {
 
 	GLOBAL.turningDataSignal = make(chan struct{})
 	GLOBAL.newTickSignal = make(chan struct{})
-
+	GLOBAL.allServersReadySignal = make(chan struct{})
 	GLOBAL.currentGalaxy = Galaxy{}
-	GLOBAL.currentSystemHashes = map[string][]byte{}
-	GLOBAL.currentSystemBytes = map[string][]byte{}
-	GLOBAL.parsedPlayerPtrs = map[string][]*SolarSystem{}
-	GLOBAL.confirmedRequests = map[string][]int64{}
-	GLOBAL.confirmedRequestsMutex = sync.RWMutex{}
-
 	GLOBAL.futureGalaxy = Galaxy{}
-	GLOBAL.uniqueRequestID = make(chan int64)
+	GLOBAL.uniqueRequestID = make(chan int64, 9999)
+	go seqNumGenerator(GLOBAL.uniqueRequestID)
 	GLOBAL.bufferedRequests = make([]incomingClientRequest, oneMillion)
 	GLOBAL.bufferedRequestsMutex = sync.RWMutex{}
 
 	GLOBAL.backendData = backendData{}
 	GLOBAL.backendData.Frontends = []string{}
+	GLOBAL.backendData.Backends = []string{}
 	GLOBAL.backendData.ClientIDs = map[string][]string{}
-	GLOBAL.backendData.RemoteSystemHashes = map[string]map[string][]byte{}
-	GLOBAL.backendData.RemoteAdvertisedPriority = map[string]uint64{}
-	GLOBAL.backendData.RemoteLatency = map[string]*ring.Ring{}
+	GLOBAL.backendData.SystemBytes = map[string][]byte{}
+	GLOBAL.backendData.SystemHashes = [16]map[string]map[string][4]byte{}
+	GLOBAL.backendData.ParsedPlayerPtrs = map[string][]*SolarSystem{}
+	GLOBAL.backendData.Priorities = map[string]uint64{}
+	GLOBAL.backendData.Latencies = map[string]*ring.Ring{}
+	GLOBAL.backendData.TickTime = 0
+	GLOBAL.backendData.NeighborTickTimes = map[string]uint64{}
+	GLOBAL.backendData.ReceivedMessageFrom = []string{}
+	GLOBAL.backendData.ConfirmedRequestIDs = map[string][]int64{}
 
 	// define commandline flags to parse for
 	GLOBAL.galaxyName = *flag.String("galaxyname", "", "specify galaxy name")

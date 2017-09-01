@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// GLOBAL declaration allows easy access to these truly global variables
+// GLOBAL declaration allows easy access to these global variables
 var GLOBAL globalVars
 
 type globalVars struct {
@@ -33,22 +33,15 @@ type globalVars struct {
 
 	clientBlacklist clientBlacklist
 
-	turningDataSignal chan struct{}
-	newTickSignal     chan struct{}
-
-	currentGalaxy          Galaxy
-	currentSystemHashes    map[string][]byte
-	currentSystemBytes     map[string][]byte
-	parsedPlayerPtrs       map[string][]*SolarSystem
-	confirmedRequests      map[string][]int64
-	confirmedRequestsMutex sync.RWMutex
-
+	turningDataSignal     chan struct{}
+	newTickSignal         chan struct{}
+	allServersReadySignal chan struct{}
+	currentGalaxy         Galaxy
 	futureGalaxy          Galaxy
 	uniqueRequestID       chan int64
 	bufferedRequests      []incomingClientRequest
 	bufferedRequestsMutex sync.RWMutex
-
-	backendData backendData
+	backendData           backendData
 
 	frontendData frontendData
 }
@@ -77,12 +70,18 @@ type incomingClientRequest struct {
 
 type backendData struct {
 	sync.RWMutex
-	Frontends                   []string
-	ClientIDs                   map[string][]string
-	RemoteSystemHashes          map[string]map[string][]byte
-	RemoteAdvertisedPriority    map[string]uint64
-	RemoteLatency               map[string]*ring.Ring
-	LocalHistoricalSystemHashes map[string][][]byte
+	Frontends           []string
+	Backends            []string
+	ClientIDs           map[string][]string
+	SystemBytes         map[string][]byte
+	SystemHashes        [16]map[string]map[string][4]byte
+	ParsedPlayerPtrs    map[string][]*SolarSystem
+	Priorities          map[string]uint64
+	Latencies           map[string]*ring.Ring
+	TickTime            int64
+	NeighborTickTimes   map[string]uint64
+	ReceivedMessageFrom []string
+	ConfirmedRequestIDs map[string][]int64
 }
 
 type frontendData struct {
@@ -102,13 +101,14 @@ type frontendData struct {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 type backendToBackendMessage struct {
-	Frontends           []string
-	Backends            []string
-	Priority            uint64
-	CurrentSystemHashes map[string][]byte
-	BufferedRequests    []incomingClientRequest
-	ConfirmedRequests   []int64
-	SystemData          [][]byte
+	Frontends         []string
+	Backends          []string
+	Priority          uint64
+	SystemHashes      [16]map[string][4]byte
+	BufferedRequests  []incomingClientRequest
+	AckOnly           bool
+	ConfirmedRequests []int64
+	SystemBytes       map[string][]byte
 }
 
 type frontendToFrontendMessage struct {
@@ -123,24 +123,23 @@ type frontendToFrontendMessage struct {
 }
 
 type backendToFrontendMessage struct {
-	ServerAddress     string   `json:"ServerAddress"`
-	GalaxyName        string   `json:"GalaxyName"`
-	ActiveClientCount int      `json:"ActiveClientCount"`
-	TotalClientCount  int      `json:"TotalClientCount"`
-	OtherFrontends    []string `json:"OtherFrontends"`
-	OtherBackends     []string `json:"OtherBackends"`
-	Message           string   `json:"Message"`
-	AnotherMessage    string   `json:"AnotherMessage"`
+	ServerAddress     string
+	GalaxyName        string
+	ActiveClientCount int
+	OtherFrontends    []string
+	OtherBackends     []string
+	Message           string
+	AnotherMessage    string
 }
 
 type frontendToBackendMessage struct {
-	GalaxyName     string   `json:"GalaxyName"`
-	GlobalX        int64    `json:"GlobalX"`
-	GlobalY        int64    `json:"GlobalY"`
-	OtherFrontends []string `json:"OtherFrontends"`
-	OtherBackends  []string `json:"OtherBackends"`
-	Message        string   `json:"Message"`
-	AnotherMessage string   `json:"AnotherMessage"`
+	GalaxyName     string
+	GlobalX        int64
+	GlobalY        int64
+	OtherFrontends []string
+	OtherBackends  []string
+	Message        string
+	AnotherMessage string
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

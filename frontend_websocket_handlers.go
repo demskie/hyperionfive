@@ -249,7 +249,7 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// defining constants to satisfy my linter
 		const (
 			newgalaxy      = "new_galaxy"
-			diediedie      = "diediedie"
+			diediedie      = "die_die_die"
 			sameaslasttime = "same_as_last_time"
 			yourgalaxyname = "your_galaxy_name"
 		)

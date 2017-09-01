@@ -99,7 +99,9 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 				playerData.Name = GLOBAL.currentGalaxy.GetName()
 				playerData.GlobalX = GLOBAL.currentGalaxy.GetGlobalX()
 				playerData.GlobalY = GLOBAL.currentGalaxy.GetGlobalY()
-				playerData.Solarsystemslice = GLOBAL.parsedPlayerPtrs[userid]
+				GLOBAL.backendData.RLock()
+				playerData.Solarsystemslice = GLOBAL.backendData.ParsedPlayerPtrs[userid]
+				GLOBAL.backendData.RUnlock()
 				playerData.Type = GLOBAL.currentGalaxy.GetType()
 
 				// serialize this information
