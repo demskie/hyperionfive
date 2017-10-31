@@ -3,34 +3,29 @@ package main
 import (
 	"bytes"
 	"container/ring"
-	"encoding/binary"
 	"encoding/gob"
 	"fmt"
-	"math/rand"
 	"net"
 	"reflect"
 	"sync"
 	"time"
 
-	cryptorand "crypto/rand"
-
 	"github.com/gorilla/websocket"
 )
 
 func spawnBackendToFrontend(host string) {
-
-	fName := "(backendToFrontend) "
+	fName := "(backendToFrontend)"
 
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backend", nil)
-	if checkError(fName+"unable to open websocket with frontend loadbalancer:", err) {
+	if checkError(err, fName, "unable to open websocket with frontend loadbalancer") {
 		return
 	}
 	defer conn.Close()
 
 	// remoteIPAddr, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-	logDebug(fName+"opening connection:", conn.RemoteAddr().String())
-	defer logDebug(fName+"closing connection:", conn.RemoteAddr().String())
+	logDebug(fName, "opening connection:", conn.RemoteAddr().String())
+	defer logDebug(fName, "closing connection:", conn.RemoteAddr().String())
 
 	////////////////////////////////////////////////////////////
 	// do challenge-response handshake (defined in Main.go)
@@ -73,7 +68,7 @@ func spawnBackendToFrontend(host string) {
 		////////////////////////////////////////////////////////////
 
 		galName := GLOBAL.currentGalaxy.Name
-		logDebug(fmt.Sprint(fName+"galName=\t\t", galName))
+		logDebug(fmt.Sprint(fName, "galName=\t\t", galName))
 
 		if galName == "" {
 			outMsgTemp.Message = newgalaxy
@@ -99,8 +94,8 @@ func spawnBackendToFrontend(host string) {
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
 
-		logDebug(fmt.Sprint(fName+"outMsgTemp=\t", outMsgTemp))
-		logDebug(fmt.Sprint(fName+"outMsgReference=\t", outMsgReference))
+		logDebug(fmt.Sprint(fName, "outMsgTemp=\t", outMsgTemp))
+		logDebug(fmt.Sprint(fName, "outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) && galName != "" {
 			outMsgTemp = backendToFrontendMessage{
@@ -111,7 +106,7 @@ func spawnBackendToFrontend(host string) {
 		var networkOut bytes.Buffer
 		enc := gob.NewEncoder(&networkOut)
 		err := enc.Encode(outMsgTemp)
-		if checkError(fName+"error encoding outgoing message", err) {
+		if checkError(err, fName, "error encoding outgoing message") {
 			return false
 		}
 		conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
@@ -121,17 +116,17 @@ func spawnBackendToFrontend(host string) {
 		////////////////////////////////////////////////////////////
 
 		msgType, newData, err := conn.ReadMessage()
-		if checkError(fName+"error receiving message:", err) {
+		if checkError(err, fName, "error receiving message") {
 			return false
 		}
 		if msgType != websocket.BinaryMessage {
-			logInfo(fName + "messageType is invalid")
+			logInfo(fName, "messageType is invalid")
 			return false
 		}
 		networkIn := bytes.NewBuffer(newData)
 		dec := gob.NewDecoder(networkIn)
 		err = dec.Decode(&inMsgTemp)
-		if checkError(fName+"error decoding incoming message", err) {
+		if checkError(err, fName, "error decoding incoming message") {
 			return false
 		}
 
@@ -140,30 +135,30 @@ func spawnBackendToFrontend(host string) {
 		////////////////////////////////////////////////////////////
 
 		if reflect.DeepEqual(inMsgTemp, inMsgReference) && inMsgTemp.Message != sameaslasttime {
-			logInfo(fName + "received duplicate message")
+			logInfo(fName, "received duplicate message")
 		}
 
 		if inMsgTemp.Message == sameaslasttime {
 			inMsgTemp = inMsgReference
 		}
 
-		logDebug(fmt.Sprint(fName+"inMsgTemp=\t\t", inMsgTemp))
-		logDebug(fmt.Sprint(fName+"inMsgReference=\t", inMsgReference))
+		logDebug(fmt.Sprint(fName, "inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fmt.Sprint(fName, "inMsgReference=\t", inMsgReference))
 
 		if inMsgTemp.Message == yourgalaxyname && galName == "" {
 			galName = inMsgTemp.GalaxyName
 			GLOBAL.currentGalaxy.Name = galName
 			GLOBAL.currentGalaxy.GlobalX = inMsgTemp.GlobalX
 			GLOBAL.currentGalaxy.GlobalY = inMsgTemp.GlobalY
-			logInfo(fmt.Sprintf(fName+"received 'your_galaxy_name' = %s", galName))
+			logInfo(fmt.Sprintf(fName, "received 'your_galaxy_name' = %s", galName))
 		}
 
 		if inMsgTemp.Message == yourgalaxyname && galName != "" {
-			logInfo(fName + "received 'your_galaxy_name' after already being assigned one")
+			logInfo(fName, "received 'your_galaxy_name' after already being assigned one")
 		}
 
 		if inMsgTemp.Message == diediedie {
-			logInfo(fName + "received 'diediedie'")
+			logInfo(fName, "received 'diediedie'")
 			gracefullyCloseBackend()
 		}
 
@@ -205,18 +200,25 @@ func spawnBackendToBackend(host string) {
 
 	fName := "(backendToBackend) "
 
-	var dialer *websocket.Dialer
+	dialer := &websocket.Dialer{
+		HandshakeTimeout:  30 * time.Second,
+		ReadBufferSize:    8192, // 4096 is default
+		WriteBufferSize:   8192, // 4096 is default
+		EnableCompression: true,
+	}
 	conn, _, err := dialer.Dial("wss://"+host+":443/backendsync", nil)
-	if checkError(fName+"unable to open websocket with backend:", err) {
+	if checkError(err, fName, "unable to open websocket with backend") {
 		return
 	}
 	defer conn.Close()
+	conn.EnableWriteCompression(true)
+	conn.SetCompressionLevel(1) // 1 is default
 
 	localIPAddr, _, _ := net.SplitHostPort(conn.LocalAddr().String())
 	remoteIPAddr, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
-	logDebug(fName+"opening connection:", remoteIPAddr)
-	defer logDebug(fName+"closing connection:", localIPAddr)
+	logDebug(fName, "opening connection:", remoteIPAddr)
+	defer logDebug(fName, "closing connection:", localIPAddr)
 
 	////////////////////////////////////////////////////////////
 	// initiate challenge-response handshake
@@ -242,10 +244,11 @@ func spawnBackendToBackend(host string) {
 	////////////////////////////////////////////////////////////
 
 	go func() {
+
 		for {
 			// do not continue if we already have a full connection active
 			GLOBAL.backendData.RLock()
-			for _, neighbor := range GLOBAL.backendData.Backends {
+			for neighbor := range GLOBAL.backendData.SystemHashes[0] {
 				if neighbor == remoteIPAddr {
 					killFunc()
 					return
@@ -265,9 +268,10 @@ func spawnBackendToBackend(host string) {
 			dataReadySignal := make(chan struct{})
 			networkOut := bytes.Buffer{}
 			rawData := []byte{}
+
 			go func() {
-				// wait for new tick
-				<-GLOBAL.newTickSignal
+				// wait until galaxyData is done mutating
+				<-GLOBAL.mutatingDataBlocker
 
 				// put together data
 				outMsg := backendToBackendMessage{}
@@ -297,15 +301,7 @@ func spawnBackendToBackend(host string) {
 						}
 					}
 				}
-				seed := func() rand.Source {
-					var randomness int64
-					b := make([]byte, 8)
-					cryptorand.Read(b)
-					buf := bytes.NewBuffer(b)
-					binary.Read(buf, binary.LittleEndian, &randomness)
-					return rand.NewSource(randomness)
-				}
-				rnum := rand.New(seed())
+				rnum := getCryptoRnum()
 				randomizedIndexes := rnum.Perm(len(systemNames) - 1)
 				for _, rndIdx := range randomizedIndexes {
 					sysName := systemNames[rndIdx]
@@ -316,7 +312,7 @@ func spawnBackendToBackend(host string) {
 				// begin serializing the data
 				enc := gob.NewEncoder(&networkOut)
 				err = enc.Encode(outMsg)
-				if checkError(fName+"error encoding outgoing message", err) {
+				if checkError(err, fName, "error encoding outgoing message") {
 					backoutOnce.Do(killFunc)
 					return
 				}
@@ -330,15 +326,15 @@ func spawnBackendToBackend(host string) {
 
 			select {
 			case <-GLOBAL.turningDataSignal:
-				logError("WARNING - RAN OUT OF TIME TO SEND DATA TO BACKENDSERVER")
-				<-dataReadySignal
-				return
+				logError(fName, "WARNING - RAN OUT OF TIME TO SEND DATA TO BACKENDSERVER")
+				<-dataReadySignal // TODO: this may be unnecessary
+				continue
 			default:
 			}
 			select {
 			case <-dataReadySignal:
 				conn.WriteMessage(websocket.BinaryMessage, rawData)
-				if checkError(fName+"error sending message to client:", err) {
+				if checkError(err, fName, "error sending message to client") {
 					backoutOnce.Do(killFunc)
 					return
 				}
@@ -349,7 +345,7 @@ func spawnBackendToBackend(host string) {
 	}()
 
 	////////////////////////////////////////////////////////////
-	// receive requests from other Backend server
+	// receive galaxyData and requests from other Backend server
 	////////////////////////////////////////////////////////////
 
 	go func() {
@@ -359,7 +355,7 @@ func spawnBackendToBackend(host string) {
 				return
 			default:
 				msgType, newData, err := conn.ReadMessage()
-				if checkError(fName+"error receiving message:", err) {
+				if checkError(err, fName, "error receiving message:") {
 					backoutOnce.Do(killFunc)
 					return
 				}
@@ -372,7 +368,7 @@ func spawnBackendToBackend(host string) {
 				dec := gob.NewDecoder(networkIn)
 				inMsg := backendToBackendMessage{}
 				err = dec.Decode(&inMsg)
-				if checkError(fName+"error decoding incoming message", err) {
+				if checkError(err, fName, "error decoding incoming message") {
 					backoutOnce.Do(killFunc)
 					return
 				}

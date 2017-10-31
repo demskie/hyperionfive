@@ -26,6 +26,7 @@ func mergeSystemHashes() [16]map[string][4]byte {
 }
 
 func validateLocalHashes() bool {
+	fName := "validateLocalHashes"
 	galaxyHashes := mergeSystemHashes()
 
 	getUint := func(array [4]byte) uint64 {
@@ -84,13 +85,13 @@ func validateLocalHashes() bool {
 	previousPopularUint := getMostCommonArray(previousHashCount)
 
 	if newestLocalUint == newestPopularUint {
-		logDebug("WE ARE INSYNC WITH MOST OF THE CLUSTER")
+		logDebug(fName, "WE ARE INSYNC WITH MOST OF THE CLUSTER")
 		return true
 	} else if newestLocalUint == previousPopularUint {
-		logDebug("WE ARE ONE TICK AHEAD MOST OF THE CLUSTER")
+		logDebug(fName, "WE ARE ONE TICK AHEAD MOST OF THE CLUSTER")
 		return true
 	} else if previousLocalUint == previousPopularUint {
-		logDebug("WE JUST DESYNCED WITH THE REST OF THE CLUSTER")
+		logDebug(fName, "WE JUST DESYNCED WITH THE REST OF THE CLUSTER")
 		return false
 	}
 

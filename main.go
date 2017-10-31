@@ -35,11 +35,9 @@ import (
 
 func main() {
 	if GLOBAL.frontendBool == true {
-		// frontend.go
-		startFrontendMode()
-	} else {
-		// backend.go
-		startBackendMode()
+		startFrontendMode() // frontend.go
+	} else if GLOBAL.backendBool == true {
+		startBackendMode() // backend.go
 	}
 	for len(GLOBAL.logInfoChan) != 0 {
 		time.Sleep(time.Second)
@@ -54,15 +52,17 @@ func main() {
 }
 
 func init() {
+	fName := "(init)"
+
 	// sorry not sorry
 	GLOBAL = globalVars{}
 
 	GLOBAL.logInfoChan = make(chan string, oneMillion)
-	logInfo("(initLogInfo) - init completed")
+	logInfo(fName, "logging initialized")
 	go handleLogging()
 
 	GLOBAL.serverPriority = generateRandomUint64()
-	logInfo(fmt.Sprintf("serverPriority = %d", GLOBAL.serverPriority))
+	logInfo(fName, fmt.Sprintf("serverPriority=%d", GLOBAL.serverPriority))
 	GLOBAL.numberOfCores = 0
 	GLOBAL.loggingMutex = sync.Mutex{}
 	GLOBAL.waitForLogging = sync.WaitGroup{}
@@ -79,6 +79,7 @@ func init() {
 
 	GLOBAL.turningDataSignal = make(chan struct{})
 	GLOBAL.newTickSignal = make(chan struct{})
+	GLOBAL.mutatingDataBlocker = make(chan struct{})
 	GLOBAL.allServersReadySignal = make(chan struct{})
 	GLOBAL.currentGalaxy = Galaxy{}
 	GLOBAL.futureGalaxy = Galaxy{}
@@ -121,7 +122,7 @@ func init() {
 
 	// sanity check that a password was provided
 	if GLOBAL.authPassword == "" {
-		logInfo("(init) FATALERROR: no password provided")
+		logError(fName, "no password provided")
 		GLOBAL.waitForLogging.Wait()
 		os.Exit(1)
 	}
@@ -129,12 +130,10 @@ func init() {
 	// sanity check operating mode specified via Booleans
 	switch {
 	case GLOBAL.backendBool == false && GLOBAL.frontendBool == false:
-		logInfo("(init) FATALERROR: neither 'backend' or 'frontend' operating mode was specified")
-		GLOBAL.waitForLogging.Wait()
+		logError(fName, "neither 'backend' or 'frontend' operating mode was specified")
 		os.Exit(1)
 	case GLOBAL.backendBool == true && GLOBAL.frontendBool == true:
-		logInfo("(init) FATALERROR: BOTH backend/frontend mode specified - DoesNotCompute")
-		GLOBAL.waitForLogging.Wait()
+		logError(fName, "BOTH backend/frontend mode specified. DoesNotCompute")
 		os.Exit(1)
 	}
 
@@ -172,7 +171,7 @@ func checkFirewall(fName string, remoteIPAddr string, check string) bool {
 		count, echo = GLOBAL.clientBlacklist.FailedSessionLimitCount[remoteIPAddr]
 		lastTime, foxtrot = GLOBAL.clientBlacklist.FailedSessionLimitTime[remoteIPAddr]
 	default:
-		logError(fName + "> gave > checkFirewallHistory an invalid 'check' parameter")
+		logError(fName, "> gave checkFirewallHistory an invalid 'check' parameter")
 		GLOBAL.clientBlacklist.RUnlock()
 		// fail open
 		return true
@@ -184,7 +183,7 @@ func checkFirewall(fName string, remoteIPAddr string, check string) bool {
 	blacklistExpGrowth := int64((count) / uint16(limit))
 	currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
 	if timeSinceBlacklist < currentBlacklistGiven {
-		logError(fName+"blacklisted client attempting to connect:", remoteIPAddr,
+		logError(fName, "blacklisted client attempting to connect:", remoteIPAddr,
 			"\n\tblacklistedFor:", string(timeSinceBlacklist),
 			"\n\treason:", check,
 			"\n\tnumberOfOffenses:", string(count))
@@ -234,10 +233,10 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, remoteIPAddr string) (
 
 	var inMsg incomingMessage
 	err := conn.ReadJSON(&inMsg)
-	if checkError(fName+"error receiving message:", err) {
+	if checkError(err, fName, "error receiving message") {
 		return userid
 	}
-	logDebug(fName+"received the following message\n", fmt.Sprintf("%s", inMsg))
+	logDebug(fName, "received the following message\n", fmt.Sprintf("%s", inMsg))
 
 	////////////////////////////////////////////////////////////
 	// send id_token to google oauth service
@@ -248,7 +247,7 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, remoteIPAddr string) (
 	for i := 0; i < constGoogleAuth; i++ {
 		var httpClient = &http.Client{}
 		oauth2Service, err = oauth2.New(httpClient)
-		if checkError(fName+"error contacting google:", err) {
+		if checkError(err, fName, "error contacting google") {
 			continue
 		} else {
 			successful = true
@@ -262,7 +261,7 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, remoteIPAddr string) (
 	tokenInfoCall := oauth2Service.Tokeninfo()
 	tokenInfoCall.IdToken(inMsg.IDToken)
 	tokenInfo, err := tokenInfoCall.Do()
-	if checkError(fName+"error parsing incoming google response:", err) {
+	if checkError(err, fName, "error parsing incoming google response") {
 		return userid
 	}
 
@@ -274,24 +273,25 @@ func handleGoogleAuth(fName string, conn *websocket.Conn, remoteIPAddr string) (
 		GLOBAL.clientBlacklist.Unlock()
 	}
 	if tokenInfo.VerifiedEmail != true {
-		logError(fName + "tokenInfo.VerifiedEmail is not 'true' " + remoteIPAddr)
+		logError(fName, "tokenInfo.VerifiedEmail is not 'true'", remoteIPAddr)
 		triggerFailState()
 		return userid
 	}
 	if tokenInfo.Audience != GLOBAL.googleAudience {
-		logError(fName + "tokenInfo.Audience (" + tokenInfo.Audience +
-			") does not match googleAudience (" + GLOBAL.googleAudience + ")" + remoteIPAddr)
+		aMessage := fmt.Sprintf("tokenInfo.Audience (%s) does not match googleAudience (%s) remoteIP=%s",
+			tokenInfo.Audience, GLOBAL.googleAudience, remoteIPAddr)
+		logError(fName, aMessage)
 		triggerFailState()
 		return userid
 	}
 
 	if GLOBAL.debugModeBool == true {
 		rawJSON, err := tokenInfo.MarshalJSON()
-		checkError(fName+"error MarshalJSON'ing google response:", err)
+		checkError(err, fName, "error MarshalJSON'ing google response")
 		var prettyJSON bytes.Buffer
 		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
-		checkError(fName+"error jsonIndent'ing google response:", err)
-		logDebug(fName+"received the following message from google:\n",
+		checkError(err, fName, "error jsonIndenting google response")
+		logDebug(fName, "received the following message from google:\n",
 			string(prettyJSON.Bytes()))
 	}
 
@@ -308,10 +308,10 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 
 	// receive initial challenge from frontend
 	_, dataChallenge, err := conn.ReadMessage()
-	if checkError(fName+"error receiving challenge from backend:", err) {
+	if checkError(err, fName, "error receiving challenge from backend") {
 		return false
 	}
-	logDebug(fName+"received the following challenge:",
+	logDebug(fName, "received the following challenge:",
 		"\n", base64.StdEncoding.EncodeToString(dataChallenge))
 
 	////////////////////////////////////////////////////////////
@@ -323,7 +323,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	if len(dataChallenge) == 32 {
 		copy(dataChallengeArray[:], dataChallenge)
 	} else {
-		logError(fName+"received a challenge with invalid length:",
+		logError(fName, "received a challenge with invalid length:",
 			string(len(dataChallenge)), "bytes")
 		currentTime := time.Now().Unix()
 		GLOBAL.clientBlacklist.Lock()
@@ -344,7 +344,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	}
 
 	response := generateHMAC([]byte(GLOBAL.authPassword), dataChallengeArray)
-	logDebug(fName+"computed the following response:",
+	logDebug(fName, "computed the following response:",
 		"\n", base64.StdEncoding.EncodeToString(response))
 
 	////////////////////////////////////////////////////////////
@@ -354,14 +354,14 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	newHMACKey := func() [32]byte {
 		key := [32]byte{}
 		_, err = io.ReadFull(cryptorand.Reader, key[:])
-		if checkError(fName+"error while generating key", err) {
+		if checkError(err, fName, "error while generating key") {
 			conn.Close()
 		}
 		return key
 	}
 
 	randomBytes := newHMACKey()
-	logDebug(fName+"generated the following challenge:",
+	logDebug(fName, "generated the following challenge:",
 		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
 
 	////////////////////////////////////////////////////////////
@@ -377,7 +377,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	outMsgResponse.Challenge = base64.StdEncoding.EncodeToString(randomBytes[:])
 	outMsgResponse.Response = base64.StdEncoding.EncodeToString(response)
 	err = conn.WriteJSON(outMsgResponse)
-	if checkError(fName+"error sending response:", err) {
+	if checkError(err, fName, "error sending response") {
 		return false
 	}
 
@@ -386,7 +386,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	////////////////////////////////////////////////////////////
 
 	_, remoteHash, err := conn.ReadMessage()
-	if checkError(fName+"error receiving response:", err) {
+	if checkError(err, fName, "error receiving response") {
 		return false
 	}
 
@@ -397,7 +397,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string
 	correctResponse = generateHMAC([]byte(GLOBAL.authPassword), remoteHashArray)
 
 	if hmac.Equal(correctResponse, remoteHash) != true {
-		logError(fName+"initial challenge-response failed",
+		logError(fName, "initial challenge-response failed",
 			"\n", base64.StdEncoding.EncodeToString(correctResponse),
 			"\n", base64.StdEncoding.EncodeToString(remoteHash))
 		return false
@@ -415,18 +415,18 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 	newHMACKey := func() [32]byte {
 		key := [32]byte{}
 		_, err := io.ReadFull(cryptorand.Reader, key[:])
-		if checkError(fName+"error while generating key", err) {
+		if checkError(err, fName, "error while generating key") {
 			conn.Close()
 		}
 		return key
 	}
 
 	randomBytes := newHMACKey()
-	logDebug(fName+"sending the following challenge:",
+	logDebug(fName, "sending the following challenge:",
 		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
 
 	err := conn.WriteMessage(websocket.BinaryMessage, randomBytes[:])
-	if checkError(fName+"error sending message to frontend loadbalancer:", err) {
+	if checkError(err, fName, "error sending message to frontend loadbalancer") {
 		return false
 	}
 
@@ -441,11 +441,11 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 
 	var inMsg incomingMessage
 	err = conn.ReadJSON(&inMsg)
-	if checkError(fName+"error receiving initial response from frontend loadbalancer:", err) {
+	if checkError(err, fName, "error receiving initial response from frontend loadbalancer") {
 		return false
 	}
 
-	logDebug(fName+"received the following JSON challenge/response:\n",
+	logDebug(fName, "received the following JSON challenge/response:\n",
 		fmt.Sprintf("%s\n", inMsg))
 
 	////////////////////////////////////////////////////////////
@@ -466,7 +466,7 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 
 	remoteHash, _ := base64.StdEncoding.DecodeString(inMsg.Response)
 	if hmac.Equal(correctResponse, remoteHash) != true {
-		logError(fName+"initial challenge-response failed:",
+		logError(fName, "initial challenge-response failed:",
 			"\n", base64.StdEncoding.EncodeToString(correctResponse),
 			"\n", base64.StdEncoding.EncodeToString(remoteHash))
 		return false
@@ -482,11 +482,11 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 	copy(remoteChallengeArray[:], remoteChallenge)
 
 	ourResponse := generateHMAC([]byte(GLOBAL.authPassword), remoteChallengeArray)
-	logDebug(fName+"local hash for challenge sent by LoadBalancer:",
+	logDebug(fName, "local hash for challenge sent by LoadBalancer:",
 		"\n", base64.StdEncoding.EncodeToString(ourResponse))
 
 	err = conn.WriteMessage(websocket.BinaryMessage, ourResponse)
-	if checkError(fName+"error sending message to frontend loadbalancer:", err) {
+	if checkError(err, fName, "error sending message to frontend loadbalancer") {
 		return false
 	}
 
@@ -576,6 +576,30 @@ func generateRandomUint64() uint64 {
 	return rnum.Uint64()
 }
 
+func getCryptoRnum() *rand.Rand {
+	seed := func() rand.Source {
+		var randomness int64
+		b := make([]byte, 8)
+		cryptorand.Read(b)
+		buf := bytes.NewBuffer(b)
+		binary.Read(buf, binary.LittleEndian, &randomness)
+		return rand.NewSource(randomness)
+	}
+	return rand.New(seed())
+}
+
+func getPosOrNegOne() int {
+	var randomNum int8
+	b := make([]byte, 1)
+	cryptorand.Read(b)
+	buf := bytes.NewBuffer(b)
+	binary.Read(buf, binary.LittleEndian, &randomNum)
+	if randomNum >= 0 {
+		return 1
+	}
+	return -1
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -614,15 +638,38 @@ func logInfo(arrayOfStrings ...string) {
 	}()
 }
 
-func checkError(message string, err error) bool {
+func logDebug(arrayOfStrings ...string) {
+	if GLOBAL.debugModeBool == true {
+		var message string
+		for i := range arrayOfStrings {
+			if i > 0 {
+				message += " "
+			}
+			message += arrayOfStrings[i]
+		}
+		t := time.Now().UTC().Format("2006-01-02 15:04:05")
+		GLOBAL.loggingMutex.Lock()
+		color.Cyan("DEBUG:" + t + message)
+		GLOBAL.loggingMutex.Unlock()
+	}
+}
+
+func checkError(err error, arrayOfStrings ...string) bool {
 	var errorFound bool
 	if err != nil {
 		errorFound = true
 		go func() {
 			t := time.Now().UTC().Format("2006-01-02 15:04:05")
+			var message string
+			for i := range arrayOfStrings {
+				if i > 0 {
+					message += " "
+				}
+				message += arrayOfStrings[i]
+			}
 			err := err.Error() // convert err to string
 			GLOBAL.loggingMutex.Lock()
-			color.Red("ERROR: " + t + " " + message + err)
+			color.Red("ERROR: " + t + " " + message + " > " + err)
 			GLOBAL.loggingMutex.Unlock()
 		}()
 	} else {
@@ -647,22 +694,6 @@ func logError(arrayOfStrings ...string) {
 	}()
 }
 
-func logDebug(arrayOfStrings ...string) {
-	if GLOBAL.debugModeBool == true {
-		var message string
-		for i := range arrayOfStrings {
-			if i > 0 {
-				message += " "
-			}
-			message += arrayOfStrings[i]
-		}
-		t := time.Now().UTC().Format("2006-01-02 15:04:05")
-		GLOBAL.loggingMutex.Lock()
-		color.Cyan(t + " " + message)
-		GLOBAL.loggingMutex.Unlock()
-	}
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -683,52 +714,14 @@ func seqNumGenerator(randNumChan chan int64) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func growPopulation(currentPopulation float64, foodSupply int32) float64 {
-	foodSupplyDbl := float64(foodSupply)
-	stime := rand.NewSource(time.Now().UnixNano())
-	rnum := rand.New(stime)
-
-	// population if foodSupply == 0
-	referencePopulation := float64(10000)
-
-	// maximum % change allowed in single turn (.0005 is standard)
-	maxPercentChange := .005
-
-	N := currentPopulation
-	logDebug(commaFormatUint(uint64(N)))
-
-	randomness := referencePopulation * (1 + rnum.NormFloat64()*.1)
-	K := randomness * math.Pow(foodSupplyDbl, 3.4)
-
-	logisticPercentChange := (K - N) / K
-
-	switch {
-	case logisticPercentChange < -1:
-		logisticPercentChange = -1
-	case logisticPercentChange > 1:
-		logisticPercentChange = 1
-	case logisticPercentChange == 0:
-		logisticPercentChange = .000001
-	}
-
-	currentPopulation = currentPopulation + (N*maxPercentChange)*logisticPercentChange
-	return currentPopulation
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 func handleInputParameters(fName string) {
-
-	fName = "(" + fName + ") "
 
 	// is the inputfilename empty?
 	// if so set doneMatching to 'true' so that we can skip later logic
 	var doneMatching bool
 	if GLOBAL.inputFile == "" {
 		doneMatching = true
-		logDebug(fName + "no inputfilename specified - skipping data import process")
+		logDebug(fName, "no inputfilename specified - skipping data import process")
 	} else {
 		doneMatching = false
 	}
@@ -739,7 +732,7 @@ func handleInputParameters(fName string) {
 		foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.inputFile)
 		if foundMatch == true {
 			doneMatching = true
-			logInfo(fName + "parsing blob inputfilename")
+			logInfo(fName, "parsing blob inputfilename")
 			in, err := ioutil.ReadFile(GLOBAL.inputFile)
 			if err != nil {
 				if os.IsNotExist(err) {
@@ -760,7 +753,7 @@ func handleInputParameters(fName string) {
 		foundMatch, _ := regexp.MatchString(".*json$", GLOBAL.inputFile)
 		if foundMatch == true {
 			doneMatching = true
-			logInfo(fName + "parsing blob inputfilename")
+			logInfo(fName, "parsing blob inputfilename")
 			in, err := ioutil.ReadFile(GLOBAL.inputFile)
 			if err != nil {
 				if os.IsNotExist(err) {
@@ -776,6 +769,6 @@ func handleInputParameters(fName string) {
 	}
 	// if none of the above logic was successful - we have a fatal error on our hands
 	if doneMatching == false {
-		log.Fatalln(fName + "unknown inputfilename - skipping data import process")
+		log.Fatalln(fName, "unknown inputfilename. skipping data import process")
 	}
 }

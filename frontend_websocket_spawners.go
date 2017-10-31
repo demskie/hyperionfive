@@ -12,16 +12,17 @@ import (
 )
 
 func spawnFrontendToFrontend(host string) {
+	fName := "(handshakeFrontend)"
 
 	var dialer *websocket.Dialer
 	conn, _, err := dialer.Dial("wss://"+host+":443/backend", nil)
-	if checkError("(handshakeFrontend) unable to open websocket with frontend loadbalancer:", err) {
+	if checkError(err, fName, "unable to open websocket with frontend loadbalancer") {
 		return
 	}
 	defer conn.Close()
 
-	logDebug("(handshakeFrontend) opening connection:", conn.RemoteAddr().String())
-	defer logDebug("(handshakeFrontend) closing connection:", conn.RemoteAddr().String())
+	logDebug(fName, "opening connection:", conn.RemoteAddr().String())
+	defer logDebug(fName, "closing connection:", conn.RemoteAddr().String())
 
 	if kickoffChallengeResponse("handshakeFrontend", conn) != true {
 		return
@@ -99,8 +100,8 @@ func spawnFrontendToFrontend(host string) {
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
 
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgTemp=\t", outMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgReference=\t", outMsgReference))
+		logDebug(fName, fmt.Sprint("outMsgTemp=\t", outMsgTemp))
+		logDebug(fName, fmt.Sprint("outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
 			outMsgTemp = frontendToFrontendMessage{
@@ -111,7 +112,7 @@ func spawnFrontendToFrontend(host string) {
 		var networkOut bytes.Buffer
 		enc := gob.NewEncoder(&networkOut)
 		err = enc.Encode(outMsgTemp)
-		if checkError("(periodicUpdateFrontend) error encoding outgoing message", err) {
+		if checkError(err, fName, "error encoding outgoing message") {
 			return false
 		}
 		conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
@@ -121,17 +122,17 @@ func spawnFrontendToFrontend(host string) {
 		////////////////////////////////////////////////////////////
 
 		msgType, newData, err := conn.ReadMessage()
-		if checkError("(periodicUpdateFrontend) error receiving message:", err) {
+		if checkError(err, fName, "error receiving message") {
 			return false
 		}
 		if msgType != websocket.BinaryMessage {
-			logInfo("(periodicUpdateFrontend) messageType is invalid")
+			logInfo(fName, "websocket messageType is not BinaryMessage")
 			return false
 		}
 		networkIn := bytes.NewBuffer(newData)
 		dec := gob.NewDecoder(networkIn)
 		err = dec.Decode(&inMsgTemp)
-		if checkError("(periodicUpdateFrontend) error decoding incoming message", err) {
+		if checkError(err, fName, "error decoding incoming message") {
 			return false
 		}
 
@@ -143,8 +144,8 @@ func spawnFrontendToFrontend(host string) {
 			inMsgTemp = inMsgReference
 		}
 
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgTemp=\t\t", inMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgReference=\t", inMsgReference))
+		logDebug(fName, fmt.Sprint("inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fName, fmt.Sprint("inMsgReference=\t", inMsgReference))
 
 		if inMsgTemp.Message == diediedie {
 			// TODO // not implemented

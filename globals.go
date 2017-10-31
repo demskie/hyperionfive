@@ -35,6 +35,7 @@ type globalVars struct {
 
 	turningDataSignal     chan struct{}
 	newTickSignal         chan struct{}
+	mutatingDataBlocker   chan struct{}
 	allServersReadySignal chan struct{}
 	currentGalaxy         Galaxy
 	futureGalaxy          Galaxy
@@ -141,60 +142,6 @@ type frontendToBackendMessage struct {
 	Message        string
 	AnotherMessage string
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-// planettype
-const (
-	TERRAN int = iota
-	DESERT
-	VOLCANIC
-	ICE
-	BARREN
-	FERROUS
-	GREENHOUSE
-	OCEANIC
-	ASTEROID
-	DWARF
-)
-
-// spaceshiptype
-const (
-	SCOUT int = iota
-	COLONY
-	CARRIER
-	BATTLESHIP
-	TITAN
-)
-
-// solarsystemtype
-const (
-	BLUEGIANT int = iota
-	YELLOWGIANT
-	REDGIANT
-	WHITEDWARF
-	NEUTRONSTAR
-	BLACKHOLE
-)
-
-// spaceshipstatus
-const (
-	OPERATIONAL int = iota
-	LIGHTLYDAMAGED
-	HEAVILYDAMAGED
-	SEVERELYDAMAGED
-	HANGINGBYATHREAD
-)
-
-// galaxytype
-const (
-	ELLIPTICAL int = iota
-	SPIRAL
-	BARREDSPIRAL
-	IRREGULAR
-)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////

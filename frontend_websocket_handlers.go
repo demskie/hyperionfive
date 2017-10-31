@@ -17,8 +17,7 @@ import (
 )
 
 func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
-
-	fName := "(clientToFrontend) "
+	fName := "(clientToFrontend)"
 
 	////////////////////////////////////////////////////////////
 	// check that the host is not currently blacklisted
@@ -41,10 +40,10 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 		EnableCompression: true,
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError(fName+"upgrade error:", err) {
+	if checkError(err, fName) {
 		return
 	}
-	logDebug(fName+"opening socket:", string(r.RemoteAddr))
+	logDebug(fName, "opening socket:", string(r.RemoteAddr))
 
 	////////////////////////////////////////////////////////////
 	// DEFER STATEMENTS
@@ -92,12 +91,11 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 	// TODO: RESPONSE TO CLIENT NOT YET IMPLEMENTED
 	////////////////////////////////////////////////////////////
 
-	logDebug(fName+"closing socket:", string(r.RemoteAddr))
+	logDebug(fName, "closing socket:", string(r.RemoteAddr))
 }
 
 func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
-
-	fName := "(backendToFrontend) "
+	fName := "(backendToFrontend)"
 
 	// if client is blocked - backout of this http connection with 'return'
 	client, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -117,7 +115,7 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError(fName+"upgrade error:", err) {
+	if checkError(err, fName) {
 		return
 	}
 
@@ -142,8 +140,8 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		GLOBAL.clientBlacklist.Unlock()
 	}()
 
-	logDebug(fName+"opening socket:", string(r.RemoteAddr))
-	defer logDebug(fName+"closing connection:", client)
+	logDebug(fName, "opening socket:", string(r.RemoteAddr))
+	defer logDebug(fName, "closing connection:", client)
 
 	////////////////////////////////////////////////////////////
 	// do challenge-response handshake (defined in Main.go)
@@ -179,17 +177,17 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		msgType, newData, err := conn.ReadMessage()
-		if checkError(fName+"error receiving message:", err) {
+		if checkError(err, fName, "error receiving message") {
 			return
 		}
 		if msgType != websocket.BinaryMessage {
-			logInfo(fName + "messageType is invalid")
+			logInfo(fName, "messageType is invalid")
 			return
 		}
 		network := bytes.NewBuffer(newData)
 		dec := gob.NewDecoder(network)
 		err = dec.Decode(&inMsgTemp)
-		if checkError(fName+"error decoding incoming message", err) {
+		if checkError(err, fName, "error decoding incoming message") {
 			return
 		}
 
@@ -259,19 +257,19 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		galName := outMsgReference.GalaxyName
-		logDebug(fmt.Sprint(fName+"galName=\t\t", galName))
+		logDebug(fName, fmt.Sprint("galName=\t\t", galName))
 		// TODO // need to reference galaxyInfo instead
 
 		if inMsgTemp.Message == sameaslasttime {
 			inMsgTemp = inMsgReference
 		}
 
-		logDebug(fmt.Sprint(fName+"inMsgTemp=\t\t", inMsgTemp))
-		logDebug(fmt.Sprint(fName+"inMsgReference=\t", inMsgReference))
+		logDebug(fName, fmt.Sprint("inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fName, fmt.Sprint("inMsgReference=\t", inMsgReference))
 
 		if inMsgTemp.Message == sameaslasttime && galName != "" {
 			if reflect.DeepEqual(inMsgTemp, inMsgReference) {
-				logInfo(fName + "received duplicate message")
+				logInfo(fName, "received duplicate message")
 			}
 		}
 
@@ -280,7 +278,7 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		if inMsgTemp.Message == newgalaxy {
-			logInfo(fName + "received 'new_galaxy' from backend")
+			logInfo(fName, "received 'new_galaxy' from backend")
 			myGalName, glblX, glblY := generateGlobalGalaxyInfo(client)
 
 			galName = myGalName
@@ -306,10 +304,10 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 				GLOBAL.frontendData.GalBackends[galName] = []string{client}
 				GLOBAL.frontendData.Unlock()
 			} else {
-				logError(fName + "just tried to generate a galaxy that already exists!")
+				logError(fName, "just tried to generate a galaxy that already exists!")
 				return
 			}
-			logInfo(fmt.Sprintf(fName+"generated the following galInfo:"+
+			logInfo(fName, fmt.Sprintf("generated the following galInfo:"+
 				"\n\t\tgalName=%s\n\t\tglblX=%d\n\t\tglblY=%d", galName, glblX, glblY))
 		}
 
@@ -323,18 +321,18 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		if galName == "" && inMsgTemp.GalaxyName != "" {
-			logInfo(fmt.Sprintf(fName+"something is horribly wrong..."+
+			logInfo(fName, fmt.Sprintf("something is horribly wrong..."+
 				" backend %s is asserting unknown galName", client))
 			return
 		}
 
 		if galName == "" && inMsgTemp.Message != newgalaxy {
-			logInfo(fName + "invalid incoming request: empty galName and invalid message.newGalaxy")
+			logInfo(fName, "invalid incoming request: empty galName and invalid message.newGalaxy")
 			return
 		}
 
 		if galName == "" {
-			logInfo(fName + "something is terribly wrong... galaxy was not created/initialized")
+			logInfo(fName, "something is terribly wrong... galaxy was not created/initialized")
 			return
 		}
 
@@ -350,8 +348,8 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
 
-		logDebug(fmt.Sprint(fName+"outMsgTemp=\t", outMsgTemp))
-		logDebug(fmt.Sprint(fName+"outMsgReference=\t", outMsgReference))
+		logDebug(fName, fmt.Sprint("outMsgTemp=\t", outMsgTemp))
+		logDebug(fName, fmt.Sprint("outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
 			outMsgTemp = frontendToBackendMessage{
@@ -362,7 +360,7 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 		var networkOut bytes.Buffer
 		enc := gob.NewEncoder(&networkOut)
 		err = enc.Encode(outMsgTemp)
-		if checkError(fName+"error encoding outgoing message", err) {
+		if checkError(err, fName, "error encoding outgoing message") {
 			return
 		}
 		conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
@@ -380,6 +378,7 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
+	fName := "(handshakeFrontend)"
 
 	client, _, _ := net.SplitHostPort(r.RemoteAddr)
 
@@ -401,13 +400,13 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError("(handshakeFrontend) upgrade error:", err) {
+	if checkError(err, fName) {
 		return
 	}
 
 	// log client IP address
-	logInfo("(handshakeFrontend) opening socket:", string(r.RemoteAddr))
-	defer logInfo("(handshakeFrontend) closing connection:", client)
+	logInfo(fName, "opening socket:", string(r.RemoteAddr))
+	defer logInfo(fName, "closing connection:", client)
 
 	////////////////////////////////////////////////////////////
 	// modify sessionCount accordingly
@@ -468,17 +467,17 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		////////////////////////////////////////////////////////////
 
 		msgType, newData, err := conn.ReadMessage()
-		if checkError("(periodicUpdateFrontend) error receiving message:", err) {
+		if checkError(err, fName) {
 			return
 		}
 		if msgType != websocket.BinaryMessage {
-			logInfo("(periodicUpdateFrontend) messageType is invalid")
+			logInfo(fName, "messageType is invalid")
 			return
 		}
 		networkIn := bytes.NewBuffer(newData)
 		dec := gob.NewDecoder(networkIn)
 		err = dec.Decode(&inMsgTemp)
-		if checkError("(periodicUpdateFrontend) error decoding incoming message", err) {
+		if checkError(err, fName) {
 			return
 		}
 
@@ -499,8 +498,8 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 			inMsgTemp = inMsgReference
 		}
 
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgTemp=\t\t", inMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) inMsgReference=\t", inMsgReference))
+		logDebug(fName, fmt.Sprint("inMsgTemp=\t\t", inMsgTemp))
+		logDebug(fName, fmt.Sprint("inMsgReference=\t", inMsgReference))
 
 		if inMsgTemp.Message == diediedie {
 			// TODO // not implemented
@@ -621,8 +620,8 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		// send outgoingMessage
 		////////////////////////////////////////////////////////////
 
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgTemp=\t", outMsgTemp))
-		logDebug(fmt.Sprint("(periodicUpdateFrontend) outMsgReference=\t", outMsgReference))
+		logDebug(fName, fmt.Sprint("outMsgTemp=\t", outMsgTemp))
+		logDebug(fName, fmt.Sprint("outMsgReference=\t", outMsgReference))
 
 		if reflect.DeepEqual(outMsgTemp, outMsgReference) {
 			outMsgTemp = frontendToFrontendMessage{
@@ -633,7 +632,7 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 		var networkOut bytes.Buffer
 		enc := gob.NewEncoder(&networkOut)
 		err = enc.Encode(outMsgTemp)
-		if checkError("(periodicUpdateFrontend) error encoding outgoing message", err) {
+		if checkError(err, fName) {
 			return
 		}
 		conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())

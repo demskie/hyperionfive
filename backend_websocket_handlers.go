@@ -11,8 +11,7 @@ import (
 )
 
 func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
-
-	fName := "(clientToBackend) "
+	fName := "(clientToBackend)"
 
 	////////////////////////////////////////////////////////////
 	// check that the host is not currently blacklisted
@@ -33,10 +32,10 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 		EnableCompression: true,
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError(fName+"upgrade error:", err) {
+	if checkError(err, fName, "upgrade error") {
 		return
 	}
-	logDebug(fName+"opening socket:", string(r.RemoteAddr))
+	logDebug(fName, "opening socket:", string(r.RemoteAddr))
 
 	////////////////////////////////////////////////////////////
 	// DEFER STATEMENTS
@@ -59,8 +58,8 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 		GLOBAL.clientBlacklist.Unlock()
 	}()
 
-	logDebug(fName+"opening socket:", remoteIPAddr)
-	defer logDebug(fName+"closing connection:", remoteIPAddr)
+	logDebug(fName, "opening socket:", remoteIPAddr)
+	defer logDebug(fName, "closing connection:", remoteIPAddr)
 
 	////////////////////////////////////////////////////////////
 	// receive and process google authentication
@@ -106,7 +105,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 
 				// serialize this information
 				data, err = proto.Marshal(&playerData)
-				if checkError("CRITICAL FAILURE - UNABLE TO MARSHAL PLAYERDATA:", err) {
+				if checkError(err, fName, "CRITICAL FAILURE. UNABLE TO MARSHAL PLAYERDATA") {
 					backoutOnce.Do(killFunc)
 					return
 				}
@@ -118,12 +117,12 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 			select {
 			case <-dataReadySignal:
 				err = conn.WriteMessage(websocket.BinaryMessage, data)
-				if checkError(fName+"error sending message to client:", err) {
+				if checkError(err, fName, "error sending message to client") {
 					backoutOnce.Do(killFunc)
 					return
 				}
 			case <-GLOBAL.turningDataSignal:
-				logError("CRITICAL FAILURE - RAN OUT OF TIME TO SEND PLAYERDATA")
+				logError(fName, "CRITICAL FAILURE - RAN OUT OF TIME TO SEND PLAYERDATA")
 				backoutOnce.Do(killFunc)
 				return
 			case <-backoutSignal:
@@ -146,15 +145,15 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 				err = conn.ReadJSON(&inMsg)
 
 				inMsg.ClientID = userid
-				if checkError(fName+"error receiving request from Client:", err) {
+				if checkError(err, fName, "error receiving request from Client") {
 					backoutOnce.Do(killFunc)
 					return
 				}
-				logDebug(fName+"received the following JSON client request:\n",
+				logDebug(fName, "received the following JSON client request:\n",
 					fmt.Sprintf("%v\n", inMsg))
 
 				if inMsg.UniqueID != 0 {
-					logError(fName + "Client tried to set the UniqueID - " + remoteIPAddr)
+					logError(fName, "Client tried to set the UniqueID:", remoteIPAddr)
 					backoutOnce.Do(killFunc)
 					return
 				}
@@ -180,8 +179,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
-
-	fName := "(backendToBackend) "
+	fName := "(backendToBackend)"
 
 	// if client is blocked - backout of this http connection
 	remoteIPAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -194,10 +192,13 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 		ReadBufferSize:    1024,
 		WriteBufferSize:   1024,
 		EnableCompression: true,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
-	if checkError(fName+"upgrade error:", err) {
+	if checkError(err, fName, "upgrade error") {
 		return
 	}
 

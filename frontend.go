@@ -9,9 +9,7 @@ import (
 )
 
 func startFrontendMode() {
-
-	// initialize frontendData
-	GLOBAL.frontendData = frontendData{}
+	fName := "(frontendMainFunc)"
 
 	// setup httpMux to avoid leaking default handlers
 	muxSecure := http.NewServeMux()
@@ -68,8 +66,8 @@ func startFrontendMode() {
 	lbWaitGroup.Add(1)
 	go func() {
 		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
-		if checkError("(ListenAndServeTLS) Something went wrong:", errServeTLS) {
-			GLOBAL.waitForLogging.Wait()
+		if checkError(errServeTLS, fName) {
+			//GLOBAL.waitForLogging.Wait()
 			//os.Exit(1)
 		}
 		lbWaitGroup.Done()
@@ -91,8 +89,8 @@ func startFrontendMode() {
 	lbWaitGroup.Add(1)
 	go func() {
 		errServeInsecure := srvInsecure.ListenAndServe()
-		if checkError("(ListenAndServeInsecure) Something went wrong:", errServeInsecure) {
-			GLOBAL.waitForLogging.Wait()
+		if checkError(errServeInsecure, fName) {
+			//GLOBAL.waitForLogging.Wait()
 			//os.Exit(1)
 		}
 		lbWaitGroup.Done()

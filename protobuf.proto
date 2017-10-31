@@ -5,41 +5,15 @@ syntax = "proto3";
 package main;
 
 
-message Planet {
-    string name = 1;
-    int64 localX = 2;
-    int64 localY = 3;
-    string owner = 4;
-    uint64 population = 5;
-    int32 type = 6;
-    int32 food = 7;
-	int32 health = 8;
-}
-
-
-message Spaceship {
-    string name = 1;
-    int64 localX = 2;
-    int64 localY = 3;
-    string owner = 4;
-    uint64 population = 5;
-    int32 weapons = 6;
-    int32 engines = 7;
-    int32 shields = 8;
-	int32 special = 9;
-    int32 type = 10;
-    int32 health = 11;
-}
-
-
-message OtherObject {
+message SolarObject {
 	string name = 1;
 	int64 localX = 2;
 	int64 localY = 3;
 	string owner = 4;
-	int32 economicValue = 5;
-	int32 type = 6;
-	int32 health = 7;
+	int32 food = 5;
+	uint64 population = 6;
+	int32 type = 7;
+	int32 health = 8;
 }
 
 
@@ -47,10 +21,8 @@ message SolarSystem {
     string name = 1;
     int64 interX = 2;
     int64 interY = 3;
-    repeated Planet planetslice = 4;
-    repeated Spaceship spaceshipslice = 5;
-	repeated OtherObject otherobjectslice = 6;
-    int32 type = 7;
+	repeated SolarObject solarobjectslice = 4;
+    int32 type = 5;
 }
 
 
@@ -62,19 +34,44 @@ message Galaxy {
     int32 type = 5;
 }
 
+/*
 
-// go get github.com/golang/protobuf/proto
-// go get github.com/golang/protobuf/protoc-gen-go
-// go install github.com\golang\protobuf\protoc-gen-go
-// https://github.com/google/protobuf/releases
-// **extract_protoc.exe_here**-->   D:\OneDrive\GoPrototypes\bin
-// D:
-// cd D:\OneDrive\GoPrototypes\src\GOSERVER
-// D:\OneDrive\GoPrototypes\bin\protoc --go_out=D:\OneDrive\GoPrototypes\src\GOSERVER\ protobuf.proto
-// D:\OneDrive\GoPrototypes\bin\protoc --js_out=import_style=commonjs,binary:D:\OneDrive\GoPrototypes\src\GOSERVER protobuf.proto
-// npm install npm@latest -g
-// npm update
-// cd D:\OneDrive\GoPrototypes\src\GOSERVER\node_modules
-// npm install --save protobuf
-// npm install --global browserify
-// browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
+
+//////////// OSX ////////////
+go get github.com/golang/protobuf/proto
+go get github.com/golang/protobuf/protoc-gen-go
+go install github.com/golang/protobuf/protoc-gen-go
+https://github.com/google/protobuf/releases
+cp ~/Downloads/protoc-3.4.0-osx-x86_64/bin/protoc ~/OneDrive/GoPrototypes/bin/
+~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ protobuf.proto
+~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ protobuf.proto
+brew install node
+npm install npm@latest -g
+npm update
+cd ~/OneDrive/GoPrototypes/src/GOSERVER/node_modules
+npm install --save google-protobuf
+npm install --global browserify
+browserify ../protobuf_pb.js -o ../websiteroot/protobuf.js
+/////////////////////////////
+
+
+////////// WINDOWS //////////
+go get github.com/golang/protobuf/proto
+go get github.com/golang/protobuf/protoc-gen-go
+go install github.com\golang\protobuf\protoc-gen-go
+https://github.com/google/protobuf/releases
+**extract_protoc.exe_here**-->   U:\OneDrive\GoPrototypes\bin
+U:
+cd U:\OneDrive\GoPrototypes\src\GOSERVER
+U:\OneDrive\GoPrototypes\bin\protoc --go_out=U:\OneDrive\GoPrototypes\src\GOSERVER\ protobuf.proto
+U:\OneDrive\GoPrototypes\bin\protoc --js_out=import_style=commonjs,binary:U:\OneDrive\GoPrototypes\src\GOSERVER protobuf.proto
+npm install npm@latest -g
+npm update
+cd U:\OneDrive\GoPrototypes\src\GOSERVER\node_modules
+npm install --save google-protobuf
+npm install --global browserify
+browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
+/////////////////////////////
+
+
+*/

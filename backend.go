@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
@@ -23,12 +24,13 @@ import (
 )
 
 func startBackendMode() {
+	fName := "(backendMainFunc)"
 
 	if false {
-		handleInputParameters("startBackendMode")
+		handleInputParameters(fName)
 	}
 
-	if true {
+	if false {
 		go func() {
 			for {
 				spawnBackendToFrontend("hyperion5.com")
@@ -36,7 +38,7 @@ func startBackendMode() {
 		}()
 	}
 
-	if false {
+	if true {
 		galaxyType := ELLIPTICAL
 		generateGalaxy(galaxyType)
 		logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
@@ -44,12 +46,21 @@ func startBackendMode() {
 		rtreeObjects = []rtreego.Spatial{}
 	}
 
-	if true {
+	if false {
 		go func() {
 			for {
-				kickoffBackendCommunication()
+				//kickoffBackendCommunication()
+				GLOBAL.backendData.RLock()
+				for _, backendAddress := range GLOBAL.backendData.Backends {
+					spawnBackendToBackend(backendAddress)
+				}
+				GLOBAL.backendData.RUnlock()
 			}
 		}()
+	}
+
+	if false {
+		os.Exit(1)
 	}
 
 	////////////////////////////////////////////////////////////
@@ -85,7 +96,7 @@ func startBackendMode() {
 		}
 		for i := range GLOBAL.currentGalaxy.Solarsystemslice {
 			data, err := proto.Marshal(GLOBAL.currentGalaxy.Solarsystemslice[i])
-			if checkError("CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST: ", err) {
+			if checkError(err, fName, "CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST") {
 				os.Exit(1)
 			}
 			systemName := GLOBAL.currentGalaxy.Solarsystemslice[i].Name
@@ -143,9 +154,33 @@ func startBackendMode() {
 		GLOBAL.backendData.ConfirmedRequestIDs = map[string][]int64{}
 		GLOBAL.backendData.Unlock()
 
-		// TODO: process these requestIDs
-		// TODO: remove these requestIDs from bufferedRequests
-		// TODO: remove these requestIDs from confirmedRequests
+		seeds := map[string]int64{}
+		GLOBAL.backendData.RLock()
+		for sysName, sysHash := range GLOBAL.backendData.SystemHashes[0]["0.0.0.0"] {
+			seeds[sysName] = int64(binary.LittleEndian.Uint32(sysHash[:]))
+		}
+		GLOBAL.backendData.RUnlock()
+
+		GLOBAL.bufferedRequestsMutex.Lock()
+		requests := []incomingClientRequest{}
+		leftoverRequests := []incomingClientRequest{}
+		for _, rqst := range GLOBAL.bufferedRequests {
+			for _, validID := range validRequestIDs {
+				if rqst.UniqueID == validID {
+					requests = append(requests, rqst)
+					break
+				}
+			}
+			leftoverRequests = append(leftoverRequests, rqst)
+		}
+		GLOBAL.bufferedRequests = leftoverRequests
+		GLOBAL.bufferedRequestsMutex.Unlock()
+		if len(requests) < len(validRequestIDs) {
+			logError("ERROR: missing one or more clientRequests")
+		}
+
+		processGalaxy(seeds, requests, GLOBAL.futureGalaxy)
+
 	}
 
 	gatherSystemPtrsForClients := func() {
@@ -188,6 +223,8 @@ func startBackendMode() {
 			// signal that data is now being mutated and is not safe for consumption
 			close(GLOBAL.turningDataSignal)
 			GLOBAL.turningDataSignal = make(chan struct{})
+			// an alterate channel for monitoring data mutation
+			GLOBAL.mutatingDataBlocker = make(chan struct{})
 
 			// major steps in the gameloop workflow
 			checkValidityOfHashes()
@@ -199,18 +236,19 @@ func startBackendMode() {
 			// triggers backend_websockets to send message to neighbors
 			close(GLOBAL.newTickSignal)
 			GLOBAL.newTickSignal = make(chan struct{})
+			// an alternate channel for monitoring data mutation
+			close(GLOBAL.mutatingDataBlocker)
 
 			// wait for confirmation from every neighbor
 			select {
 			case <-GLOBAL.allServersReadySignal:
 			case <-maximumTimeBlocker.C:
-				logError("ERROR: RAN OUT OF TIME TO WAIT FOR BACKEND MESSAGE")
+				logError(fName, "RAN OUT OF TIME TO WAIT FOR BACKEND MESSAGE")
 			}
 
 			// will block if minTime hasn't been met - this enforces a maximum tickRate
 			<-minimumTimeBlocker.C
 
-			//
 			end := time.Now().UnixNano()
 			GLOBAL.backendData.TickTime = start - end
 
@@ -255,7 +293,7 @@ func startBackendMode() {
 	// serve HTTPS requests with config defined above
 	go func() {
 		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
-		if checkError("(ListenAndServeTLS) Something went wrong:", errServeTLS) {
+		if checkError(errServeTLS, fName) {
 			GLOBAL.waitForLogging.Wait()
 			os.Exit(1)
 		}
@@ -337,14 +375,8 @@ func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 				}
 			}
 		}
-		for _, planet := range solarsystem.Planetslice {
-			addOwner(planet.GetOwner())
-		}
-		for _, spaceship := range solarsystem.Spaceshipslice {
-			addOwner(spaceship.GetOwner())
-		}
-		for _, otherobject := range solarsystem.Otherobjectslice {
-			addOwner(otherobject.GetOwner())
+		for _, obj := range solarsystem.Solarobjectslice {
+			addOwner(obj.GetOwner())
 		}
 	}
 	return systemPtrs
@@ -402,9 +434,28 @@ func gracefullyCloseBackend() {
 			log.Fatalln("Failed to write Galaxy:", err)
 		}
 	}
-	// wait for logging to complete
 	logInfo("PROGRAM EXITING GRACEFULLY")
 	GLOBAL.waitForLogging.Wait()
-	// halt all further execution
 	os.Exit(1)
+}
+
+type weightedObj struct {
+	Weight int
+	Item   interface{}
+}
+
+func weightedChoice(choices []weightedObj, rnum *rand.Rand) (weightedObj, error) {
+	max := 0
+	for _, choice := range choices {
+		max += choice.Weight
+	}
+	num := rnum.Intn(max)
+	for _, choice := range choices {
+		num -= choice.Weight
+		if num < 0 {
+			return choice, nil
+		}
+	}
+	err := errors.New("weightedChoice func is broken")
+	return weightedObj{}, err
 }
