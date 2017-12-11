@@ -222,7 +222,7 @@ Aquila
 Ara
 Aries
 Caelum
-Camelopardalis
+Camelo
 Cancer
 Venatici
 Canis

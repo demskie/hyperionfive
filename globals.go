@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// GLOBAL declaration allows easy access to these global variables
+// GLOBAL declaration
 var GLOBAL globalVars
 
 type globalVars struct {
@@ -17,21 +17,23 @@ type globalVars struct {
 	googleAudience     string
 	authPassword       string
 	staticFrontend     string
+	localInterface     string
+	localAddress       string
 	frontendBool       bool
 	backendBool        bool
 	createGalaxyBool   bool
 	debugModeBool      bool
 	singleThreadedBool bool
+	testModeBool       bool
 
-	logInfoChan chan string
+	logInfoChan chan loggingMessage // see logging.go
 
-	serverPriority uint64
-	numberOfCores  int
-	loggingMutex   sync.Mutex
-	waitForLogging sync.WaitGroup
-	waitForCores   map[string]*sync.WaitGroup
-
+	serverPriority  uint64
+	numberOfCores   int
+	loggingMutex    sync.Mutex
+	waitForCores    sync.WaitGroup
 	clientBlacklist clientBlacklist
+	exitProgram     chan struct{}
 
 	turningDataSignal     chan struct{}
 	newTickSignal         chan struct{}
@@ -53,13 +55,13 @@ type globalVars struct {
 
 type clientBlacklist struct {
 	sync.RWMutex
-	TotalSessionCount       map[string]uint16
+	LiveConnections         map[string][]string
 	FailedChallengeCount    map[string]uint16
-	FailedChallengeTime     map[string]int64
+	FailedChallengeTime     map[string]time.Time
 	FailedGoogleAuthCount   map[string]uint16
-	FailedGoogleAuthTime    map[string]int64
+	FailedGoogleAuthTime    map[string]time.Time
 	FailedSessionLimitCount map[string]uint16
-	FailedSessionLimitTime  map[string]int64
+	FailedSessionLimitTime  map[string]time.Time
 }
 
 type incomingClientRequest struct {
@@ -71,9 +73,12 @@ type incomingClientRequest struct {
 
 type backendData struct {
 	sync.RWMutex
+	GalaxyName          string
+	GlobalX             int64
+	GlobalY             int64
 	Frontends           []string
 	Backends            []string
-	ClientIDs           map[string][]string
+	ClientIDs           map[string][]string // sysName : clientIDs?
 	SystemBytes         map[string][]byte
 	SystemHashes        [16]map[string]map[string][4]byte
 	ParsedPlayerPtrs    map[string][]*SolarSystem
@@ -89,9 +94,9 @@ type frontendData struct {
 	sync.RWMutex
 	GalGlobalX     map[string]int64
 	GalGlobalY     map[string]int64
-	GalGalaxyType  map[string]int32
 	GalClientIDs   map[string][]string
 	GalBackends    map[string][]string
+	BackendLoad    map[string]int
 	OtherFrontends []string
 	Message        string
 	AnotherMessage string
@@ -115,7 +120,6 @@ type backendToBackendMessage struct {
 type frontendToFrontendMessage struct {
 	GalGlobalX     map[string]int64
 	GalGlobalY     map[string]int64
-	GalGalaxyType  map[string]int32
 	GalClientIDs   map[string][]string
 	GalBackends    map[string][]string
 	OtherFrontends []string
@@ -124,21 +128,22 @@ type frontendToFrontendMessage struct {
 }
 
 type backendToFrontendMessage struct {
-	ServerAddress     string
-	GalaxyName        string
-	ActiveClientCount int
-	OtherFrontends    []string
-	OtherBackends     []string
-	Message           string
-	AnotherMessage    string
+	GalaxyName     string
+	GlobalX        int64
+	GlobalY        int64
+	ClientIDs      []string
+	OtherBackends  []string
+	OtherFrontends []string
+	Message        string
+	AnotherMessage string
 }
 
 type frontendToBackendMessage struct {
 	GalaxyName     string
 	GlobalX        int64
 	GlobalY        int64
-	OtherFrontends []string
 	OtherBackends  []string
+	OtherFrontends []string
 	Message        string
 	AnotherMessage string
 }
@@ -167,9 +172,9 @@ const (
 )
 
 const (
-	maxNumberOfPlayers            = 10000
-	numSystemsPerPlayer           = 100
-	totalNumSystems               = maxNumberOfPlayers * numSystemsPerPlayer
+	maxNumberOfPlayers  = 1000
+	numSystemsPerPlayer = 100
+	//totalNumSystems               = maxNumberOfPlayers * numSystemsPerPlayer
 	lightyear                     = fakeToRealMultiplier
 	minimumDistanceBetweenSystems = lightyear
 	galaxyRadius                  = math.MaxInt64
@@ -178,4 +183,9 @@ const (
 	oneMillion                    = 1000000
 	oneBillion                    = 1000000000
 	oneTrillion                   = 1000000000000
+)
+
+const (
+	diediedie      = "die_die_die"
+	sameaslasttime = "same_as_last_time"
 )

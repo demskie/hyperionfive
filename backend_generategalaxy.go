@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"os"
+	"sync"
 	"time"
 
 	"github.com/dhconnelly/rtreego"
@@ -38,40 +38,53 @@ func generateGalaxy(galaxyType int32) {
 	// don't start generating until we have been assigned galaxyName
 	////////////////////////////////////////////////////////////
 
-	for {
-		switch {
-		case len(GLOBAL.backendData.Frontends) == 0:
+	if false {
+		for {
+			switch {
+			case len(GLOBAL.backendData.Frontends) == 0:
+				logError(fName, "waiting for fronendSync")
+				time.Sleep(1 * time.Second)
+				continue
+			case GLOBAL.currentGalaxy.Name == "":
+				logError(fName, "waiting to be assigned a galaxyName")
+				time.Sleep(1 * time.Second)
+				continue
+			}
 			time.Sleep(1 * time.Second)
-			continue
-		case GLOBAL.currentGalaxy.Name == "":
-			time.Sleep(1 * time.Second)
-			continue
+			break
 		}
-		time.Sleep(1 * time.Second)
-		break
+	}
+
+	var totalNumSystems int
+	if GLOBAL.debugModeBool != true {
+		totalNumSystems = maxNumberOfPlayers * numSystemsPerPlayer
+	} else {
+		totalNumSystems = 10000
 	}
 
 	////////////////////////////////////////////////////////////
 	// initialize various structures
 	////////////////////////////////////////////////////////////
 
+	wg := sync.WaitGroup{}
 	GLOBAL.currentGalaxy.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
 
 	////////////////////////////////////////////////////////////
 	// spawn goroutines to generate systems
 	////////////////////////////////////////////////////////////
 
-	logInfo(fName, fmt.Sprintf("starting systemName generation (%d threads)",
+	logInfo(fName, "totalNumSystems "+commaFormatUint(uint64(totalNumSystems)))
+	logInfo(fName, fmt.Sprintf("starting basic system generation (%d threads)",
 		GLOBAL.numberOfCores))
 	systemsPerCore := totalNumSystems / GLOBAL.numberOfCores
-	GLOBAL.waitForCores["galaxygen"].Add(GLOBAL.numberOfCores)
+	wg.Add(GLOBAL.numberOfCores)
 	for i := 1; i <= GLOBAL.numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
 		coreID := i
-		go generateSystems(coreID, startIndex, stopIndex)
+		go generateSystems(coreID, startIndex, stopIndex, &wg)
 	}
-	GLOBAL.waitForCores["galaxygen"].Wait()
+	wg.Wait()
 
 	////////////////////////////////////////////////////////////
 	// spawn goroutines to generate all X,Y coordinates for systems
@@ -79,14 +92,14 @@ func generateGalaxy(galaxyType int32) {
 
 	logInfo(fName, fmt.Sprintf("starting systemCoordinates generation (%d threads)",
 		GLOBAL.numberOfCores))
-	GLOBAL.waitForCores["galaxygen"].Add(GLOBAL.numberOfCores)
+	wg.Add(GLOBAL.numberOfCores)
 	for i := 1; i <= GLOBAL.numberOfCores; i++ {
 		stopIndex := systemsPerCore * i
 		startIndex := stopIndex - systemsPerCore
 		coreID := i
-		go generateEllipticalCoordinates(coreID, startIndex, stopIndex)
+		go generateEllipticalCoordinates(coreID, startIndex, stopIndex, &wg)
 	}
-	GLOBAL.waitForCores["galaxygen"].Wait()
+	wg.Wait()
 
 	////////////////////////////////////////////////////////////
 	// load coordinates into R* tree data structure (global variable)
@@ -103,7 +116,7 @@ func generateGalaxy(galaxyType int32) {
 	rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
 
 	////////////////////////////////////////////////////////////
-	// check (and fix) systems that aren't far enough apart
+	// check (and fix) system coordinates that aren't far enough apart
 	////////////////////////////////////////////////////////////
 
 	logInfo(fName, fmt.Sprintf("starting systemCoordinate proximity checks (%d threads)",
@@ -111,21 +124,21 @@ func generateGalaxy(galaxyType int32) {
 	iter := 0
 	for {
 		badSystems := [][]int{}
-		GLOBAL.waitForCores["galaxygen"].Add(GLOBAL.numberOfCores)
+		wg.Add(GLOBAL.numberOfCores)
 		for i := 0; i < GLOBAL.numberOfCores; i++ {
 			coreNum := i + 1
 			stopIndex := systemsPerCore * coreNum
 			startIndex := stopIndex - systemsPerCore
 			go func() {
-				result := findBadSystemCoordinates(coreNum, startIndex, stopIndex)
+				result := findBadSystemCoordinates(coreNum, startIndex, stopIndex, &wg)
 				badSystems = append(badSystems, result)
 			}()
 		}
-		GLOBAL.waitForCores["galaxygen"].Wait()
+		wg.Wait()
 		for i := 0; i < GLOBAL.numberOfCores; i++ {
 			for x := 0; x < len(badSystems[i]); x++ {
 				val := badSystems[i][x]
-				generateEllipticalCoordinates(-1, val, val+1)
+				generateEllipticalCoordinates(-1, val, val+1, &wg)
 			}
 		}
 
@@ -144,7 +157,7 @@ func generateGalaxy(galaxyType int32) {
 		for i := 0; i < len(badSystems); i++ {
 			for x := 0; x < len(badSystems[i]); x++ {
 				val := badSystems[i][x]
-				updateRtreeSystemCoordinates(-1, val, val+1)
+				updateRtreeSystemCoordinates(-1, val, val+1, &wg)
 			}
 		}
 
@@ -156,10 +169,15 @@ func generateGalaxy(galaxyType int32) {
 	}
 
 	////////////////////////////////////////////////////////////
+	// check (and fix) system names that are too similar
+	////////////////////////////////////////////////////////////
+
+	// TODO // implement logic
+
+	////////////////////////////////////////////////////////////
 	// random sanity checks
 	////////////////////////////////////////////////////////////
 
-	logDebug(fmt.Sprintf("There are %v solarSystems", len(GLOBAL.currentGalaxy.GetSolarsystemslice())))
 	logDebug(fmt.Sprintf("First System Name: %s", GLOBAL.currentGalaxy.Solarsystemslice[0].GetName()))
 	logDebug(fmt.Sprintf("Random System Name (9183): %s", GLOBAL.currentGalaxy.Solarsystemslice[9183].Name))
 	logDebug(fmt.Sprintf("Random System Name (123): %s", GLOBAL.currentGalaxy.Solarsystemslice[123].Name))
@@ -171,14 +189,14 @@ func generateGalaxy(galaxyType int32) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func generateSystems(coreID int, startIndex int, stopIndex int) {
+func generateSystems(coreID int, startIndex int, stopIndex int, wg *sync.WaitGroup) {
 	fName := "(generateSystems)"
 
 	// initialize random seed
 	rnum := getCryptoRnum()
 
 	// define weight for systemTypes
-	weightedTypes := []weightedObj{
+	weightedSystemTypes := []weightedObj{
 		weightedObj{Weight: 50, Item: YELLOWGIANT},
 		weightedObj{Weight: 50, Item: REDGIANT},
 		weightedObj{Weight: 50, Item: BLUEGIANT},
@@ -187,6 +205,10 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 		weightedObj{Weight: 5, Item: BLACKHOLE},
 	}
 
+	// preemptively load all txt files containing names
+	temp := NamedObject{}
+	temp.LoadAllNames()
+
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
 
 		// initialize system and create a short reference
@@ -194,7 +216,7 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 		system := GLOBAL.currentGalaxy.Solarsystemslice[currentIndex]
 
 		// generate type
-		result, err := weightedChoice(weightedTypes, rnum)
+		result, err := weightedChoice(weightedSystemTypes, rnum)
 		checkError(err, fName)
 		system.Type = result.Item.(int32)
 
@@ -222,8 +244,8 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 				numObj = int64(52)
 			}
 		} else {
-			logError(fName, "UNKNOWN SYSTEM.TYPE ENCOUNTERED DURING SYSTEM GENERATION")
-			os.Exit(1)
+			logError(fName, "invalid system.Type:", fmt.Sprint(system.Type))
+			suddenExit()
 		}
 		if numObj > int64(72) {
 			numObj = int64(53)
@@ -231,8 +253,9 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 		system.Solarobjectslice = make([]*SolarObject, numObj)
 
 		// define weight for this object based on SolarSystemType
+		var weightedObjTypes []weightedObj
 		if system.Type == YELLOWGIANT {
-			weightedTypes = []weightedObj{
+			weightedObjTypes = []weightedObj{
 				weightedObj{Weight: 50, Item: TERRAN},
 				weightedObj{Weight: 50, Item: DESERT},
 				weightedObj{Weight: 50, Item: VOLCANIC},
@@ -247,7 +270,7 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 				weightedObj{Weight: 5, Item: PLASMASTORM},
 			}
 		} else if system.Type == REDGIANT {
-			weightedTypes = []weightedObj{
+			weightedObjTypes = []weightedObj{
 				weightedObj{Weight: 50, Item: TERRAN},
 				weightedObj{Weight: 50, Item: DESERT},
 				weightedObj{Weight: 50, Item: VOLCANIC},
@@ -262,7 +285,7 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 				weightedObj{Weight: 5, Item: PLASMASTORM},
 			}
 		} else if system.Type == BLUEGIANT {
-			weightedTypes = []weightedObj{
+			weightedObjTypes = []weightedObj{
 				weightedObj{Weight: 50, Item: TERRAN},
 				weightedObj{Weight: 50, Item: DESERT},
 				weightedObj{Weight: 50, Item: VOLCANIC},
@@ -277,7 +300,7 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 				weightedObj{Weight: 5, Item: PLASMASTORM},
 			}
 		} else if system.Type == NEUTRONSTAR {
-			weightedTypes = []weightedObj{
+			weightedObjTypes = []weightedObj{
 				weightedObj{Weight: 50, Item: TERRAN},
 				weightedObj{Weight: 50, Item: DESERT},
 				weightedObj{Weight: 50, Item: VOLCANIC},
@@ -292,7 +315,7 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 				weightedObj{Weight: 5, Item: PLASMASTORM},
 			}
 		} else if system.Type == WHITEDWARF {
-			weightedTypes = []weightedObj{
+			weightedObjTypes = []weightedObj{
 				weightedObj{Weight: 50, Item: TERRAN},
 				weightedObj{Weight: 50, Item: DESERT},
 				weightedObj{Weight: 50, Item: VOLCANIC},
@@ -307,7 +330,7 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 				weightedObj{Weight: 5, Item: PLASMASTORM},
 			}
 		} else if system.Type == BLACKHOLE {
-			weightedTypes = []weightedObj{
+			weightedObjTypes = []weightedObj{
 				weightedObj{Weight: 50, Item: TERRAN},
 				weightedObj{Weight: 50, Item: DESERT},
 				weightedObj{Weight: 50, Item: VOLCANIC},
@@ -323,11 +346,13 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 			}
 		}
 
-		// start building objects in the perallocated array
-		for _, obj := range system.Solarobjectslice {
+		// start building objects in the preallocated array
+		for i := 0; i < len(system.Solarobjectslice); i++ {
+			system.Solarobjectslice[i] = &SolarObject{}
+			obj := system.Solarobjectslice[i]
 
 			// generate type
-			result, err := weightedChoice(weightedTypes, rnum)
+			result, err := weightedChoice(weightedObjTypes, rnum)
 			checkError(err, fName)
 			obj.Type = result.Item.(int32)
 
@@ -337,7 +362,7 @@ func generateSystems(coreID int, startIndex int, stopIndex int) {
 		}
 	}
 	if coreID != -1 {
-		GLOBAL.waitForCores["galaxygen"].Done()
+		wg.Done()
 	}
 }
 
@@ -381,7 +406,7 @@ func generateSpiralCoordinates(coreID int, startIndex int, stopIndex int, numArm
 
 }
 
-func generateEllipticalCoordinates(coreID int, startIndex int, stopIndex int) {
+func generateEllipticalCoordinates(coreID int, startIndex int, stopIndex int, wg *sync.WaitGroup) {
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
 		var interX int64
 		var interY int64
@@ -411,11 +436,11 @@ func generateEllipticalCoordinates(coreID int, startIndex int, stopIndex int) {
 	}
 
 	if coreID != -1 {
-		GLOBAL.waitForCores["galaxygen"].Done()
+		wg.Done()
 	}
 }
 
-func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int) (myBadSystems []int) {
+func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int, wg *sync.WaitGroup) (myBadSystems []int) {
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
 		mySystem := GLOBAL.currentGalaxy.Solarsystemslice[currentIndex]
 
@@ -444,11 +469,11 @@ func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int) (myBadS
 		}
 		if distanceBetweenSystems <= minimumDistanceBetweenSystems {
 			myBadSystems = append(myBadSystems, currentIndex)
-			logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
-				mySystem.Name,
-				mySystem.InterX,
-				validNeighborX,
-				distanceBetweenSystems))
+			//logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
+			//	mySystem.Name,
+			//	mySystem.InterX,
+			//	validNeighborX,
+			//	distanceBetweenSystems))
 			continue
 		}
 
@@ -460,21 +485,21 @@ func findBadSystemCoordinates(coreID int, startIndex int, stopIndex int) (myBadS
 		}
 		if distanceBetweenSystems <= minimumDistanceBetweenSystems {
 			myBadSystems = append(myBadSystems, currentIndex)
-			logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
-				mySystem.Name,
-				mySystem.InterY,
-				validNeighborY,
-				distanceBetweenSystems))
+			//logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
+			//	mySystem.Name,
+			//	mySystem.InterY,
+			//	validNeighborY,
+			//	distanceBetweenSystems))
 			continue
 		}
 	}
 	if coreID != -1 {
-		GLOBAL.waitForCores["galaxygen"].Done()
+		wg.Done()
 	}
 	return myBadSystems
 }
 
-func updateRtreeSystemCoordinates(coreID int, startIndex int, stopIndex int) {
+func updateRtreeSystemCoordinates(coreID int, startIndex int, stopIndex int, wg *sync.WaitGroup) {
 	for currentIndex := startIndex; currentIndex < stopIndex; currentIndex++ {
 		//rtree.Delete(rtreeObjects[currentIndex]) // !!! TODO: NEED TO FIX
 		mySystem := GLOBAL.currentGalaxy.Solarsystemslice[currentIndex]
@@ -484,6 +509,6 @@ func updateRtreeSystemCoordinates(coreID int, startIndex int, stopIndex int) {
 		//rtree.Insert(rtreeObjects[currentIndex]) // !!! TODO: NEED TO FIX
 	}
 	if coreID != -1 {
-		GLOBAL.waitForCores["galaxygen"].Done()
+		wg.Done()
 	}
 }

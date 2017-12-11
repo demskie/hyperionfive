@@ -2,9 +2,11 @@ package main
 
 import (
 	"crypto/tls"
+	fmt "fmt"
+	"net"
 	"net/http"
 	"os"
-	"sync"
+	"path/filepath"
 	"time"
 )
 
@@ -29,16 +31,37 @@ func startFrontendMode() {
 	muxSecure.Handle("/", fileserverWithModifiedHeaders)
 
 	// setup the websocket handlers
-	muxSecure.HandleFunc("/clientlb", handleClientToFrontend)
-	muxSecure.HandleFunc("/backend", handleBackendToFrontend)
-	muxSecure.HandleFunc("/frontend", handleFrontendToFrontend)
+	muxSecure.HandleFunc("/clienttofrontend", handleClientToFrontend)
+	muxSecure.HandleFunc("/backendtofrontend", handleBackendToFrontend)
+	muxSecure.HandleFunc("/frontendtofrontend", handleFrontendToFrontend)
+
+	getLocalAddr := func() (ip string) {
+		if GLOBAL.localAddress != "" {
+			ip = GLOBAL.localAddress
+		} else if GLOBAL.localInterface != "" {
+			iface, err := net.InterfaceByName(GLOBAL.localInterface)
+			if err != nil {
+				logError(fName, GLOBAL.localInterface, "does not match any local interfaces")
+				suddenExit()
+				return
+			}
+			addrs, err := iface.Addrs()
+			if checkError(err) {
+				return
+			}
+			ip = addrs[0].(*net.IPNet).IP.String()
+		}
+		if ip != "" {
+			logInfo(fName, "serving via the", ip, "address")
+		}
+		return
+	}
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
-		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
-		Addr:         ":443",
+		Addr:         getLocalAddr() + ":443",
 		Handler:      muxSecure,
 
 		// defining various security parameters used to specify accepted ciphersuites
@@ -59,18 +82,19 @@ func startFrontendMode() {
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
 	}
 
-	// define waitgroup to be used to stop premature termination
-	var lbWaitGroup sync.WaitGroup
-
 	// serve HTTPS requests with config defined above
-	lbWaitGroup.Add(1)
 	go func() {
-		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
-		if checkError(errServeTLS, fName) {
-			//GLOBAL.waitForLogging.Wait()
-			//os.Exit(1)
+		exPath, err := os.Executable()
+		if checkError(err, fName) {
+			suddenExit()
 		}
-		lbWaitGroup.Done()
+		dir := filepath.Dir(exPath)
+		errServeTLS := srvSecure.ListenAndServeTLS(
+			filepath.Join(dir, "server.rsa.crt"),
+			filepath.Join(dir, "server.rsa.key"))
+		if checkError(errServeTLS, fName) {
+			suddenExit()
+		}
 	}()
 
 	// define nonsecure HTTP parameters
@@ -86,20 +110,16 @@ func startFrontendMode() {
 	}
 
 	// serve HTTP requests by redirecting to HTTPS
-	lbWaitGroup.Add(1)
 	go func() {
 		errServeInsecure := srvInsecure.ListenAndServe()
 		if checkError(errServeInsecure, fName) {
-			//GLOBAL.waitForLogging.Wait()
-			//os.Exit(1)
+			suddenExit()
 		}
-		lbWaitGroup.Done()
 	}()
 
-	// use waitgroup to stop permature termination unless all
-	// the above goroutines are finished executing
-	lbWaitGroup.Wait()
-
+	// wait for program to signal exit
+	<-GLOBAL.exitProgram
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,14 +127,17 @@ func startFrontendMode() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func gracefullyCloseFrontend() {
+	// signal exit
+	close(GLOBAL.exitProgram)
 
 	// wait for logging to complete
-	logInfo("PROGRAM EXITING GRACEFULLY")
-	GLOBAL.waitForLogging.Wait()
+	GLOBAL.loggingMutex.Lock()
+	fmt.Println("PROGRAM EXITING GRACEFULLY")
+	GLOBAL.loggingMutex.Unlock()
+	time.Sleep(1 * time.Second)
 
 	// halt all further execution
 	os.Exit(1)
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

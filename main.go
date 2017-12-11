@@ -3,24 +3,17 @@ package main
 import (
 	"bytes"
 	"container/ring"
-	"crypto/hmac"
-	"crypto/sha512"
-	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
+	"net"
 	"regexp"
 	"runtime"
 	"sync"
 
-	oauth2 "google.golang.org/api/oauth2/v1"
-
 	"flag"
-	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -34,48 +27,45 @@ import (
 )
 
 func main() {
-	if GLOBAL.frontendBool == true {
+	const fName = "(main)"
+	switch {
+	case GLOBAL.frontendBool == true:
 		startFrontendMode() // frontend.go
-	} else if GLOBAL.backendBool == true {
+	case GLOBAL.backendBool == true:
 		startBackendMode() // backend.go
+	default:
+		logError(fName, "no operating mode was specified")
 	}
-	for len(GLOBAL.logInfoChan) != 0 {
-		time.Sleep(time.Second)
-	}
-	GLOBAL.loggingMutex.Lock()
-	fmt.Println("##############################################")
-	fmt.Println("#      Program has finished executing!!!     #")
-	fmt.Println("##############################################")
-	GLOBAL.loggingMutex.Unlock()
-	time.Sleep(5 * time.Minute)
-	os.Exit(1)
+	suddenExit()
 }
 
 func init() {
-	fName := "(init)"
+	const fName = "(init)"
 
 	// sorry not sorry
 	GLOBAL = globalVars{}
 
-	GLOBAL.logInfoChan = make(chan string, oneMillion)
-	logInfo(fName, "logging initialized")
-	go handleLogging()
+	GLOBAL.logInfoChan = make(chan loggingMessage, oneMillion)
 
 	GLOBAL.serverPriority = generateRandomUint64()
-	logInfo(fName, fmt.Sprintf("serverPriority=%d", GLOBAL.serverPriority))
 	GLOBAL.numberOfCores = 0
 	GLOBAL.loggingMutex = sync.Mutex{}
-	GLOBAL.waitForLogging = sync.WaitGroup{}
-	GLOBAL.waitForCores = map[string]*sync.WaitGroup{}
+	GLOBAL.waitForCores = sync.WaitGroup{}
+	GLOBAL.exitProgram = make(chan struct{})
+
+	logInfo(fName, "logging initialized")
+	logInfo(fName, fmt.Sprintf("serverPriority=%d", GLOBAL.serverPriority))
+	go handleLogging()
 
 	GLOBAL.clientBlacklist = clientBlacklist{}
-	GLOBAL.clientBlacklist.TotalSessionCount = map[string]uint16{}
+	GLOBAL.clientBlacklist.LiveConnections = map[string][]string{} // remoteIP to functionNames
+	//GLOBAL.clientBlacklist.TotalSessionCount = map[string]uint16{}
 	GLOBAL.clientBlacklist.FailedChallengeCount = map[string]uint16{}
-	GLOBAL.clientBlacklist.FailedChallengeTime = map[string]int64{}
+	GLOBAL.clientBlacklist.FailedChallengeTime = map[string]time.Time{}
 	GLOBAL.clientBlacklist.FailedGoogleAuthCount = map[string]uint16{}
-	GLOBAL.clientBlacklist.FailedGoogleAuthTime = map[string]int64{}
+	GLOBAL.clientBlacklist.FailedGoogleAuthTime = map[string]time.Time{}
 	GLOBAL.clientBlacklist.FailedSessionLimitCount = map[string]uint16{}
-	GLOBAL.clientBlacklist.FailedSessionLimitTime = map[string]int64{}
+	GLOBAL.clientBlacklist.FailedSessionLimitTime = map[string]time.Time{}
 
 	GLOBAL.turningDataSignal = make(chan struct{})
 	GLOBAL.newTickSignal = make(chan struct{})
@@ -84,7 +74,6 @@ func init() {
 	GLOBAL.currentGalaxy = Galaxy{}
 	GLOBAL.futureGalaxy = Galaxy{}
 	GLOBAL.uniqueRequestID = make(chan int64, 9999)
-	go seqNumGenerator(GLOBAL.uniqueRequestID)
 	GLOBAL.bufferedRequests = make([]incomingClientRequest, oneMillion)
 	GLOBAL.bufferedRequestsMutex = sync.RWMutex{}
 
@@ -102,19 +91,46 @@ func init() {
 	GLOBAL.backendData.ReceivedMessageFrom = []string{}
 	GLOBAL.backendData.ConfirmedRequestIDs = map[string][]int64{}
 
+	GLOBAL.frontendData = frontendData{}
+	GLOBAL.frontendData.GalGlobalX = map[string]int64{}
+	GLOBAL.frontendData.GalGlobalY = map[string]int64{}
+	GLOBAL.frontendData.GalClientIDs = map[string][]string{}
+	GLOBAL.frontendData.GalBackends = map[string][]string{}
+	GLOBAL.frontendData.BackendLoad = map[string]int{}
+	GLOBAL.frontendData.OtherFrontends = []string{}
+	GLOBAL.frontendData.Message = ""
+	GLOBAL.frontendData.AnotherMessage = ""
+
 	// define commandline flags to parse for
-	GLOBAL.galaxyName = *flag.String("galaxyname", "", "specify galaxy name")
-	GLOBAL.inputFile = *flag.String("input", "", "specify data source, either json or blob")
-	GLOBAL.outputFile = *flag.String("output", "", "override export destination, either json or blob")
-	GLOBAL.googleAudience = *flag.String("audience", "", "override google oauth audience")
-	GLOBAL.authPassword = *flag.String("password", "", "specify password for authentication purposes")
-	GLOBAL.staticFrontend = *flag.String("staticfrontend", "", "specify static frontend address")
-	GLOBAL.frontendBool = *flag.Bool("frontend", false, "enable frontend mode")
-	GLOBAL.backendBool = *flag.Bool("backend", false, "enable backend mode")
-	GLOBAL.createGalaxyBool = *flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
-	GLOBAL.debugModeBool = *flag.Bool("debug", false, "enable debug logging")
-	GLOBAL.singleThreadedBool = *flag.Bool("singlethreaded", false, "force singlethreaded behavior")
+	galaxyNamePtr := flag.String("galaxyname", "", "specify galaxy name")
+	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
+	outputFilePtr := flag.String("output", "", "override export destination, either json or blob")
+	googleAudiencePtr := flag.String("audience", "", "override google oauth audience")
+	authPasswordPtr := flag.String("password", "", "specify password for authentication purposes")
+	staticFrontendPtr := flag.String("staticfrontend", "", "specify static frontend address")
+	localInterfacePtr := flag.String("interface", "", "override local interface to use")
+	localAddressPtr := flag.String("localip", "", "override local ip to use")
+	frontendBoolPtr := flag.Bool("frontend", false, "enable frontend mode")
+	backendBoolPtr := flag.Bool("backend", false, "enable backend mode")
+	createGalaxyBoolPtr := flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
+	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
+	singleThreadedBoolPtr := flag.Bool("singlethreaded", false, "force singlethreaded behavior")
+	testModeBoolPtr := flag.Bool("test", false, "enable testing mode")
 	flag.Parse()
+	GLOBAL.galaxyName = *galaxyNamePtr
+	GLOBAL.inputFile = *inputFilePtr
+	GLOBAL.outputFile = *outputFilePtr
+	GLOBAL.googleAudience = *googleAudiencePtr
+	GLOBAL.authPassword = *authPasswordPtr
+	GLOBAL.staticFrontend = *staticFrontendPtr
+	GLOBAL.localInterface = *localInterfacePtr
+	GLOBAL.localAddress = *localAddressPtr
+	GLOBAL.frontendBool = *frontendBoolPtr
+	GLOBAL.backendBool = *backendBoolPtr
+	GLOBAL.createGalaxyBool = *createGalaxyBoolPtr
+	GLOBAL.debugModeBool = *debugModeBoolPtr
+	GLOBAL.singleThreadedBool = *singleThreadedBoolPtr
+	GLOBAL.testModeBool = *testModeBoolPtr
 
 	if GLOBAL.googleAudience == "" {
 		GLOBAL.googleAudience = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
@@ -122,19 +138,17 @@ func init() {
 
 	// sanity check that a password was provided
 	if GLOBAL.authPassword == "" {
-		logError(fName, "no password provided")
-		GLOBAL.waitForLogging.Wait()
-		os.Exit(1)
-	}
-
-	// sanity check operating mode specified via Booleans
-	switch {
-	case GLOBAL.backendBool == false && GLOBAL.frontendBool == false:
-		logError(fName, "neither 'backend' or 'frontend' operating mode was specified")
-		os.Exit(1)
-	case GLOBAL.backendBool == true && GLOBAL.frontendBool == true:
-		logError(fName, "BOTH backend/frontend mode specified. DoesNotCompute")
-		os.Exit(1)
+		logInfo(fName, "no password provided, using default password")
+		GLOBAL.authPassword += "uVXMHpASbDngPe41pUP1"
+		GLOBAL.authPassword += "CKwRCU6ZGap6IxQ6OQaM"
+		GLOBAL.authPassword += "AtJgeaIhHLzO0IibxE8B"
+		GLOBAL.authPassword += "7aYOpAXkC388SRg4G3jO"
+		GLOBAL.authPassword += "kkgrBnOOUPxnT6QopsFH"
+		GLOBAL.authPassword += "a0F7qFScNxYuCaiRvii3"
+		GLOBAL.authPassword += "WvhhNNsFaRupwZc7SXXw"
+		GLOBAL.authPassword += "cPk93TWZs0kllqVhCN0G"
+		GLOBAL.authPassword += "9oKiFpa0p7Mfwd8CqHiz"
+		GLOBAL.authPassword += "3ghjZw6FI17DjdObCXSF"
 	}
 
 	// singlethreaded mode for debugging (and emergencies)
@@ -143,359 +157,137 @@ func init() {
 	} else {
 		GLOBAL.numberOfCores = runtime.NumCPU()
 	}
+	logInfo(fName, fmt.Sprintf("using %v threads", GLOBAL.numberOfCores))
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func checkFirewall(fName string, remoteIPAddr string, check string) bool {
-
-	var limit int
-	var count uint16
-	var lastTime int64
-	var alpha, beta, charlie, delta, echo, foxtrot bool
-
-	GLOBAL.clientBlacklist.RLock()
-	switch check {
-	case "challenge":
-		limit = constChallenge
-		count, alpha = GLOBAL.clientBlacklist.FailedChallengeCount[remoteIPAddr]
-		lastTime, beta = GLOBAL.clientBlacklist.FailedChallengeTime[remoteIPAddr]
-	case "googleAuth":
-		limit = constGoogleAuth
-		count, charlie = GLOBAL.clientBlacklist.FailedGoogleAuthCount[remoteIPAddr]
-		lastTime, delta = GLOBAL.clientBlacklist.FailedGoogleAuthTime[remoteIPAddr]
-	case "sessionLimit":
-		limit = constClientSession
-		count, echo = GLOBAL.clientBlacklist.FailedSessionLimitCount[remoteIPAddr]
-		lastTime, foxtrot = GLOBAL.clientBlacklist.FailedSessionLimitTime[remoteIPAddr]
-	default:
-		logError(fName, "> gave checkFirewallHistory an invalid 'check' parameter")
-		GLOBAL.clientBlacklist.RUnlock()
-		// fail open
-		return true
-	}
-	GLOBAL.clientBlacklist.RUnlock()
-
-	currentTime := time.Now().Unix()
-	timeSinceBlacklist := currentTime - lastTime
-	blacklistExpGrowth := int64((count) / uint16(limit))
-	currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
-	if timeSinceBlacklist < currentBlacklistGiven {
-		logError(fName, "blacklisted client attempting to connect:", remoteIPAddr,
-			"\n\tblacklistedFor:", string(timeSinceBlacklist),
-			"\n\treason:", check,
-			"\n\tnumberOfOffenses:", string(count))
-		return false
-	}
-
-	if !alpha || !beta || !charlie || !delta || !echo || !foxtrot {
-		GLOBAL.clientBlacklist.Lock()
-		if !alpha {
-			GLOBAL.clientBlacklist.FailedChallengeCount[remoteIPAddr] = 0
-		}
-		if !beta {
-			GLOBAL.clientBlacklist.FailedChallengeTime[remoteIPAddr] = math.MinInt64
-		}
-		if !charlie {
-			GLOBAL.clientBlacklist.FailedGoogleAuthCount[remoteIPAddr] = 0
-		}
-		if !delta {
-			GLOBAL.clientBlacklist.FailedGoogleAuthTime[remoteIPAddr] = math.MinInt64
-		}
-		if !echo {
-			GLOBAL.clientBlacklist.FailedSessionLimitCount[remoteIPAddr] = 0
-		}
-		if !foxtrot {
-			GLOBAL.clientBlacklist.FailedSessionLimitTime[remoteIPAddr] = math.MinInt64
-		}
-		GLOBAL.clientBlacklist.Unlock()
-	}
-
-	return true
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func handleGoogleAuth(fName string, conn *websocket.Conn, remoteIPAddr string) (userid string) {
-
-	// this MUST be checked on the other side
-	userid = ""
-
-	// receive JSON message from client
-	type incomingMessage struct {
-		LoginType string `json:"login_type"`
-		IDToken   string `json:"id_token"`
-	}
-
-	var inMsg incomingMessage
-	err := conn.ReadJSON(&inMsg)
-	if checkError(err, fName, "error receiving message") {
-		return userid
-	}
-	logDebug(fName, "received the following message\n", fmt.Sprintf("%s", inMsg))
-
-	////////////////////////////////////////////////////////////
-	// send id_token to google oauth service
-	////////////////////////////////////////////////////////////
-
-	successful := false
-	var oauth2Service *oauth2.Service
-	for i := 0; i < constGoogleAuth; i++ {
-		var httpClient = &http.Client{}
-		oauth2Service, err = oauth2.New(httpClient)
-		if checkError(err, fName, "error contacting google") {
-			continue
-		} else {
-			successful = true
+func suddenExit() {
+	i := 1
+	for len(GLOBAL.logInfoChan) != 0 {
+		time.Sleep(time.Second)
+		if i > 30 {
 			break
 		}
+		i++
 	}
-	if successful == false {
-		return userid
-	}
-
-	tokenInfoCall := oauth2Service.Tokeninfo()
-	tokenInfoCall.IdToken(inMsg.IDToken)
-	tokenInfo, err := tokenInfoCall.Do()
-	if checkError(err, fName, "error parsing incoming google response") {
-		return userid
-	}
-
-	triggerFailState := func() {
-		currentTime := time.Now().Unix()
-		GLOBAL.clientBlacklist.Lock()
-		GLOBAL.clientBlacklist.FailedGoogleAuthCount[remoteIPAddr]++
-		GLOBAL.clientBlacklist.FailedGoogleAuthTime[remoteIPAddr] = currentTime
-		GLOBAL.clientBlacklist.Unlock()
-	}
-	if tokenInfo.VerifiedEmail != true {
-		logError(fName, "tokenInfo.VerifiedEmail is not 'true'", remoteIPAddr)
-		triggerFailState()
-		return userid
-	}
-	if tokenInfo.Audience != GLOBAL.googleAudience {
-		aMessage := fmt.Sprintf("tokenInfo.Audience (%s) does not match googleAudience (%s) remoteIP=%s",
-			tokenInfo.Audience, GLOBAL.googleAudience, remoteIPAddr)
-		logError(fName, aMessage)
-		triggerFailState()
-		return userid
-	}
-
-	if GLOBAL.debugModeBool == true {
-		rawJSON, err := tokenInfo.MarshalJSON()
-		checkError(err, fName, "error MarshalJSON'ing google response")
-		var prettyJSON bytes.Buffer
-		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
-		checkError(err, fName, "error jsonIndenting google response")
-		logDebug(fName, "received the following message from google:\n",
-			string(prettyJSON.Bytes()))
-	}
-
-	userid = tokenInfo.UserId
-	return userid
-
+	GLOBAL.loggingMutex.Lock()
+	t := time.Now().UTC().Format("2006-01-02 15:04:05")
+	color.Red(t + " (main) program has finished executing")
+	GLOBAL.loggingMutex.Unlock()
+	os.Exit(1)
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func handleChallengeResponse(fName string, conn *websocket.Conn, clientIP string) (result bool) {
-
-	// receive initial challenge from frontend
-	_, dataChallenge, err := conn.ReadMessage()
-	if checkError(err, fName, "error receiving challenge from backend") {
-		return false
-	}
-	logDebug(fName, "received the following challenge:",
-		"\n", base64.StdEncoding.EncodeToString(dataChallenge))
-
-	////////////////////////////////////////////////////////////
-	// ensure that challenge is 256bits and cast to array if so
-	////////////////////////////////////////////////////////////
-
-	var dataChallengeArray [32]byte
-
-	if len(dataChallenge) == 32 {
-		copy(dataChallengeArray[:], dataChallenge)
+func handleInputParameters(fName string) {
+	// is the inputfilename empty?
+	// if so set doneMatching to 'true' so that we can skip later logic
+	var doneMatching bool
+	if GLOBAL.inputFile == "" {
+		doneMatching = true
+		logDebug(fName, "no inputfilename specified - skipping data import process")
 	} else {
-		logError(fName, "received a challenge with invalid length:",
-			string(len(dataChallenge)), "bytes")
-		currentTime := time.Now().Unix()
-		GLOBAL.clientBlacklist.Lock()
-		GLOBAL.clientBlacklist.FailedChallengeCount[clientIP]++
-		GLOBAL.clientBlacklist.FailedChallengeTime[clientIP] = currentTime
-		GLOBAL.clientBlacklist.Unlock()
-		return false
+		doneMatching = false
 	}
-
-	////////////////////////////////////////////////////////////
-	// compute our response
-	////////////////////////////////////////////////////////////
-
-	generateHMAC := func(data []byte, key [32]byte) []byte {
-		h := hmac.New(sha512.New512_256, key[:])
-		h.Write(data)
-		return h.Sum(nil)
-	}
-
-	response := generateHMAC([]byte(GLOBAL.authPassword), dataChallengeArray)
-	logDebug(fName, "computed the following response:",
-		"\n", base64.StdEncoding.EncodeToString(response))
-
-	////////////////////////////////////////////////////////////
-	// create a challenge
-	////////////////////////////////////////////////////////////
-
-	newHMACKey := func() [32]byte {
-		key := [32]byte{}
-		_, err = io.ReadFull(cryptorand.Reader, key[:])
-		if checkError(err, fName, "error while generating key") {
-			conn.Close()
+	// skip forward if doneMatching is 'true'
+	//   otherwise parse filename to determine if it is a 'blob' file
+	//   and import that file if that is the case
+	if doneMatching == false {
+		foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.inputFile)
+		if foundMatch == true {
+			doneMatching = true
+			logInfo(fName, "parsing blob inputfilename")
+			in, err := ioutil.ReadFile(GLOBAL.inputFile)
+			if err != nil {
+				if os.IsNotExist(err) {
+					log.Fatalln("data.blob not found")
+				} else {
+					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
+				}
+			}
+			if err := proto.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
+				log.Fatalln("Failed to parse galaxy file:", err)
+			}
 		}
-		return key
 	}
-
-	randomBytes := newHMACKey()
-	logDebug(fName, "generated the following challenge:",
-		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
-
-	////////////////////////////////////////////////////////////
-	// send the response we computed and the challenge we just created
-	////////////////////////////////////////////////////////////
-
-	type outgoingMessage struct {
-		Challenge string `json:"challenge"`
-		Response  string `json:"response"`
+	// skip forward if doneMatching is 'true'
+	//   otherwise parse filename to determine if it is a 'json' file
+	//   and import that file if that is the case
+	if doneMatching == false {
+		foundMatch, _ := regexp.MatchString(".*json$", GLOBAL.inputFile)
+		if foundMatch == true {
+			doneMatching = true
+			logInfo(fName, "parsing blob inputfilename")
+			in, err := ioutil.ReadFile(GLOBAL.inputFile)
+			if err != nil {
+				if os.IsNotExist(err) {
+					log.Fatalln(GLOBAL.inputFile, "not found")
+				} else {
+					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
+				}
+			}
+			if err := json.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
+				log.Fatalln("Failed to parse galaxy file:", err)
+			}
+		}
 	}
-
-	var outMsgResponse outgoingMessage
-	outMsgResponse.Challenge = base64.StdEncoding.EncodeToString(randomBytes[:])
-	outMsgResponse.Response = base64.StdEncoding.EncodeToString(response)
-	err = conn.WriteJSON(outMsgResponse)
-	if checkError(err, fName, "error sending response") {
-		return false
+	// if none of the above logic was successful - we have a fatal error on our hands
+	if doneMatching == false {
+		log.Fatalln(fName, "unknown inputfilename. skipping data import process")
 	}
-
-	////////////////////////////////////////////////////////////
-	// wait for response to challenge
-	////////////////////////////////////////////////////////////
-
-	_, remoteHash, err := conn.ReadMessage()
-	if checkError(err, fName, "error receiving response") {
-		return false
-	}
-
-	var remoteHashArray [32]byte
-	copy(remoteHashArray[:], randomBytes[:])
-
-	var correctResponse []byte
-	correctResponse = generateHMAC([]byte(GLOBAL.authPassword), remoteHashArray)
-
-	if hmac.Equal(correctResponse, remoteHash) != true {
-		logError(fName, "initial challenge-response failed",
-			"\n", base64.StdEncoding.EncodeToString(correctResponse),
-			"\n", base64.StdEncoding.EncodeToString(remoteHash))
-		return false
-	}
-	return true
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) {
-
-	// create a challenge
-	newHMACKey := func() [32]byte {
-		key := [32]byte{}
-		_, err := io.ReadFull(cryptorand.Reader, key[:])
-		if checkError(err, fName, "error while generating key") {
-			conn.Close()
+func getWebsocketDialer() (dialer *websocket.Dialer) {
+	if GLOBAL.localInterface != "" {
+		iface, err := net.InterfaceByName(GLOBAL.localInterface)
+		if checkError(err) == false {
+			addrs, anotherError := iface.Addrs()
+			if checkError(anotherError) == false {
+				tcpAddr := &net.TCPAddr{
+					IP: addrs[0].(*net.IPNet).IP,
+				}
+				logDebug("using", iface.Name, "and",
+					addrs[0].(*net.IPNet).IP.String())
+				netDialer := &net.Dialer{LocalAddr: tcpAddr}
+				dialer = &websocket.Dialer{
+					NetDial: netDialer.Dial,
+					//Deadline: time.Now().Add(30),
+				}
+			}
 		}
-		return key
 	}
-
-	randomBytes := newHMACKey()
-	logDebug(fName, "sending the following challenge:",
-		"\n", base64.StdEncoding.EncodeToString(randomBytes[:]))
-
-	err := conn.WriteMessage(websocket.BinaryMessage, randomBytes[:])
-	if checkError(err, fName, "error sending message to frontend loadbalancer") {
-		return false
+	if GLOBAL.localAddress != "" {
+		ifaces, err := net.Interfaces()
+		if checkError(err) == false {
+			for _, iface := range ifaces {
+				addrs, err := iface.Addrs()
+				if checkError(err) {
+					continue
+				}
+				for _, addr := range addrs {
+					if checkError(err) {
+						continue
+					}
+					ipAddr := addr.(*net.IPNet).IP
+					if ipAddr.String() == GLOBAL.localAddress {
+						tcpAddr := &net.TCPAddr{
+							IP: addrs[0].(*net.IPNet).IP,
+						}
+						logDebug("using", iface.Name, "and", ipAddr.String())
+						netDialer := &net.Dialer{LocalAddr: tcpAddr}
+						dialer = &websocket.Dialer{
+							NetDial: netDialer.Dial,
+							//Deadline: time.Now().Add(30),
+						}
+						return dialer
+					}
+				}
+			}
+		}
 	}
-
-	////////////////////////////////////////////////////////////
-	// parse incoming response
-	////////////////////////////////////////////////////////////
-
-	type incomingMessage struct {
-		Challenge string `json:"challenge"`
-		Response  string `json:"response"`
-	}
-
-	var inMsg incomingMessage
-	err = conn.ReadJSON(&inMsg)
-	if checkError(err, fName, "error receiving initial response from frontend loadbalancer") {
-		return false
-	}
-
-	logDebug(fName, "received the following JSON challenge/response:\n",
-		fmt.Sprintf("%s\n", inMsg))
-
-	////////////////////////////////////////////////////////////
-	// validate incoming response to our challenge
-	////////////////////////////////////////////////////////////
-
-	generateHMAC := func(data []byte, key [32]byte) []byte {
-		h := hmac.New(sha512.New512_256, key[:])
-		h.Write(data)
-		return h.Sum(nil)
-	}
-
-	var dataChallengeArray [32]byte
-	copy(dataChallengeArray[:], randomBytes[:])
-
-	var correctResponse []byte
-	correctResponse = generateHMAC([]byte(GLOBAL.authPassword), dataChallengeArray)
-
-	remoteHash, _ := base64.StdEncoding.DecodeString(inMsg.Response)
-	if hmac.Equal(correctResponse, remoteHash) != true {
-		logError(fName, "initial challenge-response failed:",
-			"\n", base64.StdEncoding.EncodeToString(correctResponse),
-			"\n", base64.StdEncoding.EncodeToString(remoteHash))
-		return false
-	}
-
-	////////////////////////////////////////////////////////////
-	// respond to challenge sent to us
-	////////////////////////////////////////////////////////////
-
-	remoteChallenge, _ := base64.StdEncoding.DecodeString(inMsg.Challenge)
-
-	var remoteChallengeArray [32]byte
-	copy(remoteChallengeArray[:], remoteChallenge)
-
-	ourResponse := generateHMAC([]byte(GLOBAL.authPassword), remoteChallengeArray)
-	logDebug(fName, "local hash for challenge sent by LoadBalancer:",
-		"\n", base64.StdEncoding.EncodeToString(ourResponse))
-
-	err = conn.WriteMessage(websocket.BinaryMessage, ourResponse)
-	if checkError(err, fName, "error sending message to frontend loadbalancer") {
-		return false
-	}
-
-	return true
+	return dialer
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
 
 func absInt64(val int64) int64 {
 	if val < 0 {
@@ -603,172 +395,3 @@ func getPosOrNegOne() int {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
-func handleLogging() {
-	for {
-		var singleMessage string
-		singleMessage = <-GLOBAL.logInfoChan
-		for i := 0; i < 10000; i++ {
-			select {
-			case anotherMessage, doesExist := <-GLOBAL.logInfoChan:
-				if doesExist {
-					singleMessage += "\n" + anotherMessage
-				}
-			default:
-				break
-			}
-		}
-		GLOBAL.loggingMutex.Lock()
-		color.White(singleMessage)
-		GLOBAL.loggingMutex.Unlock()
-	}
-}
-
-func logInfo(arrayOfStrings ...string) {
-	var message string
-	for i := range arrayOfStrings {
-		if i > 0 {
-			message += " "
-		}
-		message += arrayOfStrings[i]
-	}
-	go func() {
-		t := time.Now().UTC().Format("2006-01-02 15:04:05")
-		GLOBAL.logInfoChan <- string(t + " " + message)
-	}()
-}
-
-func logDebug(arrayOfStrings ...string) {
-	if GLOBAL.debugModeBool == true {
-		var message string
-		for i := range arrayOfStrings {
-			if i > 0 {
-				message += " "
-			}
-			message += arrayOfStrings[i]
-		}
-		t := time.Now().UTC().Format("2006-01-02 15:04:05")
-		GLOBAL.loggingMutex.Lock()
-		color.Cyan("DEBUG:" + t + message)
-		GLOBAL.loggingMutex.Unlock()
-	}
-}
-
-func checkError(err error, arrayOfStrings ...string) bool {
-	var errorFound bool
-	if err != nil {
-		errorFound = true
-		go func() {
-			t := time.Now().UTC().Format("2006-01-02 15:04:05")
-			var message string
-			for i := range arrayOfStrings {
-				if i > 0 {
-					message += " "
-				}
-				message += arrayOfStrings[i]
-			}
-			err := err.Error() // convert err to string
-			GLOBAL.loggingMutex.Lock()
-			color.Red("ERROR: " + t + " " + message + " > " + err)
-			GLOBAL.loggingMutex.Unlock()
-		}()
-	} else {
-		errorFound = false
-	}
-	return errorFound
-}
-
-func logError(arrayOfStrings ...string) {
-	var message string
-	for i := range arrayOfStrings {
-		if i > 0 {
-			message += " "
-		}
-		message += arrayOfStrings[i]
-	}
-	go func() {
-		t := time.Now().UTC().Format("2006-01-02 15:04:05")
-		GLOBAL.loggingMutex.Lock()
-		color.Red("ERROR: " + t + " " + message)
-		GLOBAL.loggingMutex.Unlock()
-	}()
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func seqNumGenerator(randNumChan chan int64) {
-	var number int64
-	b := make([]byte, 8)
-	cryptorand.Read(b)
-	buf := bytes.NewBuffer(b)
-	binary.Read(buf, binary.LittleEndian, &number)
-	for {
-		randNumChan <- number
-		number++
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func handleInputParameters(fName string) {
-
-	// is the inputfilename empty?
-	// if so set doneMatching to 'true' so that we can skip later logic
-	var doneMatching bool
-	if GLOBAL.inputFile == "" {
-		doneMatching = true
-		logDebug(fName, "no inputfilename specified - skipping data import process")
-	} else {
-		doneMatching = false
-	}
-	// skip forward if doneMatching is 'true'
-	//   otherwise parse filename to determine if it is a 'blob' file
-	//   and import that file if that is the case
-	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.inputFile)
-		if foundMatch == true {
-			doneMatching = true
-			logInfo(fName, "parsing blob inputfilename")
-			in, err := ioutil.ReadFile(GLOBAL.inputFile)
-			if err != nil {
-				if os.IsNotExist(err) {
-					log.Fatalln("data.blob not found")
-				} else {
-					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
-				}
-			}
-			if err := proto.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
-				log.Fatalln("Failed to parse galaxy file:", err)
-			}
-		}
-	}
-	// skip forward if doneMatching is 'true'
-	//   otherwise parse filename to determine if it is a 'json' file
-	//   and import that file if that is the case
-	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*json$", GLOBAL.inputFile)
-		if foundMatch == true {
-			doneMatching = true
-			logInfo(fName, "parsing blob inputfilename")
-			in, err := ioutil.ReadFile(GLOBAL.inputFile)
-			if err != nil {
-				if os.IsNotExist(err) {
-					log.Fatalln(GLOBAL.inputFile, "not found")
-				} else {
-					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
-				}
-			}
-			if err := json.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
-				log.Fatalln("Failed to parse galaxy file:", err)
-			}
-		}
-	}
-	// if none of the above logic was successful - we have a fatal error on our hands
-	if doneMatching == false {
-		log.Fatalln(fName, "unknown inputfilename. skipping data import process")
-	}
-}

@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -25,12 +26,18 @@ func replaceStringAtIndex(str string, replacement rune, index int) string {
 
 // LoadAllNames ...
 func (obj *NamedObject) LoadAllNames() (verbs []string, nouns []string) {
+	fName := "(loadAllNames)"
+	exPath, err := os.Executable()
+	if checkError(err, fName) {
+		suddenExit()
+	}
+	dir := filepath.Dir(exPath)
 	if len(loadedVerbs) != 0 {
 		verbs = loadedVerbs
 	} else {
-		rawBytes, err := ioutil.ReadFile("names_nouns.txt")
-		if checkError(err, "Unable to load 'names_nouns.txt'") {
-			os.Exit(1)
+		rawBytes, err := ioutil.ReadFile(filepath.Join(dir, "names_verbs.txt"))
+		if checkError(err, fName) {
+			suddenExit()
 		}
 		rawString := string(rawBytes[:])
 		verbs = strings.Split(rawString, "\n")
@@ -45,17 +52,17 @@ func (obj *NamedObject) LoadAllNames() (verbs []string, nouns []string) {
 	if len(loadedNouns) != 0 {
 		nouns = loadedNouns
 	} else {
-		rawBytes, err := ioutil.ReadFile("names_verbs.txt")
-		if checkError(err, "Unable to load 'names_verbs.txt'") {
-			os.Exit(1)
+		rawBytes, err := ioutil.ReadFile(filepath.Join(dir, "names_nouns.txt"))
+		if checkError(err, fName) {
+			suddenExit()
 		}
 		rawString := string(rawBytes[:])
-		verbs = strings.Split(rawString, "\n")
+		nouns = strings.Split(rawString, "\n")
 		for i, s := range nouns {
 			s = strings.TrimSpace(s)
 			s = strings.ToLower(s)
 			if s != "" {
-				verbs[i] = strings.Title(s)
+				nouns[i] = strings.Title(s)
 			}
 		}
 	}
@@ -80,8 +87,8 @@ func generateName(nameType int32, objType int32) NamedObject {
 	rnum := getCryptoRnum()
 	idx := rnum.Intn(len(allVerbs))
 	newName.Verb = allVerbs[idx]
-	idx = rnum.Intn(len(allNames))
+	idx = rnum.Intn(len(allVerbs))
 	newName.Noun = allNames[idx]
-	newName.Hex = strconv.FormatUint(rnum.Uint64(), 16)
+	newName.Hex = strconv.FormatUint(rnum.Uint64(), 16)[0:6]
 	return newName
 }

@@ -12,12 +12,13 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
+	"sync"
 	"time"
-
-	cryptorand "crypto/rand"
 
 	"github.com/dhconnelly/rtreego"
 	"github.com/golang/protobuf/proto"
@@ -26,19 +27,20 @@ import (
 func startBackendMode() {
 	fName := "(backendMainFunc)"
 
-	if false {
+	if true {
 		handleInputParameters(fName)
 	}
 
-	if false {
+	if true {
 		go func() {
 			for {
 				spawnBackendToFrontend("hyperion5.com")
+				time.Sleep(1 * time.Second)
 			}
 		}()
 	}
 
-	if true {
+	if GLOBAL.createGalaxyBool == true {
 		galaxyType := ELLIPTICAL
 		generateGalaxy(galaxyType)
 		logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
@@ -46,30 +48,28 @@ func startBackendMode() {
 		rtreeObjects = []rtreego.Spatial{}
 	}
 
-	if false {
+	if true {
 		go func() {
 			for {
-				//kickoffBackendCommunication()
 				GLOBAL.backendData.RLock()
 				for _, backendAddress := range GLOBAL.backendData.Backends {
 					spawnBackendToBackend(backendAddress)
 				}
 				GLOBAL.backendData.RUnlock()
+				time.Sleep(100 * time.Millisecond)
 			}
 		}()
-	}
-
-	if false {
-		os.Exit(1)
 	}
 
 	////////////////////////////////////////////////////////////
 	// define functions to be used in primary game loop
 	////////////////////////////////////////////////////////////
 
-	checkValidityOfHashes := func() {
+	copyDataFromGlobals := func() {
 		GLOBAL.backendData.RLock()
-
+		GLOBAL.futureGalaxy.Name = GLOBAL.backendData.GalaxyName
+		GLOBAL.futureGalaxy.GlobalX = GLOBAL.backendData.GlobalX
+		GLOBAL.futureGalaxy.GlobalY = GLOBAL.backendData.GlobalY
 		GLOBAL.backendData.RUnlock()
 	}
 
@@ -97,7 +97,7 @@ func startBackendMode() {
 		for i := range GLOBAL.currentGalaxy.Solarsystemslice {
 			data, err := proto.Marshal(GLOBAL.currentGalaxy.Solarsystemslice[i])
 			if checkError(err, fName, "CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST") {
-				os.Exit(1)
+				// TODO // handle this error
 			}
 			systemName := GLOBAL.currentGalaxy.Solarsystemslice[i].Name
 			GLOBAL.backendData.SystemBytes[systemName] = data
@@ -184,7 +184,8 @@ func startBackendMode() {
 	}
 
 	gatherSystemPtrsForClients := func() {
-		GLOBAL.waitForCores["parsedptrs"].Add(GLOBAL.numberOfCores)
+		wg := sync.WaitGroup{}
+		wg.Add(GLOBAL.numberOfCores)
 		numPlayers := len(GLOBAL.currentGalaxy.GetSolarsystemslice())
 		playersPerCore := numPlayers / GLOBAL.numberOfCores
 		tempResults := make([]map[string][]*SolarSystem, GLOBAL.numberOfCores)
@@ -194,10 +195,10 @@ func startBackendMode() {
 			startIndex := stopIndex - playersPerCore
 			go func(i int) {
 				tempResults[i] = walkGalaxyForPlayers(startIndex, stopIndex)
-				GLOBAL.waitForCores["parsedptrs"].Done()
+				wg.Done()
 			}(i)
 		}
-		GLOBAL.waitForCores["parsedptrs"].Wait()
+		wg.Wait()
 		GLOBAL.backendData.Lock()
 		GLOBAL.backendData.ParsedPlayerPtrs = map[string][]*SolarSystem{}
 		for i := range tempResults {
@@ -227,7 +228,7 @@ func startBackendMode() {
 			GLOBAL.mutatingDataBlocker = make(chan struct{})
 
 			// major steps in the gameloop workflow
-			checkValidityOfHashes()
+			copyDataFromGlobals()
 			copyFutureIntoCurrentGalaxy()
 			generateCurrentSystemHashes()
 			processOutstandingUserRequests() // gamelogic here
@@ -243,7 +244,7 @@ func startBackendMode() {
 			select {
 			case <-GLOBAL.allServersReadySignal:
 			case <-maximumTimeBlocker.C:
-				logError(fName, "RAN OUT OF TIME TO WAIT FOR BACKEND MESSAGE")
+				logDebug(fName, "ran out of time to wait for backend message")
 			}
 
 			// will block if minTime hasn't been met - this enforces a maximum tickRate
@@ -262,15 +263,37 @@ func startBackendMode() {
 	muxSecure := http.NewServeMux()
 
 	// setup the websocket handlers
-	muxSecure.HandleFunc("/clientgalaxy", handleClientToBackend)
-	muxSecure.HandleFunc("/backendsync", handleBackendToBackend)
+	muxSecure.HandleFunc("/clienttobackend", handleClientToBackend)
+	muxSecure.HandleFunc("/backendtobackend", handleBackendToBackend)
+
+	getLocalAddr := func() (ip string) {
+		if GLOBAL.localAddress != "" {
+			ip = GLOBAL.localAddress
+		} else if GLOBAL.localInterface != "" {
+			iface, err := net.InterfaceByName(GLOBAL.localInterface)
+			if err != nil {
+				logError(fName, GLOBAL.localInterface, "does not match any local interfaces")
+				suddenExit()
+				return
+			}
+			addrs, err := iface.Addrs()
+			if checkError(err) {
+				return
+			}
+			ip = addrs[0].(*net.IPNet).IP.String()
+		}
+		if ip != "" {
+			logInfo(fName, "serving via the", ip, "address")
+		}
+		return
+	}
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
-		Addr:         ":443",
+		Addr:         getLocalAddr() + ":443",
 		Handler:      muxSecure,
 
 		// defining various security parameters used to specify accepted ciphersuites
@@ -292,65 +315,27 @@ func startBackendMode() {
 
 	// serve HTTPS requests with config defined above
 	go func() {
-		errServeTLS := srvSecure.ListenAndServeTLS("server.rsa.crt", "server.rsa.key")
+		exPath, err := os.Executable()
+		if checkError(err, fName) {
+			suddenExit()
+		}
+		dir := filepath.Dir(exPath)
+		errServeTLS := srvSecure.ListenAndServeTLS(
+			filepath.Join(dir, "server.rsa.crt"),
+			filepath.Join(dir, "server.rsa.key"))
 		if checkError(errServeTLS, fName) {
-			GLOBAL.waitForLogging.Wait()
-			os.Exit(1)
+			suddenExit()
 		}
 	}()
 
+	// wait for program to signal exit
+	<-GLOBAL.exitProgram
+	return
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
-func kickoffBackendCommunication() {
-	// https://play.golang.org/p/pFWNe6CGxd
-	seed := func() rand.Source {
-		var randomness int64
-		b := make([]byte, 8)
-		cryptorand.Read(b)
-		buf := bytes.NewBuffer(b)
-		binary.Read(buf, binary.LittleEndian, &randomness)
-		return rand.NewSource(randomness)
-	}
-	rnum := rand.New(seed())
-	// TODO - NEED TO REWRITE - THIS WILL BE FULL-MESH GOING FORWARD
-	for {
-		// To avoid contention we are only rlocking and accepting the risk that the
-		// information may be out of date and duplicate connections could be spawned.
-		// Please note, the websocket functions have sanity checks to mitigate.
-		GLOBAL.backendData.RLock()
-		potentialServers := []string{}
-		for serverIP := range GLOBAL.backendData.SystemHashes[0] {
-			if serverIP != "0.0.0.0" {
-				potentialServers = append(potentialServers, serverIP)
-			}
-		}
-		fullServerConns := []string{}
-		for serverIP := range GLOBAL.backendData.Latencies {
-			fullServerConns = append(fullServerConns, serverIP)
-		}
-		GLOBAL.backendData.RUnlock()
-		// we want the list of potentialConnections to not include
-		// servers we already have a _full_ connection with
-		for i := 0; i < len(fullServerConns); i++ {
-			potentialServers = removeStringIfPresent(potentialServers, fullServerConns[i])
-		}
-		numNewConns := connectedBackendsLimit - len(fullServerConns)
-		if numNewConns > 0 {
-			randPerm := rnum.Perm(len(potentialServers))
-			for i := 0; i < numNewConns; i++ {
-				randIndex := randPerm[i]
-				randBackendHost := potentialServers[randIndex]
-				go spawnBackendToBackend(randBackendHost)
-			}
-			continue // to get updated info
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-}
 
 func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 	systemPtrs := map[string][]*SolarSystem{}
@@ -382,39 +367,6 @@ func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
 	return systemPtrs
 }
 
-func recordReceiptOfMessage(remoteIPAddr string) {
-	foundMatch := false
-	for _, neigh := range GLOBAL.backendData.ReceivedMessageFrom {
-		if neigh == remoteIPAddr {
-			foundMatch = true
-			break
-		}
-	}
-	if foundMatch == false {
-		GLOBAL.backendData.ReceivedMessageFrom = append(GLOBAL.backendData.ReceivedMessageFrom,
-			remoteIPAddr)
-	}
-	missedMatch := false
-	for _, knownBackend := range GLOBAL.backendData.Backends {
-		foundMatch = false
-		for _, aliveBackend := range GLOBAL.backendData.ReceivedMessageFrom {
-			if knownBackend == aliveBackend {
-				foundMatch = true
-				break
-			}
-		}
-		if foundMatch == false {
-			missedMatch = true
-			break
-		}
-	}
-	if missedMatch == false {
-		close(GLOBAL.allServersReadySignal)
-		GLOBAL.allServersReadySignal = make(chan struct{})
-		GLOBAL.backendData.ReceivedMessageFrom = []string{"0.0.0.0"}
-	}
-}
-
 func gracefullyCloseBackend() {
 	foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.outputFile)
 	if GLOBAL.outputFile == "" || foundMatch {
@@ -435,7 +387,6 @@ func gracefullyCloseBackend() {
 		}
 	}
 	logInfo("PROGRAM EXITING GRACEFULLY")
-	GLOBAL.waitForLogging.Wait()
 	os.Exit(1)
 }
 
@@ -450,11 +401,14 @@ func weightedChoice(choices []weightedObj, rnum *rand.Rand) (weightedObj, error)
 		max += choice.Weight
 	}
 	num := rnum.Intn(max)
+	//logDebug(fmt.Sprint("num ", num))
 	for _, choice := range choices {
 		num -= choice.Weight
-		if num < 0 {
+		if num <= 0 {
+			//logDebug(fmt.Sprint("returning ", choice))
 			return choice, nil
 		}
+		//logDebug(fmt.Sprint("skipping ", choice))
 	}
 	err := errors.New("weightedChoice func is broken")
 	return weightedObj{}, err
