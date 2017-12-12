@@ -79,10 +79,13 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 				outMsg.GlobalY = GLOBAL.frontendData.GalGlobalY[galName]
 				outMsg.OtherFrontends = append(outMsg.OtherFrontends,
 					GLOBAL.frontendData.OtherFrontends...)
-				outMsg.OtherBackends = append(outMsg.OtherBackends,
-					GLOBAL.frontendData.GalBackends[galName]...)
+				for _, bcknd := range GLOBAL.frontendData.GalBackends[galName] {
+					if bcknd != remoteIP {
+						outMsg.OtherBackends = append(outMsg.OtherBackends, bcknd)
+					}
+				}
 				GLOBAL.frontendData.RUnlock()
-				logDebug(fName, fmt.Sprint("outMsg=\t", outMsg))
+				logDebug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
 				// send outgoing message
 				err := enc.Encode(outMsg)
 				if checkError(err, fName, "error encoding outgoing message") {
@@ -124,21 +127,22 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 					backoutOnce.Do(killFunc)
 					return
 				}
-				logDebug(fName, fmt.Sprint("inMsg= \t", inMsg))
+				logDebug(fName, remoteIP, fmt.Sprintf("inMsg=  %+v", inMsg))
 
 				// handle GalaxyName data
+				if inMsg.GalaxyName == "" {
+					logInfo(fName, remoteIP, "hasn't been assigned a galaxy yet")
+					continue
+				}
 				galName := getGalName(remoteIP)
-				if galName == "" {
-					if inMsg.GalaxyName != "" {
-						logInfo(fName, remoteIP, "knows about a galaxy that we do not")
-						continue
-					} else {
-						logInfo(fName, remoteIP, "hasn't been assigned a galaxy yet")
-						continue
-					}
-				} else if inMsg.GalaxyName != galName {
+				if galName == "" && inMsg.GalaxyName != "" {
+					logInfo(fName, remoteIP, "knows about a galaxy that we do not:",
+						inMsg.GalaxyName)
+					continue
+				}
+				if inMsg.GalaxyName != galName && galName != "" {
 					logError(fName, remoteIP, "is serving the",
-						inMsg.GalaxyName, "instead of", galName)
+						inMsg.GalaxyName, "galaxy instead of", galName)
 					continue
 				}
 

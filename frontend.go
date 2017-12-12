@@ -5,6 +5,7 @@ import (
 	fmt "fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"time"
@@ -109,13 +110,29 @@ func startFrontendMode() {
 		}),
 	}
 
-	// serve HTTP requests by redirecting to HTTPS
-	go func() {
-		errServeInsecure := srvInsecure.ListenAndServe()
-		if checkError(errServeInsecure, fName) {
-			suddenExit()
-		}
-	}()
+	if GLOBAL.debugModeBool {
+		// serve HTTP requests just for Debug purposes
+		profmux := http.NewServeMux()
+		profmux.HandleFunc("/debug/pprof/", pprof.Index)
+		profmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		profmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		profmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		profmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		profmux.Handle("/debug/pprof/block", pprof.Handler("block"))
+		profmux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+		profmux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+		profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+		err := http.ListenAndServe(":8080", profmux)
+		checkError(err, fName, fmt.Sprintf("Error when starting pprof server:"))
+	} else {
+		// serve HTTP requests by redirecting to HTTPS
+		go func() {
+			errServeInsecure := srvInsecure.ListenAndServe()
+			if checkError(errServeInsecure, fName) {
+				suddenExit()
+			}
+		}()
+	}
 
 	// wait for program to signal exit
 	<-GLOBAL.exitProgram

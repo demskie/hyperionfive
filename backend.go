@@ -14,6 +14,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -163,24 +164,28 @@ func startBackendMode() {
 
 		GLOBAL.bufferedRequestsMutex.Lock()
 		requests := []incomingClientRequest{}
-		leftoverRequests := []incomingClientRequest{}
-		for _, rqst := range GLOBAL.bufferedRequests {
+		for i, rqst := range GLOBAL.bufferedRequests {
+			foundMatch := false
 			for _, validID := range validRequestIDs {
 				if rqst.UniqueID == validID {
 					requests = append(requests, rqst)
+					foundMatch = true
 					break
 				}
 			}
-			leftoverRequests = append(leftoverRequests, rqst)
+			if foundMatch == false {
+				GLOBAL.bufferedRequests = append(
+					GLOBAL.bufferedRequests[:i],
+					GLOBAL.bufferedRequests[i+1:]...)
+			}
 		}
-		GLOBAL.bufferedRequests = leftoverRequests
 		GLOBAL.bufferedRequestsMutex.Unlock()
+
 		if len(requests) < len(validRequestIDs) {
 			logError("ERROR: missing one or more clientRequests")
 		}
 
 		processGalaxy(seeds, requests, GLOBAL.futureGalaxy)
-
 	}
 
 	gatherSystemPtrsForClients := func() {
@@ -209,6 +214,15 @@ func startBackendMode() {
 		GLOBAL.backendData.Unlock()
 	}
 
+	noNeighbors := func() (result bool) {
+		GLOBAL.backendData.RLock()
+		if len(GLOBAL.backendData.Backends) == 0 {
+			result = true
+		}
+		GLOBAL.backendData.RUnlock()
+		return result
+	}
+
 	////////////////////////////////////////////////////////////
 	// primary game loop
 	////////////////////////////////////////////////////////////
@@ -218,7 +232,7 @@ func startBackendMode() {
 
 			// record current time and start timeout tickers
 			start := time.Now().UnixNano()
-			minimumTimeBlocker := time.NewTimer(time.Second / 30)
+			minimumTimeBlocker := time.NewTimer(time.Second / 60)
 			maximumTimeBlocker := time.NewTimer(time.Second / 2)
 
 			// signal that data is now being mutated and is not safe for consumption
@@ -231,7 +245,7 @@ func startBackendMode() {
 			copyDataFromGlobals()
 			copyFutureIntoCurrentGalaxy()
 			generateCurrentSystemHashes()
-			processOutstandingUserRequests() // gamelogic here
+			processOutstandingUserRequests() // gamelogic goes here
 			gatherSystemPtrsForClients()
 
 			// triggers backend_websockets to send message to neighbors
@@ -240,9 +254,19 @@ func startBackendMode() {
 			// an alternate channel for monitoring data mutation
 			close(GLOBAL.mutatingDataBlocker)
 
+			if noNeighbors() {
+				go func() {
+					GLOBAL.backendData.Lock()
+					close(GLOBAL.allServersReadySignal)
+					//GLOBAL.backendData.ReceivedMessageFrom = []string{"0.0.0.0"} // TODO: remove
+					GLOBAL.backendData.Unlock()
+				}()
+			}
+
 			// wait for confirmation from every neighbor
 			select {
 			case <-GLOBAL.allServersReadySignal:
+				GLOBAL.allServersReadySignal = make(chan struct{})
 			case <-maximumTimeBlocker.C:
 				logDebug(fName, "ran out of time to wait for backend message")
 			}
@@ -251,7 +275,9 @@ func startBackendMode() {
 			<-minimumTimeBlocker.C
 
 			end := time.Now().UnixNano()
+			GLOBAL.backendData.Lock()
 			GLOBAL.backendData.TickTime = start - end
+			GLOBAL.backendData.Unlock()
 
 		}
 	}()
@@ -327,6 +353,22 @@ func startBackendMode() {
 			suddenExit()
 		}
 	}()
+
+	// serve HTTP requests just for Debug purposes
+	if GLOBAL.debugModeBool {
+		profmux := http.NewServeMux()
+		profmux.HandleFunc("/debug/pprof/", pprof.Index)
+		profmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		profmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		profmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		profmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+		profmux.Handle("/debug/pprof/block", pprof.Handler("block"))
+		profmux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+		profmux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+		profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+		err := http.ListenAndServe(":8080", profmux)
+		checkError(err, fName, fmt.Sprintf("Error when starting pprof server:"))
+	}
 
 	// wait for program to signal exit
 	<-GLOBAL.exitProgram

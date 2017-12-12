@@ -69,8 +69,8 @@ func backendToBackendCommunication(conn *websocket.Conn) {
 				GLOBAL.backendData.Lock()
 
 				// record receipt of message
-				GLOBAL.backendData.ReceivedMessageFrom = appendStringIfMissing(GLOBAL.backendData.ReceivedMessageFrom,
-					remoteIP)
+				GLOBAL.backendData.ReceivedMessageFrom = appendStringIfMissing(
+					GLOBAL.backendData.ReceivedMessageFrom, remoteIP)
 				missedMatch := false
 				for _, knownBackend := range GLOBAL.backendData.Backends {
 					for _, aliveBackend := range GLOBAL.backendData.ReceivedMessageFrom {
@@ -82,8 +82,7 @@ func backendToBackendCommunication(conn *websocket.Conn) {
 				}
 				if missedMatch == false {
 					close(GLOBAL.allServersReadySignal)
-					GLOBAL.allServersReadySignal = make(chan struct{})
-					GLOBAL.backendData.ReceivedMessageFrom = []string{"0.0.0.0"}
+					//GLOBAL.backendData.ReceivedMessageFrom = []string{"0.0.0.0"} // TODO: remove this
 				}
 
 				// update system hashes

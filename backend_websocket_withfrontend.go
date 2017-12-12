@@ -63,13 +63,13 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 					backoutOnce.Do(killFunc)
 					return
 				}
-				logDebug(fName, fmt.Sprint("inMsg=\t\t", inMsg))
+				logDebug(fName, remoteIP, fmt.Sprintf("inMsg=  %+v", inMsg))
 
 				GLOBAL.backendData.Lock()
 				if GLOBAL.backendData.GalaxyName != inMsg.GalaxyName {
 					if GLOBAL.backendData.GalaxyName == "" {
 						logInfo(fName, remoteIP, "is assigning us galaxyName",
-							GLOBAL.backendData.GalaxyName)
+							inMsg.GalaxyName)
 					} else {
 						logError(fName, "according to", remoteIP, "galaxyName has changed from",
 							GLOBAL.backendData.GalaxyName, "to", inMsg.GalaxyName)
@@ -79,7 +79,7 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 				if GLOBAL.backendData.GlobalX != inMsg.GlobalX {
 					if GLOBAL.backendData.GlobalX == 0 {
 						logInfo(fName, remoteIP, "is assigning us globalX",
-							fmt.Sprintf("%v", GLOBAL.backendData.GlobalX))
+							fmt.Sprintf("%v", inMsg.GlobalX))
 					} else {
 						logError(fName, "according to", remoteIP, "globalX has changed from",
 							fmt.Sprintf("%v", GLOBAL.backendData.GlobalX), "to",
@@ -90,7 +90,7 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 				if GLOBAL.backendData.GlobalY != inMsg.GlobalY {
 					if GLOBAL.backendData.GlobalY == 0 {
 						logInfo(fName, remoteIP, "is assigning us globalY",
-							fmt.Sprintf("%v", GLOBAL.backendData.GlobalY))
+							fmt.Sprintf("%v", inMsg.GlobalY))
 					} else {
 						logError(fName, "according to", remoteIP, "globalY has changed from",
 							fmt.Sprintf("%v", GLOBAL.backendData.GlobalY), "to",
@@ -139,6 +139,7 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 				outMsg.OtherFrontends = append(outMsg.OtherFrontends,
 					GLOBAL.backendData.Frontends...)
 				GLOBAL.backendData.RUnlock()
+				logDebug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
 				// send outgoing message
 				networkOut.Reset()
 				err := enc.Encode(outMsg)

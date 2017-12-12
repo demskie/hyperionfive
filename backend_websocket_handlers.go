@@ -29,10 +29,11 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	conn.EnableWriteCompression(true)
 	conn.SetCompressionLevel(1)
-	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
-	logInfo(fName, "opening connection:", remoteIP)
-	defer logInfo(fName, "closing connection:", remoteIP)
+	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)
 	defer removeSessionFromHistory(remoteIP, fName)
@@ -54,10 +55,11 @@ func spawnBackendToFrontend(host string) {
 	defer conn.Close()
 	conn.EnableWriteCompression(true)
 	conn.SetCompressionLevel(1)
-	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
-	logInfo(fName, "opening connection:", remoteIP)
-	defer logInfo(fName, "closing connection:", remoteIP)
+	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)
 	defer removeSessionFromHistory(remoteIP, fName)
@@ -82,10 +84,11 @@ func spawnBackendToBackend(host string) {
 	defer conn.Close()
 	conn.EnableWriteCompression(true)
 	conn.SetCompressionLevel(1) // 1 is default
-	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
-	logInfo(fName, "opening connection:", remoteIP)
-	defer logInfo(fName, "closing connection:", remoteIP)
+	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)
 	defer removeSessionFromHistory(remoteIP, fName)
@@ -119,10 +122,11 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 	conn.EnableWriteCompression(true)
 	conn.SetCompressionLevel(1) // 1 is default
-	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
-	logInfo(fName, "opening connection:", remoteIP)
-	defer logInfo(fName, "closing connection:", remoteIP)
+	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
+	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)
 	defer removeSessionFromHistory(remoteIP, fName)

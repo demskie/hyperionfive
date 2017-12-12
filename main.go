@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/fatih/color"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
@@ -74,7 +76,7 @@ func init() {
 	GLOBAL.currentGalaxy = Galaxy{}
 	GLOBAL.futureGalaxy = Galaxy{}
 	GLOBAL.uniqueRequestID = make(chan int64, 9999)
-	GLOBAL.bufferedRequests = make([]incomingClientRequest, oneMillion)
+	GLOBAL.bufferedRequests = make([]incomingClientRequest, 0, oneMillion)
 	GLOBAL.bufferedRequestsMutex = sync.RWMutex{}
 
 	GLOBAL.backendData = backendData{}
@@ -101,7 +103,7 @@ func init() {
 	GLOBAL.frontendData.Message = ""
 	GLOBAL.frontendData.AnotherMessage = ""
 
-	// define commandline flags to parse for
+	// define commandline flags to parse
 	galaxyNamePtr := flag.String("galaxyname", "", "specify galaxy name")
 	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
 	outputFilePtr := flag.String("output", "", "override export destination, either json or blob")
@@ -116,6 +118,8 @@ func init() {
 	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
 	singleThreadedBoolPtr := flag.Bool("singlethreaded", false, "force singlethreaded behavior")
 	testModeBoolPtr := flag.Bool("test", false, "enable testing mode")
+
+	// parse the arguments
 	flag.Parse()
 	GLOBAL.galaxyName = *galaxyNamePtr
 	GLOBAL.inputFile = *inputFilePtr
@@ -239,6 +243,10 @@ func handleInputParameters(fName string) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 func getWebsocketDialer() (dialer *websocket.Dialer) {
+	dialer = &websocket.Dialer{}
+	defer func() {
+		logDebug(fmt.Sprintf("*websocket.Dialer = %+v", dialer))
+	}()
 	if GLOBAL.localInterface != "" {
 		iface, err := net.InterfaceByName(GLOBAL.localInterface)
 		if checkError(err) == false {
@@ -249,10 +257,13 @@ func getWebsocketDialer() (dialer *websocket.Dialer) {
 				}
 				logDebug("using", iface.Name, "and",
 					addrs[0].(*net.IPNet).IP.String())
-				netDialer := &net.Dialer{LocalAddr: tcpAddr}
+				netDialer := &net.Dialer{
+					LocalAddr: tcpAddr,
+					Deadline:  time.Now().Add(time.Second * 30),
+				}
+				logDebug(fmt.Sprintf("netDialer = %+v", netDialer))
 				dialer = &websocket.Dialer{
 					NetDial: netDialer.Dial,
-					//Deadline: time.Now().Add(30),
 				}
 			}
 		}
@@ -272,13 +283,17 @@ func getWebsocketDialer() (dialer *websocket.Dialer) {
 					ipAddr := addr.(*net.IPNet).IP
 					if ipAddr.String() == GLOBAL.localAddress {
 						tcpAddr := &net.TCPAddr{
-							IP: addrs[0].(*net.IPNet).IP,
+							IP: addr.(*net.IPNet).IP,
 						}
-						logDebug("using", iface.Name, "and", ipAddr.String())
-						netDialer := &net.Dialer{LocalAddr: tcpAddr}
+						logDebug("using", iface.Name, "and",
+							ipAddr.String())
+						netDialer := &net.Dialer{
+							LocalAddr: tcpAddr,
+							Deadline:  time.Now().Add(time.Second * 30),
+						}
+						logDebug(fmt.Sprintf("netDialer = %+v", netDialer))
 						dialer = &websocket.Dialer{
 							NetDial: netDialer.Dial,
-							//Deadline: time.Now().Add(30),
 						}
 						return dialer
 					}
