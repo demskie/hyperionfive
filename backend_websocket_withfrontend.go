@@ -36,7 +36,7 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 	enc := gob.NewEncoder(&networkOut)
 
 	////////////////////////////////////////////////////////////
-	// receive data from backend
+	// receive data from frontend
 	////////////////////////////////////////////////////////////
 
 	go func() {
@@ -116,7 +116,7 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 	}()
 
 	////////////////////////////////////////////////////////////
-	// send data to backend
+	// send data to frontend
 	////////////////////////////////////////////////////////////
 
 	go func() {
@@ -128,16 +128,23 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 				// prepare outgoing message
 				outMsg := backendToFrontendMessage{}
 				GLOBAL.backendData.RLock()
-				outMsg.GalaxyName = GLOBAL.backendData.GalaxyName
+				if GLOBAL.galaxyName != "" {
+					outMsg.GalaxyName = GLOBAL.galaxyName
+				} else {
+					outMsg.GalaxyName = GLOBAL.backendData.GalaxyName
+				}
 				outMsg.GlobalX = GLOBAL.backendData.GlobalX
 				outMsg.GlobalY = GLOBAL.backendData.GlobalY
-				for _, ids := range GLOBAL.backendData.ClientIDs {
+				for _, ids := range GLOBAL.backendData.SystemClientIDs {
 					outMsg.ClientIDs = append(outMsg.ClientIDs, ids...)
 				}
 				outMsg.OtherBackends = append(outMsg.OtherBackends,
 					GLOBAL.backendData.Backends...)
 				outMsg.OtherFrontends = append(outMsg.OtherFrontends,
 					GLOBAL.backendData.Frontends...)
+				if GLOBAL.createGalaxyBool {
+					outMsg.Message = "GENERATEGALAXY"
+				}
 				GLOBAL.backendData.RUnlock()
 				logDebug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
 				// send outgoing message
@@ -148,7 +155,7 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 					return
 				}
 				conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
-				time.Sleep(1000 * time.Millisecond)
+				time.Sleep(1000 * time.Millisecond * time.Duration(GLOBAL.debugMultiplier))
 			}
 		}
 	}()

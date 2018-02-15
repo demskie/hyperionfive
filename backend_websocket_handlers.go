@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"time"
@@ -32,7 +33,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	logInfo(fName, "receiving connection:", remoteIP, "using", localIP)
 	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)
@@ -72,10 +73,23 @@ func spawnBackendToFrontend(host string) {
 func spawnBackendToBackend(host string) {
 	const fName = "(backendToBackend)"
 
-	dialer := &websocket.Dialer{
-		ReadBufferSize:    8192, // 4096 is default
-		WriteBufferSize:   8192, // 4096 is default
-		EnableCompression: true,
+	if checkForExistingConnection("", host) {
+		return
+	}
+
+	primaryLocalIP := getLocalAddress().IP.String()
+	if primaryLocalIP > host {
+		logTelemetry(fName, "not opening backendToBackend connection because", primaryLocalIP, "is greater than", host)
+		return
+	}
+
+	dialer := getWebsocketDialer()
+	dialer.ReadBufferSize = 4096 * 4
+	dialer.WriteBufferSize = 4096 * 4
+	dialer.EnableCompression = true
+	dialer.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true, // handleChallengeResponse is handling authentication
+		//ServerName: host, 	  // doesn't seem to help
 	}
 	conn, _, err := dialer.Dial("wss://"+host+":443/backendtobackend", nil)
 	if checkError(err, fName, "unable to open websocket with backend") {
@@ -106,14 +120,21 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	primaryLocalIP := getLocalAddress().IP.String()
+	if httpRemoteIP > primaryLocalIP {
+		logError(fName, "unexpected connection from", httpRemoteIP, "to", primaryLocalIP,
+			"because", httpRemoteIP, "is greater than", primaryLocalIP)
+		return
+	}
+
 	upgrader := websocket.Upgrader{
 		HandshakeTimeout:  30 * time.Second,
 		ReadBufferSize:    8192,
 		WriteBufferSize:   8192,
 		EnableCompression: true,
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
+		//CheckOrigin: func(r *http.Request) bool {
+		//	return true
+		//},
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if checkError(err, fName, "upgrade error") {
@@ -125,7 +146,7 @@ func handleBackendToBackend(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	logInfo(fName, "receiving connection:", remoteIP, "using", localIP)
 	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)

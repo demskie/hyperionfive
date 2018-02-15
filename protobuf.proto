@@ -9,11 +9,11 @@ message SolarObject {
 	string name = 1;
 	int64 localX = 2;
 	int64 localY = 3;
-	string owner = 4;
-	int32 food = 5;
-	uint64 population = 6;
-	int32 type = 7;
-	int32 health = 8;
+	string owner = 16;
+	int32 food = 17;
+	uint64 population = 18;
+	int32 type = 19;
+	int32 health = 20;
 }
 
 
@@ -21,8 +21,8 @@ message SolarSystem {
     string name = 1;
     int64 interX = 2;
     int64 interY = 3;
-	repeated SolarObject solarobjectslice = 4;
-    int32 type = 5;
+    int32 type = 16;
+	repeated SolarObject solarobjectslice = 128;
 }
 
 
@@ -30,8 +30,8 @@ message Galaxy {
     string name = 1;
     int64 globalX = 2;
     int64 globalY = 3;
-    repeated SolarSystem solarsystemslice = 4;
-    int32 type = 5;
+    int32 type = 16;
+	repeated SolarSystem solarsystemslice = 128;
 }
 
 /*

@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
 
-func clientToBackendCommunication(conn *websocket.Conn, userid string) {
+func clientToBackendCommunication(conn *websocket.Conn, authenticatedUserID string) {
 	fName := "(clientToBackend)"
-	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	//remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	//localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
 	var err error // satisfying go vet
 
 	////////////////////////////////////////////////////////////
@@ -41,10 +42,9 @@ func clientToBackendCommunication(conn *websocket.Conn, userid string) {
 			case <-backoutSignal:
 				return
 			default:
-				inMsg := incomingClientRequest{}
+				inMsg := originalClientRequest{}
 				err = conn.ReadJSON(&inMsg)
 
-				inMsg.ClientID = userid
 				if checkError(err, fName, "error receiving request from Client") {
 					backoutOnce.Do(killFunc)
 					return
@@ -52,16 +52,15 @@ func clientToBackendCommunication(conn *websocket.Conn, userid string) {
 				logDebug(fName, "received the following JSON client request:\n",
 					fmt.Sprintf("%v\n", inMsg))
 
-				if inMsg.UniqueID != 0 {
-					logError(fName, "client tried to set the UniqueID:", remoteIP)
-					backoutOnce.Do(killFunc)
-					return
-				}
-				inMsg.UniqueID = <-GLOBAL.uniqueRequestID
-
-				GLOBAL.bufferedRequestsMutex.Lock()
-				GLOBAL.bufferedRequests = append(GLOBAL.bufferedRequests, inMsg)
-				GLOBAL.bufferedRequestsMutex.Unlock()
+				GLOBAL.allRequests.Lock()
+				GLOBAL.allRequests.Buffered[<-GLOBAL.uniqueRequestID] =
+					modifiedClientRequest{
+						ClientID:      authenticatedUserID,
+						ClientMessage: inMsg.ClientMessage,
+						ClientValues:  inMsg.ClientValues,
+						ReceivedTime:  time.Now(),
+					}
+				GLOBAL.allRequests.Unlock()
 			}
 		}
 	}()
@@ -77,16 +76,18 @@ func clientToBackendCommunication(conn *websocket.Conn, userid string) {
 			continueSignal := make(chan struct{})
 			go func() {
 				// wait for new tick
-				<-GLOBAL.newTickSignal
+				<-GLOBAL.clientSignal
 
 				// put together data
 				playerData := Galaxy{}
 				GLOBAL.backendData.RLock()
-				playerData.Name = GLOBAL.backendData.GalaxyName
-				playerData.GlobalX = GLOBAL.backendData.GlobalX
-				playerData.GlobalY = GLOBAL.backendData.GlobalY
-				playerData.Solarsystemslice = append(playerData.Solarsystemslice,
-					GLOBAL.backendData.ParsedPlayerPtrs[userid]...)
+				if len(GLOBAL.backendData.SystemsInRecovery) != 0 {
+					playerData.Name = GLOBAL.backendData.GalaxyName
+					playerData.GlobalX = GLOBAL.backendData.GlobalX
+					playerData.GlobalY = GLOBAL.backendData.GlobalY
+					playerData.Solarsystemslice = append(playerData.Solarsystemslice,
+						GLOBAL.backendData.ParsedPlayerPtrs[authenticatedUserID]...)
+				}
 				GLOBAL.backendData.RUnlock()
 
 				// serialize this information

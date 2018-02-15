@@ -1,7 +1,7 @@
 package main
 
 import (
-	fmt "fmt"
+	"fmt"
 	"time"
 )
 
@@ -28,9 +28,13 @@ func checkForExistingConnection(fName string, remoteIP string) bool {
 	result := false
 	functions, ok := GLOBAL.clientBlacklist.LiveConnections[remoteIP]
 	if ok {
-		for _, fn := range functions {
-			if fn == fName {
-				result = true
+		if fName == "" {
+			result = true
+		} else {
+			for _, fn := range functions {
+				if fn == fName {
+					result = true
+				}
 			}
 		}
 	}
@@ -39,6 +43,7 @@ func checkForExistingConnection(fName string, remoteIP string) bool {
 }
 
 func addSessionToHistory(remoteIP string, fName string) {
+	logDebug("adding session", remoteIP, "spawned by", fName)
 	GLOBAL.clientBlacklist.Lock()
 	_, ok := GLOBAL.clientBlacklist.LiveConnections[remoteIP]
 	if ok {
@@ -50,7 +55,9 @@ func addSessionToHistory(remoteIP string, fName string) {
 	GLOBAL.clientBlacklist.Unlock()
 }
 
+// BUG // THIS DOES NOT WORK AT ALL
 func removeSessionFromHistory(remoteIP string, fName string) {
+	logDebug("removing session", remoteIP, "spawned by", fName)
 	GLOBAL.clientBlacklist.Lock()
 	functions, ok := GLOBAL.clientBlacklist.LiveConnections[remoteIP]
 	if ok {
@@ -61,7 +68,7 @@ func removeSessionFromHistory(remoteIP string, fName string) {
 			GLOBAL.clientBlacklist.LiveConnections[remoteIP] = append(
 				functions[:idx], functions[idx+1:]...)
 		}
-		if len(functions) == 0 {
+		if len(GLOBAL.clientBlacklist.LiveConnections[remoteIP]) == 0 {
 			delete(GLOBAL.clientBlacklist.LiveConnections, remoteIP)
 		}
 	}
@@ -139,22 +146,18 @@ func triggerFirewallException(check int, remoteIP string) {
 }
 
 func checkFirewall(check int, fName string, remoteIP string) bool {
-	//var limit int
 	var count uint16
 	var lastTime time.Time
 	var alpha, beta, charlie, delta, echo, foxtrot bool
 	GLOBAL.clientBlacklist.RLock()
 	switch check {
 	case CHALLENGE:
-		//limit = constChallenge
 		count, alpha = GLOBAL.clientBlacklist.FailedChallengeCount[remoteIP]
 		lastTime, beta = GLOBAL.clientBlacklist.FailedChallengeTime[remoteIP]
 	case GOOGLEAUTH:
-		//limit = constGoogleAuth
 		count, charlie = GLOBAL.clientBlacklist.FailedGoogleAuthCount[remoteIP]
 		lastTime, delta = GLOBAL.clientBlacklist.FailedGoogleAuthTime[remoteIP]
 	case SESSIONLIMIT:
-		//limit = constClientSession
 		count, echo = GLOBAL.clientBlacklist.FailedSessionLimitCount[remoteIP]
 		lastTime, foxtrot = GLOBAL.clientBlacklist.FailedSessionLimitTime[remoteIP]
 	default:
@@ -166,11 +169,6 @@ func checkFirewall(check int, fName string, remoteIP string) bool {
 	currentTime := time.Now()
 	timeSinceBlacklist := currentTime.Sub(lastTime)
 	endOfBlacklist := lastTime.Add(time.Second * time.Duration(count*count))
-
-	//blacklistExpGrowth := int64((count) / uint16(limit))
-	//currentBlacklistGiven := blacklistExpGrowth * int64(time.Hour/time.Minute)
-	//if timeSinceBlacklist < currentBlacklistGiven {
-
 	if currentTime.Before(endOfBlacklist) {
 		logError(fName, "blacklisted client attempting to connect:", remoteIP,
 			"\n\tblacklistedFor:", fmt.Sprintf("%v", timeSinceBlacklist),

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -11,74 +13,118 @@ const (
 	RED int8 = iota
 	CYAN
 	WHITE
+	MAGENTA
 )
+
+var screenMutex sync.Mutex
 
 type loggingMessage struct {
 	color   int8
+	theTime time.Time
 	message string
 }
 
 const defaultTimeLayout string = "2006-01-02 15:04:05"
 
+//t = time.Now().UTC().Format(defaultTimeLayout)
+//t = time.Now()
+
 func handleLogging() {
 	for {
 		var firstLog loggingMessage
 		firstLog = <-GLOBAL.logInfoChan
-		newMessages := map[int8][]string{}
-		newMessages[firstLog.color] = []string{firstLog.message}
+		newLogs := map[int8]map[string][]time.Time{}
+		newLogs[firstLog.color] = map[string][]time.Time{}
+		newLogs[firstLog.color][firstLog.message] = []time.Time{firstLog.theTime}
 		for i := 0; i < 10000; i++ {
 			select {
-			case nextLog, doesExist := <-GLOBAL.logInfoChan:
-				if doesExist {
-					_, ok := newMessages[nextLog.color]
-					if ok {
-						newMessages[nextLog.color] = append(
-							newMessages[nextLog.color], nextLog.message)
-					} else {
-						newMessages[nextLog.color] = []string{nextLog.message}
+			case nextLog, notClosed := <-GLOBAL.logInfoChan:
+				if notClosed {
+					_, colorExists := newLogs[nextLog.color]
+					if colorExists == false {
+						newLogs[nextLog.color] = map[string][]time.Time{}
 					}
+					_, messageExists := newLogs[nextLog.color][nextLog.message]
+					if messageExists == false {
+						newLogs[nextLog.color][nextLog.message] = []time.Time{}
+					}
+					newLogs[nextLog.color][nextLog.message] = append(
+						newLogs[nextLog.color][nextLog.message], nextLog.theTime)
+				} else {
+					screenMutex.Lock()
+					color.Red("GLOBAL.logInfoChan has closed unexpectedly")
+					screenMutex.Unlock()
 				}
 			default:
 				break
 			}
 		}
-		GLOBAL.loggingMutex.Lock()
-		for colorcode, messages := range newMessages {
-			switch colorcode {
-			case RED:
-				for _, msg := range messages {
-					color.Red(msg)
+
+		screenMutex.Lock()
+		for aColor := range newLogs {
+			for aMsg, multipleTimes := range newLogs[aColor] {
+				if len(multipleTimes) > 1 {
+					earliestTime := multipleTimes[0]
+					for _, thisTime := range multipleTimes {
+						if thisTime.Before(earliestTime) {
+							earliestTime = thisTime
+						}
+					}
+					aMsg = (earliestTime.UTC().Format(defaultTimeLayout) + " " +
+						aMsg + " (repeated " + fmt.Sprint(len(multipleTimes)) + " times)")
+				} else {
+					aMsg = multipleTimes[0].UTC().Format(defaultTimeLayout) + " " + aMsg
 				}
-			case CYAN:
-				for _, msg := range messages {
-					color.Cyan(msg)
-				}
-			case WHITE:
-				for _, msg := range messages {
-					color.White(msg)
+				switch aColor {
+				case RED:
+					color.Red(aMsg)
+				case CYAN:
+					color.Cyan(aMsg)
+				case WHITE:
+					if len(GLOBAL.logInfoChan) < (oneMillion / 2) {
+						color.White(aMsg)
+					}
+				case MAGENTA:
+					if GLOBAL.debugModeBool &&
+						len(GLOBAL.logInfoChan) < (oneMillion/2) {
+						color.Magenta(aMsg)
+					}
 				}
 			}
 		}
-		GLOBAL.loggingMutex.Unlock()
+		screenMutex.Unlock()
 	}
 }
 
-func prepareMessage(arrayOfStrings []string) (t, msg string) {
+func concatenateMessages(arrayOfStrings []string) (msg string) {
 	for i, val := range arrayOfStrings {
 		if i > 0 {
 			msg += " "
 		}
 		msg += val
 	}
-	t = time.Now().UTC().Format(defaultTimeLayout)
 	return
 }
 
-func logInfo(arrayOfStrings ...string) {
-	t, msg := prepareMessage(arrayOfStrings)
+func checkError(err error, arrayOfStrings ...string) bool {
+	if err == nil {
+		return false
+	}
+	msg := concatenateMessages(arrayOfStrings)
 	GLOBAL.logInfoChan <- loggingMessage{
-		color:   WHITE,
-		message: t + " /i " + msg,
+		color:   RED,
+		theTime: time.Now(),
+		message: "/e " + msg + " (err) " + err.Error(),
+	}
+	return true
+}
+
+func logError(arrayOfStrings ...string) {
+	msg := concatenateMessages(arrayOfStrings)
+	GLOBAL.logInfoChan <- loggingMessage{
+		color:   RED,
+		theTime: time.Now(),
+		message: "/e " + msg,
 	}
 }
 
@@ -86,29 +132,27 @@ func logDebug(arrayOfStrings ...string) {
 	if GLOBAL.debugModeBool != true {
 		return
 	}
-	t, msg := prepareMessage(arrayOfStrings)
+	msg := time.Now().UTC().Format(defaultTimeLayout)
+	msg += " /d " + concatenateMessages(arrayOfStrings)
+	screenMutex.Lock()
+	color.Green(msg)
+	screenMutex.Unlock()
+}
+
+func logInfo(arrayOfStrings ...string) {
+	msg := concatenateMessages(arrayOfStrings)
 	GLOBAL.logInfoChan <- loggingMessage{
-		color:   CYAN,
-		message: t + " /d " + msg,
+		color:   WHITE,
+		theTime: time.Now(),
+		message: "/i " + msg,
 	}
 }
 
-func checkError(err error, arrayOfStrings ...string) bool {
-	if err == nil {
-		return false
-	}
-	t, msg := prepareMessage(arrayOfStrings)
+func logTelemetry(arrayOfStrings ...string) {
+	msg := concatenateMessages(arrayOfStrings)
 	GLOBAL.logInfoChan <- loggingMessage{
-		color:   RED,
-		message: t + " /e " + msg,
-	}
-	return true
-}
-
-func logError(arrayOfStrings ...string) {
-	time, msg := prepareMessage(arrayOfStrings)
-	GLOBAL.logInfoChan <- loggingMessage{
-		color:   RED,
-		message: time + " /e " + msg,
+		color:   MAGENTA,
+		theTime: time.Now(),
+		message: "/t " + msg,
 	}
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/ring"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -10,10 +9,8 @@ import (
 	"log"
 	"net"
 	"regexp"
-	"runtime"
 	"sync"
 
-	"flag"
 	"math/rand"
 	"os"
 	"strconv"
@@ -31,9 +28,9 @@ import (
 func main() {
 	const fName = "(main)"
 	switch {
-	case GLOBAL.frontendBool == true:
+	case GLOBAL.enableFrontendBool == true:
 		startFrontendMode() // frontend.go
-	case GLOBAL.backendBool == true:
+	case GLOBAL.enableBackendBool == true:
 		startBackendMode() // backend.go
 	default:
 		logError(fName, "no operating mode was specified")
@@ -41,146 +38,25 @@ func main() {
 	suddenExit()
 }
 
-func init() {
-	const fName = "(init)"
-
-	// sorry not sorry
-	GLOBAL = globalVars{}
-
-	GLOBAL.logInfoChan = make(chan loggingMessage, oneMillion)
-
-	GLOBAL.serverPriority = generateRandomUint64()
-	GLOBAL.numberOfCores = 0
-	GLOBAL.loggingMutex = sync.Mutex{}
-	GLOBAL.waitForCores = sync.WaitGroup{}
-	GLOBAL.exitProgram = make(chan struct{})
-
-	logInfo(fName, "logging initialized")
-	logInfo(fName, fmt.Sprintf("serverPriority=%d", GLOBAL.serverPriority))
-	go handleLogging()
-
-	GLOBAL.clientBlacklist = clientBlacklist{}
-	GLOBAL.clientBlacklist.LiveConnections = map[string][]string{} // remoteIP to functionNames
-	//GLOBAL.clientBlacklist.TotalSessionCount = map[string]uint16{}
-	GLOBAL.clientBlacklist.FailedChallengeCount = map[string]uint16{}
-	GLOBAL.clientBlacklist.FailedChallengeTime = map[string]time.Time{}
-	GLOBAL.clientBlacklist.FailedGoogleAuthCount = map[string]uint16{}
-	GLOBAL.clientBlacklist.FailedGoogleAuthTime = map[string]time.Time{}
-	GLOBAL.clientBlacklist.FailedSessionLimitCount = map[string]uint16{}
-	GLOBAL.clientBlacklist.FailedSessionLimitTime = map[string]time.Time{}
-
-	GLOBAL.turningDataSignal = make(chan struct{})
-	GLOBAL.newTickSignal = make(chan struct{})
-	GLOBAL.mutatingDataBlocker = make(chan struct{})
-	GLOBAL.allServersReadySignal = make(chan struct{})
-	GLOBAL.currentGalaxy = Galaxy{}
-	GLOBAL.futureGalaxy = Galaxy{}
-	GLOBAL.uniqueRequestID = make(chan int64, 9999)
-	GLOBAL.bufferedRequests = make([]incomingClientRequest, 0, oneMillion)
-	GLOBAL.bufferedRequestsMutex = sync.RWMutex{}
-
-	GLOBAL.backendData = backendData{}
-	GLOBAL.backendData.Frontends = []string{}
-	GLOBAL.backendData.Backends = []string{}
-	GLOBAL.backendData.ClientIDs = map[string][]string{}
-	GLOBAL.backendData.SystemBytes = map[string][]byte{}
-	GLOBAL.backendData.SystemHashes = [16]map[string]map[string][4]byte{}
-	GLOBAL.backendData.ParsedPlayerPtrs = map[string][]*SolarSystem{}
-	GLOBAL.backendData.Priorities = map[string]uint64{}
-	GLOBAL.backendData.Latencies = map[string]*ring.Ring{}
-	GLOBAL.backendData.TickTime = 0
-	GLOBAL.backendData.NeighborTickTimes = map[string]uint64{}
-	GLOBAL.backendData.ReceivedMessageFrom = []string{}
-	GLOBAL.backendData.ConfirmedRequestIDs = map[string][]int64{}
-
-	GLOBAL.frontendData = frontendData{}
-	GLOBAL.frontendData.GalGlobalX = map[string]int64{}
-	GLOBAL.frontendData.GalGlobalY = map[string]int64{}
-	GLOBAL.frontendData.GalClientIDs = map[string][]string{}
-	GLOBAL.frontendData.GalBackends = map[string][]string{}
-	GLOBAL.frontendData.BackendLoad = map[string]int{}
-	GLOBAL.frontendData.OtherFrontends = []string{}
-	GLOBAL.frontendData.Message = ""
-	GLOBAL.frontendData.AnotherMessage = ""
-
-	// define commandline flags to parse
-	galaxyNamePtr := flag.String("galaxyname", "", "specify galaxy name")
-	inputFilePtr := flag.String("input", "", "specify data source, either json or blob")
-	outputFilePtr := flag.String("output", "", "override export destination, either json or blob")
-	googleAudiencePtr := flag.String("audience", "", "override google oauth audience")
-	authPasswordPtr := flag.String("password", "", "specify password for authentication purposes")
-	staticFrontendPtr := flag.String("staticfrontend", "", "specify static frontend address")
-	localInterfacePtr := flag.String("interface", "", "override local interface to use")
-	localAddressPtr := flag.String("localip", "", "override local ip to use")
-	frontendBoolPtr := flag.Bool("frontend", false, "enable frontend mode")
-	backendBoolPtr := flag.Bool("backend", false, "enable backend mode")
-	createGalaxyBoolPtr := flag.Bool("generate", false, "enable creation of new Galaxy, dangerous!")
-	debugModeBoolPtr := flag.Bool("debug", false, "enable debug logging")
-	singleThreadedBoolPtr := flag.Bool("singlethreaded", false, "force singlethreaded behavior")
-	testModeBoolPtr := flag.Bool("test", false, "enable testing mode")
-
-	// parse the arguments
-	flag.Parse()
-	GLOBAL.galaxyName = *galaxyNamePtr
-	GLOBAL.inputFile = *inputFilePtr
-	GLOBAL.outputFile = *outputFilePtr
-	GLOBAL.googleAudience = *googleAudiencePtr
-	GLOBAL.authPassword = *authPasswordPtr
-	GLOBAL.staticFrontend = *staticFrontendPtr
-	GLOBAL.localInterface = *localInterfacePtr
-	GLOBAL.localAddress = *localAddressPtr
-	GLOBAL.frontendBool = *frontendBoolPtr
-	GLOBAL.backendBool = *backendBoolPtr
-	GLOBAL.createGalaxyBool = *createGalaxyBoolPtr
-	GLOBAL.debugModeBool = *debugModeBoolPtr
-	GLOBAL.singleThreadedBool = *singleThreadedBoolPtr
-	GLOBAL.testModeBool = *testModeBoolPtr
-
-	if GLOBAL.googleAudience == "" {
-		GLOBAL.googleAudience = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
-	}
-
-	// sanity check that a password was provided
-	if GLOBAL.authPassword == "" {
-		logInfo(fName, "no password provided, using default password")
-		GLOBAL.authPassword += "uVXMHpASbDngPe41pUP1"
-		GLOBAL.authPassword += "CKwRCU6ZGap6IxQ6OQaM"
-		GLOBAL.authPassword += "AtJgeaIhHLzO0IibxE8B"
-		GLOBAL.authPassword += "7aYOpAXkC388SRg4G3jO"
-		GLOBAL.authPassword += "kkgrBnOOUPxnT6QopsFH"
-		GLOBAL.authPassword += "a0F7qFScNxYuCaiRvii3"
-		GLOBAL.authPassword += "WvhhNNsFaRupwZc7SXXw"
-		GLOBAL.authPassword += "cPk93TWZs0kllqVhCN0G"
-		GLOBAL.authPassword += "9oKiFpa0p7Mfwd8CqHiz"
-		GLOBAL.authPassword += "3ghjZw6FI17DjdObCXSF"
-	}
-
-	// singlethreaded mode for debugging (and emergencies)
-	if GLOBAL.singleThreadedBool {
-		GLOBAL.numberOfCores = 1
-	} else {
-		GLOBAL.numberOfCores = runtime.NumCPU()
-	}
-	logInfo(fName, fmt.Sprintf("using %v threads", GLOBAL.numberOfCores))
-}
-
 func suddenExit() {
-	i := 1
+	i := 0
+	time.Sleep(time.Second)
 	for len(GLOBAL.logInfoChan) != 0 {
+		logError("(suddenExit) shutting down in", fmt.Sprint(15-i), "seconds")
 		time.Sleep(time.Second)
-		if i > 30 {
+		if i > 15 {
 			break
 		}
 		i++
 	}
-	GLOBAL.loggingMutex.Lock()
 	t := time.Now().UTC().Format("2006-01-02 15:04:05")
-	color.Red(t + " (main) program has finished executing")
-	GLOBAL.loggingMutex.Unlock()
+	color.Red(t + " /e (suddenExit) program has finished executing")
 	os.Exit(1)
 }
 
 func handleInputParameters(fName string) {
+	GLOBAL.galaxyMutex.Lock()
+	defer GLOBAL.galaxyMutex.Unlock()
 	// is the inputfilename empty?
 	// if so set doneMatching to 'true' so that we can skip later logic
 	var doneMatching bool
@@ -206,7 +82,7 @@ func handleInputParameters(fName string) {
 					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
 				}
 			}
-			if err := proto.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
+			if err := proto.Unmarshal(in, GLOBAL.galaxy); err != nil {
 				log.Fatalln("Failed to parse galaxy file:", err)
 			}
 		}
@@ -227,7 +103,7 @@ func handleInputParameters(fName string) {
 					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
 				}
 			}
-			if err := json.Unmarshal(in, &GLOBAL.currentGalaxy); err != nil {
+			if err := json.Unmarshal(in, &GLOBAL.galaxy); err != nil {
 				log.Fatalln("Failed to parse galaxy file:", err)
 			}
 		}
@@ -242,33 +118,44 @@ func handleInputParameters(fName string) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func getWebsocketDialer() (dialer *websocket.Dialer) {
-	dialer = &websocket.Dialer{}
-	defer func() {
-		logDebug(fmt.Sprintf("*websocket.Dialer = %+v", dialer))
-	}()
+func parallelProcessSystems(gal *Galaxy, doSomething func(*SolarSystem, int)) {
+	wg := sync.WaitGroup{}
+	wg.Add(GLOBAL.numberOfCores)
+	numSystems := len(gal.Solarsystemslice)
+	systemsPerCore := numSystems / GLOBAL.numberOfCores
+	for coreNum := 0; coreNum < GLOBAL.numberOfCores; coreNum++ {
+		stopIndex := systemsPerCore * (coreNum + 1)
+		startIndex := stopIndex - systemsPerCore
+		if coreNum == GLOBAL.numberOfCores-1 {
+			stopIndex = numSystems
+		}
+		go func(cn int) {
+			for ssIndex := startIndex; ssIndex < stopIndex; ssIndex++ {
+				doSomething(gal.Solarsystemslice[ssIndex], cn)
+			}
+			wg.Done()
+		}(coreNum)
+	}
+	wg.Wait()
+}
+
+func getLocalAddress() (tcpAddr net.TCPAddr) {
 	if GLOBAL.localInterface != "" {
 		iface, err := net.InterfaceByName(GLOBAL.localInterface)
 		if checkError(err) == false {
 			addrs, anotherError := iface.Addrs()
 			if checkError(anotherError) == false {
-				tcpAddr := &net.TCPAddr{
+				tcpAddr = net.TCPAddr{
 					IP: addrs[0].(*net.IPNet).IP,
-				}
-				logDebug("using", iface.Name, "and",
-					addrs[0].(*net.IPNet).IP.String())
-				netDialer := &net.Dialer{
-					LocalAddr: tcpAddr,
-					Deadline:  time.Now().Add(time.Second * 30),
-				}
-				logDebug(fmt.Sprintf("netDialer = %+v", netDialer))
-				dialer = &websocket.Dialer{
-					NetDial: netDialer.Dial,
 				}
 			}
 		}
 	}
 	if GLOBAL.localAddress != "" {
+		tcpAddr = net.TCPAddr{
+			IP: net.ParseIP(GLOBAL.localAddress),
+		}
+	} else {
 		ifaces, err := net.Interfaces()
 		if checkError(err) == false {
 			for _, iface := range ifaces {
@@ -280,27 +167,28 @@ func getWebsocketDialer() (dialer *websocket.Dialer) {
 					if checkError(err) {
 						continue
 					}
-					ipAddr := addr.(*net.IPNet).IP
-					if ipAddr.String() == GLOBAL.localAddress {
-						tcpAddr := &net.TCPAddr{
-							IP: addr.(*net.IPNet).IP,
-						}
-						logDebug("using", iface.Name, "and",
-							ipAddr.String())
-						netDialer := &net.Dialer{
-							LocalAddr: tcpAddr,
-							Deadline:  time.Now().Add(time.Second * 30),
-						}
-						logDebug(fmt.Sprintf("netDialer = %+v", netDialer))
-						dialer = &websocket.Dialer{
-							NetDial: netDialer.Dial,
-						}
-						return dialer
+					tcpAddr = net.TCPAddr{
+						IP: addr.(*net.IPNet).IP,
 					}
+					return tcpAddr
 				}
 			}
 		}
 	}
+	return tcpAddr
+}
+
+func getWebsocketDialer() (dialer *websocket.Dialer) {
+	tcpAddr := getLocalAddress()
+	netDialer := &net.Dialer{
+		LocalAddr: &tcpAddr,
+		Deadline:  time.Now().Add(time.Second * 30),
+	}
+	// logDebug(fmt.Sprintf("netDialer = %+v", netDialer))
+	dialer = &websocket.Dialer{
+		NetDial: netDialer.Dial,
+	}
+	// logDebug(fmt.Sprintf("*websocket.Dialer = %+v", dialer))
 	return dialer
 }
 
@@ -405,6 +293,80 @@ func getPosOrNegOne() int {
 		return 1
 	}
 	return -1
+}
+
+func getNumberString(num int) string {
+	mappings := map[int]string{
+		1:  "one",
+		2:  "two",
+		3:  "three",
+		4:  "four",
+		5:  "five",
+		6:  "six",
+		7:  "seven",
+		8:  "eight",
+		9:  "nine",
+		10: "ten",
+		11: "eleven",
+		12: "twelve",
+		13: "thirteen",
+		14: "fourteen",
+		15: "fifteen",
+		16: "sixteen",
+		17: "seventeen",
+		18: "eighteen",
+		19: "nineteen",
+		20: "twenty",
+		21: "twenty-one",
+		22: "twenty-two",
+		23: "twenty-three",
+		24: "twenty-four",
+		25: "twenty-five",
+		26: "twenty-six",
+		27: "twenty-seven",
+		28: "twenty-eight",
+		29: "twenty-nine",
+		30: "thirty",
+		31: "thirty-one",
+		32: "thirty-two",
+		33: "thirty-three",
+		34: "thirty-four",
+		35: "thirty-five",
+		36: "thirty-six",
+		37: "thirty-seven",
+		38: "thirty-eight",
+		39: "thirty-nine",
+		40: "forty",
+		41: "forty-one",
+		42: "forty-two",
+		43: "forty-three",
+		44: "forty-four",
+		45: "forty-five",
+		46: "forty-six",
+		47: "forty-seven",
+		48: "forty-eight",
+		49: "forty-nine",
+		50: "fifty",
+		51: "fifty-one",
+		52: "fifty-two",
+		53: "fifty-three",
+		54: "fifty-four",
+		55: "fifty-five",
+		56: "fifty-six",
+		57: "fifty-seven",
+		58: "fifty-eight",
+		59: "fifty-nine",
+		60: "sixty",
+		61: "sixty-one",
+		62: "sixty-two",
+		63: "sixty-three",
+		64: "sixty-four",
+	}
+	result, ok := mappings[num]
+	if !ok {
+		return fmt.Sprint(num)
+	}
+	return result
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

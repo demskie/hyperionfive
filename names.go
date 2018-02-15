@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,55 +19,42 @@ type NamedObject struct {
 	Hex  string
 }
 
+var loadedGalaxyNames map[string]NamedObject
+var loadedSystemNames map[string]NamedObject
+
 func replaceStringAtIndex(str string, replacement rune, index int) string {
 	out := []rune(str)
 	out[index] = replacement
 	return string(out)
 }
 
-// LoadAllNames ...
-func (obj *NamedObject) LoadAllNames() (verbs []string, nouns []string) {
-	fName := "(loadAllNames)"
+func init() {
+	const fName = "(loadAllNames)"
 	exPath, err := os.Executable()
 	if checkError(err, fName) {
 		suddenExit()
 	}
 	dir := filepath.Dir(exPath)
-	if len(loadedVerbs) != 0 {
-		verbs = loadedVerbs
-	} else {
-		rawBytes, err := ioutil.ReadFile(filepath.Join(dir, "names_verbs.txt"))
+	for _, filename := range []string{"names_verbs.txt", "names_nouns.txt"} {
+		rawBytes, err := ioutil.ReadFile(filepath.Join(dir, filename))
 		if checkError(err, fName) {
 			suddenExit()
 		}
 		rawString := string(rawBytes[:])
-		verbs = strings.Split(rawString, "\n")
-		for i, s := range verbs {
+		lines := strings.Split(rawString, "\n")
+		for i, s := range lines {
 			s = strings.TrimSpace(s)
 			s = strings.ToLower(s)
-			if s != "" {
-				verbs[i] = strings.Title(s)
+			lastLineIdx := len(lines) - 1
+			if s == "" && i != lastLineIdx {
+				logError(fName, filename, "has an empty string on line", fmt.Sprint(i))
+			} else if filename == "names_verbs.txt" {
+				loadedVerbs = append(loadedVerbs, strings.Title(s))
+			} else {
+				loadedNouns = append(loadedNouns, strings.Title(s))
 			}
 		}
 	}
-	if len(loadedNouns) != 0 {
-		nouns = loadedNouns
-	} else {
-		rawBytes, err := ioutil.ReadFile(filepath.Join(dir, "names_nouns.txt"))
-		if checkError(err, fName) {
-			suddenExit()
-		}
-		rawString := string(rawBytes[:])
-		nouns = strings.Split(rawString, "\n")
-		for i, s := range nouns {
-			s = strings.TrimSpace(s)
-			s = strings.ToLower(s)
-			if s != "" {
-				nouns[i] = strings.Title(s)
-			}
-		}
-	}
-	return verbs, nouns
 }
 
 // GetFullName ...
@@ -83,12 +71,11 @@ const (
 
 func generateName(nameType int32, objType int32) NamedObject {
 	newName := NamedObject{}
-	allVerbs, allNames := newName.LoadAllNames()
 	rnum := getCryptoRnum()
-	idx := rnum.Intn(len(allVerbs))
-	newName.Verb = allVerbs[idx]
-	idx = rnum.Intn(len(allVerbs))
-	newName.Noun = allNames[idx]
+	idx := rnum.Intn(len(loadedVerbs))
+	newName.Verb = loadedVerbs[idx]
+	idx = rnum.Intn(len(loadedNouns))
+	newName.Noun = loadedNouns[idx]
 	newName.Hex = strconv.FormatUint(rnum.Uint64(), 16)[0:6]
 	return newName
 }

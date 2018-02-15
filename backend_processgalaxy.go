@@ -1,40 +1,121 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/gogo/protobuf/proto"
 )
 
-func processGalaxy(seeds map[string]int64, requests []incomingClientRequest, galaxy Galaxy) {
+func processGalaxy(futureGalaxy *Galaxy, sysIndex map[string]int) {
+	const fName = "(processGalaxy)"
+	start := time.Now()
 
-	// TODO - verify that the order of objects is constant when deserialized
+	if GLOBAL.galaxy.Solarsystemslice != nil {
+		deepCopyGalaxy(GLOBAL.galaxy, futureGalaxy, sysIndex)
+	} else {
+		logError(fName, "just tried to process a nil Galaxy")
+		return
+	}
 
-	for _, ss := range galaxy.Solarsystemslice {
-		for _, ob := range ss.Solarobjectslice {
-			if isPlanet(ob.Type) || ob.Type == TITAN {
-				ob.Population = growPopulation(ob.Population, ob.Food)
+	// estimate futureGalaxy tick time by referencing previous tick time
+	GLOBAL.backendData.Lock() // BUG // not sure if this is needed
+	longestTickTime := GLOBAL.backendData.LocalTickTime
+	for _, neighbor := range GLOBAL.backendData.ReceivedMessageFrom {
+		remoteTickTime := GLOBAL.backendData.NeighborTickTimes[neighbor]
+		if remoteTickTime > longestTickTime {
+			longestTickTime = remoteTickTime
+		}
+	}
+	timeMultiplier := longestTickTime.Seconds()
+	if timeMultiplier <= float64(0) {
+		timeMultiplier = float64(1)
+	}
+	rnumMapping := make([]*rand.Rand, GLOBAL.numberOfCores)
+	for coreID := range rnumMapping {
+		seed := int64(coreID)
+		for _, sysHash := range GLOBAL.backendData.SystemHashes {
+			seed += sysHash
+		}
+		rnumMapping[coreID] = rand.New(rand.NewSource(seed))
+	}
+	confirmedRequests := []modifiedClientRequest{}
+	GLOBAL.allRequests.Lock()
+	for uniqueID, possibleConfirmedRequest := range GLOBAL.allRequests.Buffered {
+		allNeighborsConfirmed := true
+		for neighbor := range GLOBAL.allRequests.ConfirmedIDs {
+			_, ok := GLOBAL.allRequests.ConfirmedIDs[neighbor][uniqueID]
+			if !ok {
+				allNeighborsConfirmed = false
+			}
+		}
+		if allNeighborsConfirmed {
+			confirmedRequests = append(confirmedRequests, possibleConfirmedRequest)
+			delete(GLOBAL.allRequests.Buffered, uniqueID)
+			for neighbor := range GLOBAL.allRequests.ConfirmedIDs {
+				delete(GLOBAL.allRequests.ConfirmedIDs[neighbor], uniqueID)
 			}
 		}
 	}
+	GLOBAL.allRequests.Unlock()
+	GLOBAL.backendData.Unlock()
+
+	sysHashes := make([]map[string]int64, GLOBAL.numberOfCores)
+	for i := range sysHashes {
+		sysHashes[i] = make(map[string]int64, totalNumSystems)
+	}
+
+	// TODO // verify that the order of objects is constant when deserialized
+	parallelProcessSystems(futureGalaxy, func(ss *SolarSystem, coreID int) {
+
+		// deserialize any systems that are in recovery
+		val, exists := GLOBAL.backendData.SystemsInRecovery[ss.Name]
+		if exists && val {
+			proto.Unmarshal(GLOBAL.backendData.SystemBytes[ss.Name], ss)
+		}
+		rnum := rnumMapping[coreID]
+
+		// calculate population
+		for _, ob := range ss.Solarobjectslice {
+			if isPlanet(ob.Type) || ob.Type == TITAN {
+				ob.Population = growPopulation(rnum, timeMultiplier, ob.Population, ob.Food)
+			}
+		}
+
+		// calculate a rough hash (must be done last)
+		sysHashes[coreID][ss.Name] = ss.InterX + ss.InterY + int64(ss.Type)
+		if len(ss.Solarobjectslice) != 0 {
+			obj := ss.Solarobjectslice[rnum.Intn(len(ss.Solarobjectslice))]
+			sysHashes[coreID][ss.Name] += obj.LocalX + obj.LocalY + int64(obj.Food)
+			sysHashes[coreID][ss.Name] += int64(obj.Population) + int64(obj.Health)
+		}
+
+	})
+
+	GLOBAL.backendData.Lock()
+	// overwrite GLOBAL.backendData.SystemHashes
+	for i := range sysHashes {
+		for k, v := range sysHashes[i] {
+			GLOBAL.backendData.SystemHashes[k] = v
+		}
+	}
+
+	// reset systemsInRecovery now that we've processed them all
+	GLOBAL.backendData.SystemsInRecovery = make(map[string]bool, totalNumSystems)
+	GLOBAL.backendData.Unlock()
+
+	logTelemetry(fName, fmt.Sprintf("finished in %v milliseconds",
+		time.Since(start).Nanoseconds()/1e6))
 }
 
-func growPopulation(currentIntPop uint64, foodSupply int32) uint64 {
+func growPopulation(rnum *rand.Rand, timeMultiplier float64, currentIntPop uint64, foodSupply int32) uint64 {
 	// https://play.golang.org/p/gWizLY0X2A
-
 	N := float64(currentIntPop)
-	//logDebug(commaFormatUint(uint64(N)))
-
 	foodSupplyDbl := float64(foodSupply)
-	stime := rand.NewSource(time.Now().UnixNano())
-	rnum := rand.New(stime)
-
-	// population if foodSupply == 0
 	referencePopulation := float64(10000)
-
-	// maximum % change allowed in single turn (.0005 is standard)
-	maxPercentChange := .005
-
+	maxPercentChange := .0005
 	randomness := referencePopulation * (1 + rnum.NormFloat64()*.1)
 	K := randomness * math.Pow(foodSupplyDbl, 3.4)
 
@@ -48,14 +129,24 @@ func growPopulation(currentIntPop uint64, foodSupply int32) uint64 {
 		logisticPercentChange = .000001
 	}
 
-	return uint64(N + (N*maxPercentChange)*logisticPercentChange)
+	return uint64(N + ((N*maxPercentChange)*logisticPercentChange)*timeMultiplier)
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
+func isPlanet(val int32) bool {
+	if val < 12 {
+		return true
+	}
+	return false
+}
 
-// object type
+func isShip(val int32) bool {
+	if (12 < val) && (val < 19) {
+		return true
+	}
+	return false
+}
+
+// defining types of objects
 const (
 	TERRAN         int32 = iota // -20% population
 	DESERT                      // -50% population, 2x logistics
@@ -79,20 +170,6 @@ const (
 	_                           // _19_
 )
 
-func isPlanet(val int32) bool {
-	if val < 12 {
-		return true
-	}
-	return false
-}
-
-func isShip(val int32) bool {
-	if (12 < val) && (val < 19) {
-		return true
-	}
-	return false
-}
-
 // solarsystem type
 const (
 	YELLOWGIANT int32 = iota // most desirable
@@ -110,7 +187,3 @@ const (
 	BARREDSPIRAL
 	IRREGULAR
 )
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////

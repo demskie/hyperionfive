@@ -32,7 +32,7 @@ func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	logInfo(fName, "receiving connection:", remoteIP, "using", localIP)
 	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)
@@ -68,7 +68,7 @@ func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	logInfo(fName, "receiving connection:", remoteIP, "using", localIP)
 	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)
@@ -103,7 +103,7 @@ func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-	logInfo(fName, "opening connection:", remoteIP, "using", localIP)
+	logInfo(fName, "receiving connection:", remoteIP, "using", localIP)
 	defer logInfo(fName, "closing connection:", remoteIP, "using", localIP)
 
 	addSessionToHistory(remoteIP, fName)

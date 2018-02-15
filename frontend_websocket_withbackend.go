@@ -13,15 +13,14 @@ import (
 
 func getGalName(remoteIP string) string {
 	GLOBAL.frontendData.RLock()
+	defer GLOBAL.frontendData.RUnlock()
 	for galName, backends := range GLOBAL.frontendData.GalBackends {
 		for _, backend := range backends {
 			if backend == remoteIP {
-				GLOBAL.frontendData.RUnlock()
 				return galName
 			}
 		}
 	}
-	GLOBAL.frontendData.RUnlock()
 	return ""
 }
 
@@ -32,12 +31,6 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 	////////////////////////////////////////////////////////////
 	// kickoff galaxyinfo generation if necessary
 	////////////////////////////////////////////////////////////
-
-	if getGalName(remoteIP) == "" {
-		if generateGlobalGalaxyInfo(remoteIP) != true {
-			return
-		}
-	}
 
 	////////////////////////////////////////////////////////////
 	// create channel to backout of nested gofuncs and for loops
@@ -72,6 +65,10 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 				// prepare outgoing message
 				networkOut.Reset()
 				galName := getGalName(remoteIP)
+				if galName == "" {
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
 				outMsg := frontendToBackendMessage{}
 				GLOBAL.frontendData.RLock()
 				outMsg.GalaxyName = galName
@@ -93,7 +90,7 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 					return
 				}
 				conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
-				time.Sleep(1000 * time.Millisecond)
+				time.Sleep(1000 * time.Millisecond * time.Duration(GLOBAL.debugMultiplier))
 			}
 		}
 	}()
@@ -129,43 +126,47 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 				}
 				logDebug(fName, remoteIP, fmt.Sprintf("inMsg=  %+v", inMsg))
 
-				// handle GalaxyName data
+				// check if this server is generating a new galaxy
+				if inMsg.GalaxyName == "" && inMsg.Message == "GENERATEGALAXY" {
+					logInfo(fName, remoteIP, "is requesting galaxy generation")
+					if generateGlobalGalaxyInfo(remoteIP) != true {
+						continue
+					}
+				}
+
+				// no need to continue until other server discovers it's galName
 				if inMsg.GalaxyName == "" {
-					logInfo(fName, remoteIP, "hasn't been assigned a galaxy yet")
 					continue
 				}
 				galName := getGalName(remoteIP)
-				if galName == "" && inMsg.GalaxyName != "" {
-					logInfo(fName, remoteIP, "knows about a galaxy that we do not:",
-						inMsg.GalaxyName)
-					continue
-				}
-				if inMsg.GalaxyName != galName && galName != "" {
-					logError(fName, remoteIP, "is serving the",
-						inMsg.GalaxyName, "galaxy instead of", galName)
-					continue
-				}
 
 				GLOBAL.frontendData.Lock()
 
-				// handle GlobalX data
-				glblX, ok := GLOBAL.frontendData.GalGlobalX[galName]
-				if !ok && inMsg.GlobalX != glblX {
-					logError(fName, "according to", remoteIP, "GlobalX for", galName,
-						"has changed from", fmt.Sprintf("%v", glblX), "to",
-						fmt.Sprintf("%v", inMsg.GlobalX))
-				} else {
-					GLOBAL.frontendData.GalGlobalX[galName] = inMsg.GlobalX
+				if galName == "" {
+					_, ok := GLOBAL.frontendData.GalBackends[inMsg.GalaxyName]
+					if !ok {
+						GLOBAL.frontendData.GalBackends[inMsg.GalaxyName] = []string{remoteIP}
+					} else {
+						GLOBAL.frontendData.GalBackends[inMsg.GalaxyName] = append(
+							GLOBAL.frontendData.GalBackends[inMsg.GalaxyName], remoteIP)
+					}
+					galName = inMsg.GalaxyName
 				}
 
-				// handle GlobalY data
+				// check GlobalX data
+				glblX, ok := GLOBAL.frontendData.GalGlobalX[galName]
+				if !ok && inMsg.GlobalX != glblX {
+					logInfo(fName, "according to the", remoteIP, "backend GlobalX for",
+						galName, "has changed from", fmt.Sprintf("%v", glblX), "to",
+						fmt.Sprintf("%v", inMsg.GlobalX))
+				}
+
+				// check GlobalY data
 				glblY, ok := GLOBAL.frontendData.GalGlobalY[galName]
 				if !ok && inMsg.GlobalY != glblY {
-					logError(fName, "according to", remoteIP, "GlobalY for", galName,
-						"has changed from", fmt.Sprintf("%v", glblY), "to",
+					logInfo(fName, "according to the", remoteIP, "backend GlobalY for",
+						galName, "has changed from", fmt.Sprintf("%v", glblY), "to",
 						fmt.Sprintf("%v", inMsg.GlobalY))
-				} else {
-					GLOBAL.frontendData.GalGlobalY[galName] = inMsg.GlobalY
 				}
 
 				// handle ClientIDs data

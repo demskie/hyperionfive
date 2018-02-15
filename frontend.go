@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	fmt "fmt"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -25,8 +24,14 @@ func startFrontendMode() {
 			h.ServeHTTP(w, r)
 		}
 	}
-	directory := http.Dir("D:\\OneDrive\\GoPrototypes\\src\\GOSERVER\\websiteroot\\")
-	fileserverWithModifiedHeaders := addSecurityHeaders(http.FileServer(directory))
+	exPath, err := os.Executable()
+	if checkError(err, fName) {
+		suddenExit()
+	}
+	partialDirPath := filepath.Dir(exPath)
+	entireDirPath := filepath.Join(partialDirPath, "websiteroot\\")
+	directoryObject := http.Dir(entireDirPath)
+	fileserverWithModifiedHeaders := addSecurityHeaders(http.FileServer(directoryObject))
 
 	// setup the fileserver handler now that the necessary security headers have been added
 	muxSecure.Handle("/", fileserverWithModifiedHeaders)
@@ -98,33 +103,38 @@ func startFrontendMode() {
 		}
 	}()
 
-	// define nonsecure HTTP parameters
-	srvInsecure := &http.Server{
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			w.Header().Set("Connection", "close")
-			url := "https://" + req.Host + req.URL.String()
-			http.Redirect(w, req, url, http.StatusMovedPermanently)
-		}),
-	}
-
 	if GLOBAL.debugModeBool {
-		// serve HTTP requests just for Debug purposes
-		profmux := http.NewServeMux()
-		profmux.HandleFunc("/debug/pprof/", pprof.Index)
-		profmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		profmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		profmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		profmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		profmux.Handle("/debug/pprof/block", pprof.Handler("block"))
-		profmux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
-		profmux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
-		profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
-		err := http.ListenAndServe(":8080", profmux)
-		checkError(err, fName, fmt.Sprintf("Error when starting pprof server:"))
+		go func() {
+			// serve HTTP requests just for Debug purposes
+			profmux := http.NewServeMux()
+			profmux.HandleFunc("/debug/pprof/", pprof.Index)
+			profmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+			profmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+			profmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+			profmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+			profmux.Handle("/debug/pprof/block", pprof.Handler("block"))
+			profmux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+			profmux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+			profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+			srvProf := &http.Server{
+				Addr:    getLocalAddr() + ":8080",
+				Handler: profmux,
+			}
+			errServeInsecure := srvProf.ListenAndServe()
+			checkError(errServeInsecure, fName, "(pprof)")
+		}()
 	} else {
+		// define nonsecure HTTP parameters
+		srvInsecure := &http.Server{
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  30 * time.Second,
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				w.Header().Set("Connection", "close")
+				url := "https://" + req.Host + req.URL.String()
+				http.Redirect(w, req, url, http.StatusMovedPermanently)
+			}),
+		}
 		// serve HTTP requests by redirecting to HTTPS
 		go func() {
 			errServeInsecure := srvInsecure.ListenAndServe()
@@ -147,14 +157,10 @@ func gracefullyCloseFrontend() {
 	// signal exit
 	close(GLOBAL.exitProgram)
 
-	// wait for logging to complete
-	GLOBAL.loggingMutex.Lock()
-	fmt.Println("PROGRAM EXITING GRACEFULLY")
-	GLOBAL.loggingMutex.Unlock()
-	time.Sleep(1 * time.Second)
+	// TODO //
+	// DO SOME STUFF //
 
-	// halt all further execution
-	os.Exit(1)
+	suddenExit()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

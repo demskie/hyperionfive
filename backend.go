@@ -1,14 +1,10 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/tls"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -18,266 +14,219 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 	"time"
 
-	"github.com/dhconnelly/rtreego"
 	"github.com/golang/protobuf/proto"
 )
 
 func startBackendMode() {
-	fName := "(backendMainFunc)"
+	const fName = "(backendMainFunc)"
 
-	if true {
+	if false {
 		handleInputParameters(fName)
 	}
 
-	if true {
+	if GLOBAL.createGalaxyBool == true && GLOBAL.galaxy.Solarsystemslice == nil {
+		galaxyType := ELLIPTICAL
+		generateGalaxy(galaxyType)
+	}
+
+	if false {
 		go func() {
 			for {
 				spawnBackendToFrontend("hyperion5.com")
 				time.Sleep(1 * time.Second)
 			}
 		}()
-	}
-
-	if GLOBAL.createGalaxyBool == true {
-		galaxyType := ELLIPTICAL
-		generateGalaxy(galaxyType)
-		logInfo(fmt.Sprint("   ...\tDeleting Rtree"))
-		rtree = &rtreego.Rtree{}
-		rtreeObjects = []rtreego.Spatial{}
-	}
-
-	if true {
-		go func() {
-			for {
-				GLOBAL.backendData.RLock()
-				for _, backendAddress := range GLOBAL.backendData.Backends {
-					spawnBackendToBackend(backendAddress)
-				}
-				GLOBAL.backendData.RUnlock()
-				time.Sleep(100 * time.Millisecond)
-			}
-		}()
-	}
-
-	////////////////////////////////////////////////////////////
-	// define functions to be used in primary game loop
-	////////////////////////////////////////////////////////////
-
-	copyDataFromGlobals := func() {
-		GLOBAL.backendData.RLock()
-		GLOBAL.futureGalaxy.Name = GLOBAL.backendData.GalaxyName
-		GLOBAL.futureGalaxy.GlobalX = GLOBAL.backendData.GlobalX
-		GLOBAL.futureGalaxy.GlobalY = GLOBAL.backendData.GlobalY
-		GLOBAL.backendData.RUnlock()
-	}
-
-	copyFutureIntoCurrentGalaxy := func() {
-		x := proto.Clone(&GLOBAL.futureGalaxy)
-		GLOBAL.currentGalaxy = *x.(*Galaxy)
-	}
-
-	generateCurrentSystemHashes := func() {
+	} else {
+		// BUG // for debugging only
 		GLOBAL.backendData.Lock()
-		for i := range GLOBAL.backendData.SystemHashes {
-			x := i - 1
-			if x < 0 {
-				continue
-			}
-			for sysName, localHash := range GLOBAL.backendData.SystemHashes[i]["0.0.0.0"] {
-				GLOBAL.backendData.SystemHashes[x]["0.0.0.0"][sysName] = localHash
-			}
+		GLOBAL.backendData.GalaxyName = "TiredArchf24dab"
+		GLOBAL.backendData.GlobalX = -1468782671338529121
+		GLOBAL.backendData.GlobalY = 6968993604325489026
+		if GLOBAL.localAddress == "192.168.99.1" {
+			GLOBAL.backendData.Backends = []string{"192.168.99.2"}
+		} else if GLOBAL.localAddress == "192.168.99.2" {
+			GLOBAL.backendData.Backends = []string{"192.168.99.1"}
 		}
-		// https://play.golang.org/p/MkJvT-ngmQ
-		newSlice := [16]map[string]map[string][4]byte{}
-		for i := 0; i < len(GLOBAL.backendData.SystemHashes)-1; i++ {
-			newSlice[i+1] = GLOBAL.backendData.SystemHashes[i]
-		}
-		for i := range GLOBAL.currentGalaxy.Solarsystemslice {
-			data, err := proto.Marshal(GLOBAL.currentGalaxy.Solarsystemslice[i])
-			if checkError(err, fName, "CRITICAL FAILURE - MARSHALLING GALAXY FOR CRC TEST") {
-				// TODO // handle this error
-			}
-			systemName := GLOBAL.currentGalaxy.Solarsystemslice[i].Name
-			GLOBAL.backendData.SystemBytes[systemName] = data
-			buffer := bytes.NewBuffer(data)
-			reader := bufio.NewReader(buffer)
-			scanner := bufio.NewScanner(reader)
-			hash := crc32.NewIEEE()
-			for scanner.Scan() {
-				hash.Write(scanner.Bytes())
-			}
-			hashSum := hash.Sum(nil)
-			tmpArray := [4]byte{}
-			copy(tmpArray[:], hashSum)
-			newSlice[0]["0.0.0.0"][systemName] = tmpArray
-		}
-		copy(GLOBAL.backendData.SystemHashes[:], newSlice[:])
 		GLOBAL.backendData.Unlock()
 	}
 
-	processOutstandingUserRequests := func() {
-		validRequestIDs := []int64{}
-		GLOBAL.backendData.Lock()
-		for _, allIDs := range GLOBAL.backendData.ConfirmedRequestIDs {
-			for _, potentialRequestID := range allIDs {
-				validRequest := true
-				for neighbor := range GLOBAL.backendData.ConfirmedRequestIDs {
-					if validRequest == false {
-						break
-					}
+	go func() {
+		for {
+			copyOfBackends := []string{}
+			GLOBAL.backendData.RLock()
+			copyOfBackends = append(copyOfBackends, GLOBAL.backendData.Backends...)
+			GLOBAL.backendData.RUnlock()
+			for _, backendAddress := range copyOfBackends {
+				spawnBackendToBackend(backendAddress)
+			}
+			if GLOBAL.debugModeBool {
+				time.Sleep(5 * time.Second)
+			} else {
+				time.Sleep(1 * time.Second)
+			}
+		}
+	}()
+
+	if false {
+		for {
+			switch {
+			case len(GLOBAL.backendData.Frontends) == 0:
+				logError(fName, "waiting for fronendSync")
+				time.Sleep(1 * time.Second)
+				continue
+			case GLOBAL.galaxy.Name == "":
+				logError(fName, "waiting to be assigned a galaxyName")
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			time.Sleep(1 * time.Second)
+			break
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////
+
+	serializeSystems := func(systemBytesBuffer map[string]*proto.Buffer) {
+		const fName = "(serializeSystems)"
+		start := time.Now()
+		parallelProcessSystems(GLOBAL.galaxy, func(ss *SolarSystem, coreID int) {
+			err := systemBytesBuffer[ss.Name].Marshal(ss)
+			checkError(err, fName)
+		})
+		logTelemetry(fName, fmt.Sprintf("finished in %v milliseconds",
+			time.Since(start).Nanoseconds()/1e6))
+	}
+
+	getSystemPointers := func(bufferGalaxy *Galaxy) (sysPointers map[string][]*SolarSystem) {
+		const fName = "(getSystemPointers)"
+		start := time.Now()
+		tempSliceMap := make([]map[string][]*SolarSystem, GLOBAL.numberOfCores)
+		for i := range tempSliceMap {
+			tempSliceMap[i] = make(map[string][]*SolarSystem, maxNumberOfPlayers)
+		}
+		parallelProcessSystems(bufferGalaxy, func(ss *SolarSystem, coreID int) {
+			for _, obj := range ss.Solarobjectslice {
+				if obj.Owner == "" {
+					continue
+				}
+				_, ownerExists := tempSliceMap[coreID][obj.Owner]
+				if !ownerExists {
+					tempSliceMap[coreID][obj.Owner] = []*SolarSystem{ss}
+				} else {
 					foundMatch := false
-					for _, id := range GLOBAL.backendData.ConfirmedRequestIDs[neighbor] {
-						if id == potentialRequestID {
+					for _, anotherSS := range tempSliceMap[coreID][obj.Owner] {
+						if ss == anotherSS {
 							foundMatch = true
 							break
 						}
 					}
 					if foundMatch == false {
-						validRequest = false
-					}
-				}
-				if validRequest == true {
-					foundMatch := false
-					for _, id := range validRequestIDs {
-						if id == potentialRequestID {
-							foundMatch = true
-						}
-					}
-					if foundMatch == false {
-						validRequestIDs = append(validRequestIDs, potentialRequestID)
+						tempSliceMap[coreID][obj.Owner] = append(
+							tempSliceMap[coreID][obj.Owner], ss)
 					}
 				}
 			}
-		}
-		GLOBAL.backendData.ConfirmedRequestIDs = map[string][]int64{}
-		GLOBAL.backendData.Unlock()
-
-		seeds := map[string]int64{}
-		GLOBAL.backendData.RLock()
-		for sysName, sysHash := range GLOBAL.backendData.SystemHashes[0]["0.0.0.0"] {
-			seeds[sysName] = int64(binary.LittleEndian.Uint32(sysHash[:]))
-		}
-		GLOBAL.backendData.RUnlock()
-
-		GLOBAL.bufferedRequestsMutex.Lock()
-		requests := []incomingClientRequest{}
-		for i, rqst := range GLOBAL.bufferedRequests {
-			foundMatch := false
-			for _, validID := range validRequestIDs {
-				if rqst.UniqueID == validID {
-					requests = append(requests, rqst)
-					foundMatch = true
-					break
-				}
-			}
-			if foundMatch == false {
-				GLOBAL.bufferedRequests = append(
-					GLOBAL.bufferedRequests[:i],
-					GLOBAL.bufferedRequests[i+1:]...)
+		})
+		sysPointers = make(map[string][]*SolarSystem, maxNumberOfPlayers)
+		for _, somePointers := range tempSliceMap {
+			for k, v := range somePointers {
+				sysPointers[k] = v
 			}
 		}
-		GLOBAL.bufferedRequestsMutex.Unlock()
-
-		if len(requests) < len(validRequestIDs) {
-			logError("ERROR: missing one or more clientRequests")
-		}
-
-		processGalaxy(seeds, requests, GLOBAL.futureGalaxy)
+		logTelemetry(fName, fmt.Sprintf("finished in %v milliseconds",
+			time.Since(start).Nanoseconds()/1e6))
+		return sysPointers
 	}
 
-	gatherSystemPtrsForClients := func() {
-		wg := sync.WaitGroup{}
-		wg.Add(GLOBAL.numberOfCores)
-		numPlayers := len(GLOBAL.currentGalaxy.GetSolarsystemslice())
-		playersPerCore := numPlayers / GLOBAL.numberOfCores
-		tempResults := make([]map[string][]*SolarSystem, GLOBAL.numberOfCores)
-		for i := 0; i < GLOBAL.numberOfCores; i++ {
-			coreNum := i + 1
-			stopIndex := playersPerCore * coreNum
-			startIndex := stopIndex - playersPerCore
-			go func(i int) {
-				tempResults[i] = walkGalaxyForPlayers(startIndex, stopIndex)
-				wg.Done()
-			}(i)
-		}
-		wg.Wait()
-		GLOBAL.backendData.Lock()
-		GLOBAL.backendData.ParsedPlayerPtrs = map[string][]*SolarSystem{}
-		for i := range tempResults {
-			for key, val := range tempResults[i] {
-				GLOBAL.backendData.ParsedPlayerPtrs[key] = val
-			}
-		}
-		GLOBAL.backendData.Unlock()
-	}
-
-	noNeighbors := func() (result bool) {
-		GLOBAL.backendData.RLock()
-		if len(GLOBAL.backendData.Backends) == 0 {
-			result = true
-		}
-		GLOBAL.backendData.RUnlock()
-		return result
-	}
-
-	////////////////////////////////////////////////////////////
-	// primary game loop
-	////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////
 
 	go func() {
-		for {
 
-			// record current time and start timeout tickers
-			start := time.Now().UnixNano()
-			minimumTimeBlocker := time.NewTimer(time.Second / 60)
-			maximumTimeBlocker := time.NewTimer(time.Second / 2)
+		// to avoid unncessary allocations we reuse these for mutating
+		bufferGalaxy := makeGalaxyBuffer(GLOBAL.galaxy)
+		systemBytesBuffer := map[string]*proto.Buffer{}
+
+		// mapping ss.Name to slice index
+		sysIndex := map[string]int{}
+		for idx, ss := range GLOBAL.galaxy.Solarsystemslice {
+			sysIndex[ss.Name] = idx
+			systemBytesBuffer[ss.Name] = proto.NewBuffer([]byte{})
+		}
+
+		for {
+			// record current time and begin timeout tickers
+			start := time.Now()
+			minimumTimeBlocker := time.NewTimer(time.Second / 10)
+			maximumTimeBlocker := time.NewTimer(time.Second * 2)
 
 			// signal that data is now being mutated and is not safe for consumption
 			close(GLOBAL.turningDataSignal)
 			GLOBAL.turningDataSignal = make(chan struct{})
-			// an alterate channel for monitoring data mutation
-			GLOBAL.mutatingDataBlocker = make(chan struct{})
 
-			// major steps in the gameloop workflow
-			copyDataFromGlobals()
-			copyFutureIntoCurrentGalaxy()
-			generateCurrentSystemHashes()
-			processOutstandingUserRequests() // gamelogic goes here
-			gatherSystemPtrsForClients()
+			// move the galaxy forward into the future
+			processGalaxy(bufferGalaxy, sysIndex)
+
+			// serialize systems in the background (this takes a while)
+			doneChan := make(chan struct{})
+			go func() {
+				serializeSystems(systemBytesBuffer)
+				close(doneChan)
+			}()
 
 			// triggers backend_websockets to send message to neighbors
-			close(GLOBAL.newTickSignal)
-			GLOBAL.newTickSignal = make(chan struct{})
-			// an alternate channel for monitoring data mutation
-			close(GLOBAL.mutatingDataBlocker)
+			close(GLOBAL.backendSignal)
+			GLOBAL.backendSignal = make(chan struct{})
 
-			if noNeighbors() {
-				go func() {
-					GLOBAL.backendData.Lock()
-					close(GLOBAL.allServersReadySignal)
-					//GLOBAL.backendData.ReceivedMessageFrom = []string{"0.0.0.0"} // TODO: remove
-					GLOBAL.backendData.Unlock()
-				}()
-			}
+			// for every player gather []*SolarSystem
+			sysPointers := getSystemPointers(bufferGalaxy)
 
 			// wait for confirmation from every neighbor
-			select {
-			case <-GLOBAL.allServersReadySignal:
-				GLOBAL.allServersReadySignal = make(chan struct{})
-			case <-maximumTimeBlocker.C:
-				logDebug(fName, "ran out of time to wait for backend message")
+			if len(GLOBAL.backendData.Backends) != 0 {
+				select {
+				case <-GLOBAL.allServersReadySignal:
+					logTelemetry(fName, fmt.Sprintf("synchronized in %v milliseconds",
+						time.Since(start).Nanoseconds()/1e6))
+				case <-maximumTimeBlocker.C:
+					logError(fName, "ran out of time to wait for all backends")
+				}
+			} else {
+				// logError(fName, "no other backends are detected")
 			}
 
-			// will block if minTime hasn't been met - this enforces a maximum tickRate
+			// verify bufferGalaxy now that we've received our neighbor's hashes
+			verifyGalaxy(bufferGalaxy)
+
+			// wait for the background goroutine to finish
+			<-doneChan
+
+			// prepare to serve this new data to clients
+			GLOBAL.backendData.Lock()
+			GLOBAL.galaxyMutex.Lock()
+			GLOBAL.galaxy = bufferGalaxy
+			GLOBAL.backendData.ParsedPlayerPtrs = sysPointers
+			GLOBAL.galaxyMutex.Unlock()
+			GLOBAL.backendData.Unlock()
+
+			// triggers backend_websockets to send message to clients
+			close(GLOBAL.clientSignal)
+			GLOBAL.clientSignal = make(chan struct{})
+
+			// enforce a maximum tick rate
 			<-minimumTimeBlocker.C
 
-			end := time.Now().UnixNano()
+			// record the actual tick time
+			totalTime := time.Since(start)
 			GLOBAL.backendData.Lock()
-			GLOBAL.backendData.TickTime = start - end
+			GLOBAL.backendData.LocalTickTime = totalTime
 			GLOBAL.backendData.Unlock()
+			logTelemetry(fName, fmt.Sprintf("finished in %v milliseconds",
+				time.Since(start).Nanoseconds()/1e6))
 
 		}
 	}()
@@ -356,18 +305,25 @@ func startBackendMode() {
 
 	// serve HTTP requests just for Debug purposes
 	if GLOBAL.debugModeBool {
-		profmux := http.NewServeMux()
-		profmux.HandleFunc("/debug/pprof/", pprof.Index)
-		profmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-		profmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-		profmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-		profmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		profmux.Handle("/debug/pprof/block", pprof.Handler("block"))
-		profmux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
-		profmux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
-		profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
-		err := http.ListenAndServe(":8080", profmux)
-		checkError(err, fName, fmt.Sprintf("Error when starting pprof server:"))
+		go func() {
+			profmux := http.NewServeMux()
+			profmux.HandleFunc("/debug/pprof/", pprof.Index)
+			profmux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+			profmux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+			profmux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+			profmux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+			profmux.Handle("/debug/pprof/block", pprof.Handler("block"))
+			profmux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+			profmux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+			profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+			profmux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
+			srvProf := &http.Server{
+				Addr:    getLocalAddr() + ":8080",
+				Handler: profmux,
+			}
+			errServeInsecure := srvProf.ListenAndServe()
+			checkError(errServeInsecure, fName, "(pprof)")
+		}()
 	}
 
 	// wait for program to signal exit
@@ -379,40 +335,12 @@ func startBackendMode() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func walkGalaxyForPlayers(startIndex, stopIndex int) map[string][]*SolarSystem {
-	systemPtrs := map[string][]*SolarSystem{}
-	for i := startIndex; i < stopIndex; i++ {
-		solarsystem := GLOBAL.currentGalaxy.Solarsystemslice[i]
-		addOwner := func(owner string) {
-			if owner == "" {
-				return
-			}
-			_, ok := systemPtrs[owner]
-			if !ok {
-				systemPtrs[owner] = []*SolarSystem{solarsystem}
-			} else {
-				foundMatch := false
-				for _, thisSystem := range systemPtrs[owner] {
-					if thisSystem == solarsystem {
-						foundMatch = true
-					}
-				}
-				if foundMatch == false {
-					systemPtrs[owner] = append(systemPtrs[owner], solarsystem)
-				}
-			}
-		}
-		for _, obj := range solarsystem.Solarobjectslice {
-			addOwner(obj.GetOwner())
-		}
-	}
-	return systemPtrs
-}
-
 func gracefullyCloseBackend() {
+	GLOBAL.galaxyMutex.RLock()
+	defer GLOBAL.galaxyMutex.RUnlock()
 	foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.outputFile)
 	if GLOBAL.outputFile == "" || foundMatch {
-		protoOut, err := proto.Marshal(&GLOBAL.currentGalaxy)
+		protoOut, err := proto.Marshal(GLOBAL.galaxy)
 		if err != nil {
 			log.Fatalln("Failed to PROTOBUF encode Galaxy:", err)
 		}
@@ -420,7 +348,7 @@ func gracefullyCloseBackend() {
 			log.Fatalln("Failed to write Galaxy:", err)
 		}
 	} else {
-		jsonOut, err := json.MarshalIndent(GLOBAL.currentGalaxy, "", "  ")
+		jsonOut, err := json.MarshalIndent(GLOBAL.galaxy, "", "  ")
 		if err != nil {
 			log.Fatalln("Failed to JSON encode Galaxy:", err)
 		}

@@ -117,6 +117,8 @@ func handleChallengeResponse(fName string, conn *websocket.Conn) (result bool) {
 		triggerFirewallException(CHALLENGE, remoteIP)
 		return false
 	}
+
+	logDebug(fName, "completed successfully")
 	return true
 }
 
@@ -203,5 +205,6 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 		return false
 	}
 
+	logDebug(fName, "completed successfully")
 	return true
 }
