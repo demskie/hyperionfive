@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
+func kickoffBackendToFrontendCommunication(conn *websocket.Conn, galaxy *GalaxyData) {
 	const fName = "(backendToFrontend)"
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
@@ -63,54 +63,11 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 					backoutOnce.Do(killFunc)
 					return
 				}
-				logDebug(fName, remoteIP, fmt.Sprintf("inMsg=  %+v", inMsg))
-
-				GLOBAL.backendData.Lock()
-				if GLOBAL.backendData.GalaxyName != inMsg.GalaxyName {
-					if GLOBAL.backendData.GalaxyName == "" {
-						logInfo(fName, remoteIP, "is assigning us galaxyName",
-							inMsg.GalaxyName)
-					} else {
-						logError(fName, "according to", remoteIP, "galaxyName has changed from",
-							GLOBAL.backendData.GalaxyName, "to", inMsg.GalaxyName)
-					}
-					GLOBAL.backendData.GalaxyName = inMsg.GalaxyName
-				}
-				if GLOBAL.backendData.GlobalX != inMsg.GlobalX {
-					if GLOBAL.backendData.GlobalX == 0 {
-						logInfo(fName, remoteIP, "is assigning us globalX",
-							fmt.Sprintf("%v", inMsg.GlobalX))
-					} else {
-						logError(fName, "according to", remoteIP, "globalX has changed from",
-							fmt.Sprintf("%v", GLOBAL.backendData.GlobalX), "to",
-							fmt.Sprintf("%v", inMsg.GlobalX))
-					}
-					GLOBAL.backendData.GlobalX = inMsg.GlobalX
-				}
-				if GLOBAL.backendData.GlobalY != inMsg.GlobalY {
-					if GLOBAL.backendData.GlobalY == 0 {
-						logInfo(fName, remoteIP, "is assigning us globalY",
-							fmt.Sprintf("%v", inMsg.GlobalY))
-					} else {
-						logError(fName, "according to", remoteIP, "globalY has changed from",
-							fmt.Sprintf("%v", GLOBAL.backendData.GlobalY), "to",
-							fmt.Sprintf("%v", inMsg.GlobalY))
-					}
-					GLOBAL.backendData.GlobalY = inMsg.GlobalY
-				}
-				localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-				for _, remoteBackend := range inMsg.OtherBackends {
-					if remoteBackend == localIP {
-						continue
-					}
-					GLOBAL.backendData.Backends = appendStringIfMissing(GLOBAL.backendData.Backends,
-						remoteBackend)
-				}
-				for _, remoteFrontend := range inMsg.OtherFrontends {
-					GLOBAL.backendData.Frontends = appendStringIfMissing(GLOBAL.backendData.Frontends,
-						remoteFrontend)
-				}
-				GLOBAL.backendData.Unlock()
+				GLOBAL.galaxyInfo.Lock()
+				GLOBAL.galaxyInfo.GalaxyName = inMsg.GalaxyName
+				GLOBAL.galaxyInfo.GlobalX = inMsg.GlobalX
+				GLOBAL.galaxyInfo.GlobalY = inMsg.GlobalY
+				GLOBAL.galaxyInfo.Unlock()
 			}
 		}
 	}()
@@ -126,26 +83,19 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 				return
 			default:
 				// prepare outgoing message
-				outMsg := backendToFrontendMessage{}
-				GLOBAL.backendData.RLock()
-				if GLOBAL.galaxyName != "" {
-					outMsg.GalaxyName = GLOBAL.galaxyName
-				} else {
-					outMsg.GalaxyName = GLOBAL.backendData.GalaxyName
+				GLOBAL.galaxyInfo.RLock()
+				outMsg := backendToFrontendMessage{
+					GalaxyName: GLOBAL.galaxyInfo.GalaxyName,
+					GlobalX:    GLOBAL.galaxyInfo.GlobalX,
+					GlobalY:    GLOBAL.galaxyInfo.GlobalY,
+					ClientIDs:  make([]string, len(GLOBAL.galaxyInfo.PlayerPtrs)),
 				}
-				outMsg.GlobalX = GLOBAL.backendData.GlobalX
-				outMsg.GlobalY = GLOBAL.backendData.GlobalY
-				for _, ids := range GLOBAL.backendData.SystemClientIDs {
-					outMsg.ClientIDs = append(outMsg.ClientIDs, ids...)
+				i := 0
+				for playerID := range GLOBAL.galaxyInfo.PlayerPtrs {
+					outMsg.ClientIDs[i] = playerID
+					i++
 				}
-				outMsg.OtherBackends = append(outMsg.OtherBackends,
-					GLOBAL.backendData.Backends...)
-				outMsg.OtherFrontends = append(outMsg.OtherFrontends,
-					GLOBAL.backendData.Frontends...)
-				if GLOBAL.createGalaxyBool {
-					outMsg.Message = "GENERATEGALAXY"
-				}
-				GLOBAL.backendData.RUnlock()
+				GLOBAL.galaxyInfo.RUnlock()
 				logDebug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
 				// send outgoing message
 				networkOut.Reset()
@@ -155,7 +105,7 @@ func kickoffBackendToFrontendCommunication(conn *websocket.Conn) {
 					return
 				}
 				conn.WriteMessage(websocket.BinaryMessage, networkOut.Bytes())
-				time.Sleep(1000 * time.Millisecond * time.Duration(GLOBAL.debugMultiplier))
+				time.Sleep(1000 * time.Millisecond)
 			}
 		}
 	}()

@@ -59,9 +59,8 @@ func handleGoogleAuth(fName string, conn *websocket.Conn) (userid string) {
 		return userid
 	}
 	if tokenInfo.Audience != GLOBAL.googleAudience {
-		aMessage := fmt.Sprintf("tokenInfo.Audience (%s) does not match googleAudience (%s) remoteIP=%s",
-			tokenInfo.Audience, GLOBAL.googleAudience, remoteIP)
-		logError(fName, aMessage)
+		logError(fName, fmt.Sprintf("tokenInfo.Audience (%s) does not match googleAudience (%s) remoteIP=%s",
+			tokenInfo.Audience, GLOBAL.googleAudience, remoteIP))
 		triggerFirewallException(GOOGLEAUTH, remoteIP)
 		return userid
 	}

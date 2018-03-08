@@ -3,13 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net"
-	"regexp"
-	"sync"
 
 	"math/rand"
 	"os"
@@ -19,7 +14,6 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/fatih/color"
-	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 
 	cryptorand "crypto/rand"
@@ -28,15 +22,19 @@ import (
 func main() {
 	const fName = "(main)"
 	switch {
-	case GLOBAL.enableFrontendBool == true:
+	case GLOBAL.enableFrontendBool:
 		startFrontendMode() // frontend.go
-	case GLOBAL.enableBackendBool == true:
+	case GLOBAL.enableBackendBool:
 		startBackendMode() // backend.go
 	default:
 		logError(fName, "no operating mode was specified")
 	}
 	suddenExit()
 }
+
+////////////////////////////////////////////////////////////
+// generic functions
+////////////////////////////////////////////////////////////
 
 func suddenExit() {
 	i := 0
@@ -51,92 +49,8 @@ func suddenExit() {
 	}
 	t := time.Now().UTC().Format("2006-01-02 15:04:05")
 	color.Red(t + " /e (suddenExit) program has finished executing")
+	color.Unset()
 	os.Exit(1)
-}
-
-func handleInputParameters(fName string) {
-	GLOBAL.galaxyMutex.Lock()
-	defer GLOBAL.galaxyMutex.Unlock()
-	// is the inputfilename empty?
-	// if so set doneMatching to 'true' so that we can skip later logic
-	var doneMatching bool
-	if GLOBAL.inputFile == "" {
-		doneMatching = true
-		logDebug(fName, "no inputfilename specified - skipping data import process")
-	} else {
-		doneMatching = false
-	}
-	// skip forward if doneMatching is 'true'
-	//   otherwise parse filename to determine if it is a 'blob' file
-	//   and import that file if that is the case
-	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*blob$", GLOBAL.inputFile)
-		if foundMatch == true {
-			doneMatching = true
-			logInfo(fName, "parsing blob inputfilename")
-			in, err := ioutil.ReadFile(GLOBAL.inputFile)
-			if err != nil {
-				if os.IsNotExist(err) {
-					log.Fatalln("data.blob not found")
-				} else {
-					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
-				}
-			}
-			if err := proto.Unmarshal(in, GLOBAL.galaxy); err != nil {
-				log.Fatalln("Failed to parse galaxy file:", err)
-			}
-		}
-	}
-	// skip forward if doneMatching is 'true'
-	//   otherwise parse filename to determine if it is a 'json' file
-	//   and import that file if that is the case
-	if doneMatching == false {
-		foundMatch, _ := regexp.MatchString(".*json$", GLOBAL.inputFile)
-		if foundMatch == true {
-			doneMatching = true
-			logInfo(fName, "parsing blob inputfilename")
-			in, err := ioutil.ReadFile(GLOBAL.inputFile)
-			if err != nil {
-				if os.IsNotExist(err) {
-					log.Fatalln(GLOBAL.inputFile, "not found")
-				} else {
-					log.Fatalln("Error reading file:", GLOBAL.inputFile, err)
-				}
-			}
-			if err := json.Unmarshal(in, &GLOBAL.galaxy); err != nil {
-				log.Fatalln("Failed to parse galaxy file:", err)
-			}
-		}
-	}
-	// if none of the above logic was successful - we have a fatal error on our hands
-	if doneMatching == false {
-		log.Fatalln(fName, "unknown inputfilename. skipping data import process")
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-func parallelProcessSystems(gal *Galaxy, doSomething func(*SolarSystem, int)) {
-	wg := sync.WaitGroup{}
-	wg.Add(GLOBAL.numberOfCores)
-	numSystems := len(gal.Solarsystemslice)
-	systemsPerCore := numSystems / GLOBAL.numberOfCores
-	for coreNum := 0; coreNum < GLOBAL.numberOfCores; coreNum++ {
-		stopIndex := systemsPerCore * (coreNum + 1)
-		startIndex := stopIndex - systemsPerCore
-		if coreNum == GLOBAL.numberOfCores-1 {
-			stopIndex = numSystems
-		}
-		go func(cn int) {
-			for ssIndex := startIndex; ssIndex < stopIndex; ssIndex++ {
-				doSomething(gal.Solarsystemslice[ssIndex], cn)
-			}
-			wg.Done()
-		}(coreNum)
-	}
-	wg.Wait()
 }
 
 func getLocalAddress() (tcpAddr net.TCPAddr) {
@@ -199,8 +113,38 @@ func absInt64(val int64) int64 {
 	return val
 }
 
-func commaFormatUint(n uint64) string {
-	in := strconv.FormatUint(n, 10)
+func commaFormatNum(n interface{}) string {
+	// BUG // starting to miss python
+	var val uint64
+	switch n.(type) {
+	case int:
+		val = uint64(n.(int))
+	case int8:
+		val = uint64(n.(int8))
+	case int16:
+		val = uint64(n.(int16))
+	case int32:
+		val = uint64(n.(int32))
+	case int64:
+		val = uint64(n.(int64))
+	case uint:
+		val = uint64(n.(uint))
+	case uint8:
+		val = uint64(n.(uint8))
+	case uint16:
+		val = uint64(n.(uint16))
+	case uint32:
+		val = uint64(n.(uint32))
+	case uint64:
+		val = uint64(n.(uint64))
+	case float32:
+		val = uint64(n.(float32))
+	case float64:
+		val = uint64(n.(float64))
+	default:
+		return "NaN"
+	}
+	in := strconv.FormatUint(val, 10)
 	out := make([]byte, len(in)+(len(in)-2+int(in[0]/'0'))/3)
 	if in[0] == '-' {
 		in, out[0] = in[1:], '-'
@@ -215,6 +159,21 @@ func commaFormatUint(n uint64) string {
 			out[j] = ','
 		}
 	}
+}
+
+func calculateCoreSlice(coreNum, entireSliceLength int) (startIndex, stopIndex int) {
+	if GLOBAL.numberOfCores > entireSliceLength {
+		if coreNum <= entireSliceLength {
+			return coreNum, coreNum + 1
+		}
+		return 0, -1
+	}
+	stopIndex = int(entireSliceLength/GLOBAL.numberOfCores) * (coreNum + 1)
+	startIndex = stopIndex - int(entireSliceLength/GLOBAL.numberOfCores)
+	if coreNum == GLOBAL.numberOfCores-1 {
+		stopIndex = entireSliceLength
+	}
+	return startIndex, stopIndex
 }
 
 func mulOverflows(a, b uint64) bool {
@@ -295,6 +254,23 @@ func getPosOrNegOne() int {
 	return -1
 }
 
+func absInt32(val int32) int32 {
+	if val < 0 {
+		return -val
+	}
+	return val
+}
+
+func text(stuff ...interface{}) (result string) {
+	for i := range stuff {
+		result += "%v"
+		if i < len(stuff)-1 {
+			result += " "
+		}
+	}
+	return fmt.Sprintf(result, stuff...)
+}
+
 func getNumberString(num int) string {
 	mappings := map[int]string{
 		1:  "one",
@@ -368,7 +344,3 @@ func getNumberString(num int) string {
 	}
 	return result
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////

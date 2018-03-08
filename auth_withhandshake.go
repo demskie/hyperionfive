@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/base64"
-	"fmt"
 	"io"
 	"net"
 
@@ -41,8 +40,7 @@ func handleChallengeResponse(fName string, conn *websocket.Conn) (result bool) {
 	if len(dataChallenge) == 32 {
 		copy(dataChallengeArray[:], dataChallenge)
 	} else {
-		logError(fName, "received a challenge with invalid length:",
-			fmt.Sprintf("%v", len(dataChallenge)), "bytes")
+		logError(fName, "received a challenge with invalid length:", text(len(dataChallenge)), "bytes")
 		triggerFirewallException(CHALLENGE, remoteIP)
 		return false
 	}
@@ -158,9 +156,7 @@ func kickoffChallengeResponse(fName string, conn *websocket.Conn) (result bool) 
 		triggerFirewallException(CHALLENGE, remoteIP)
 		return false
 	}
-
-	logDebug(fName, "received the following JSON challenge/response:\n",
-		fmt.Sprintf("%s\n", inMsg))
+	logDebug(fName, "received the following JSON challenge-response:\n", text(inMsg), "\n")
 
 	////////////////////////////////////////////////////////////
 	// validate incoming response to our challenge

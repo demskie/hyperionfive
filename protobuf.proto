@@ -7,13 +7,16 @@ package main;
 
 message SolarObject {
 	string name = 1;
-	int64 localX = 2;
-	int64 localY = 3;
+	int64 interX = 2;
+	int64 interY = 3;
 	string owner = 16;
 	int32 food = 17;
 	uint64 population = 18;
 	int32 type = 19;
 	int32 health = 20;
+	int32 behavior = 21;
+	int32 count = 22;
+	int32 dockedFighterCount = 32;
 }
 
 
@@ -21,8 +24,41 @@ message SolarSystem {
     string name = 1;
     int64 interX = 2;
     int64 interY = 3;
+	string primaryOwner = 4;
     int32 type = 16;
 	repeated SolarObject solarobjectslice = 128;
+}
+
+
+message GalacticFleet {
+	string uniqueID = 1;
+	int64 interX = 2;
+	int64 interY = 3;
+	string owner = 4;
+	string closestSystem = 5;
+	int32 capitalCount = 32;
+	int32 fighterCount = 33;
+	int64 destinationInterX = 64;
+	int64 destinationInterY = 65;
+}
+
+
+message OngoingBattle {
+	int32 strategy = 1;
+	string fightingOverObjectName = 2;
+	string fightingOverSystemName = 3;
+	repeated string aggressorFleetUniqueIDs = 4;
+	repeated string defendingFleetUniqueIDs = 5;
+}
+
+
+message OutstandingAction {
+	int64 action = 1;
+	int64 timeLeft = 2;
+	string owner = 3;
+	string solarObjectName = 4;
+	string solarSystemName = 5;
+	uint64 galacticFleetName = 6;
 }
 
 
@@ -32,7 +68,11 @@ message Galaxy {
     int64 globalY = 3;
     int32 type = 16;
 	repeated SolarSystem solarsystemslice = 128;
+	repeated GalacticFleet galacticfleetslice = 129;
+	repeated OngoingBattle ongoingbattleslice = 130;
+	repeated OutstandingAction outstandingactionslice = 131;
 }
+
 
 /*
 
@@ -53,6 +93,7 @@ npm install --save google-protobuf
 npm install --global browserify
 browserify ../protobuf_pb.js -o ../websiteroot/protobuf.js
 /////////////////////////////
+protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ protobuf.proto
 
 
 ////////// WINDOWS //////////
@@ -73,5 +114,14 @@ npm install --global browserify
 browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
 /////////////////////////////
 
+
+////////// PROFILING NOTES //////////
+go-torch -u http://192.168.99.1:8080/debug/pprof/profile?seconds=30
+
+wget http://192.168.99.1:8080/debug/pprof/trace?seconds=30
+go tool trace trace?seconds=30
+
+go tool pprof -png http://192.168.99.1:8080/debug/pprof/heap > out3.png
+/////////////////////////////////////
 
 */

@@ -3,64 +3,122 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
+	"os"
+	"regexp"
+	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/dhconnelly/rtreego"
+	"github.com/gogo/protobuf/proto"
 
 	cryptorand "crypto/rand"
 )
 
-// SystemBox ...
-type SystemBox struct {
-	location rtreego.Point
-	sysName  string
-	sysIndex int
+// UnmarshalFile ...
+func (gal *GalaxyData) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) {
+	const fName = "(galaxy.UnmarshalFile)"
+	// after deserialization we need to call the following function
+	createTree := func() {
+		rtreeObjects := make([]rtreego.Spatial, totalNumSystems)
+		for idx, ss := range gal.Data.Solarsystemslice {
+			x := float64(ss.InterX)
+			y := float64(ss.InterY)
+			rtreeObjects[idx] = &SystemBox{rtreego.Point{x, y}, ss.Name, idx}
+		}
+		gal.Rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
+	}
+	// parse filename to determine if it is a 'blob' file
+	foundMatch, _ := regexp.MatchString(".*blob$", inputFile)
+	if foundMatch {
+		logInfo(fName, "protobuf unmarshalling", inputFile)
+		in, err := ioutil.ReadFile(inputFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				logError(fName, "data.blob not found")
+			} else {
+				logError(fName, err.Error())
+			}
+		}
+		err = proto.Unmarshal(in, gal.Data)
+		checkError(err, fName)
+		createTree()
+		return
+	}
+	// parse filename to determine if it is a 'json' file
+	foundMatch, _ = regexp.MatchString(".*json$", inputFile)
+	if foundMatch {
+		logInfo(fName, "json unmarshalling", inputFile)
+		in, err := ioutil.ReadFile(inputFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				logError(inputFile, "not found")
+			} else {
+				logError(fName, err.Error())
+			}
+		}
+		err = json.Unmarshal(in, gal.Data)
+		checkError(err, fName)
+		createTree()
+		return
+	}
+	// if none of the above logic was successful raise and error
+	logError(fName, "unknown inputfilename", inputFile)
+	suddenExit()
+	return
 }
 
-// Bounds ...
-func (sb *SystemBox) Bounds() *rtreego.Rect {
-	tol := 0.01
-	return sb.location.ToRect(tol)
+// MakeTree ...
+func (gal *GalaxyData) MakeTree() {
+	// TODO // actually implement
 }
 
-func generateGalaxy(galaxyType int32) {
-	fName := "(generateGalaxy)"
+// ParallelProcessSystems ...
+func (galaxy *Galaxy) ParallelProcessSystems(doSomething func(ss *SolarSystem, core int)) {
+	wg := sync.WaitGroup{}
+	wg.Add(GLOBAL.numberOfCores)
+	for coreNum := 0; coreNum < GLOBAL.numberOfCores; coreNum++ {
+		go func(cn int) {
+			startIndex, stopIndex := calculateCoreSlice(cn, len(galaxy.Solarsystemslice))
+			for ssIndex := startIndex; ssIndex < stopIndex; ssIndex++ {
+				doSomething(galaxy.Solarsystemslice[ssIndex], cn)
+			}
+			wg.Done()
+		}(coreNum)
+	}
+	wg.Wait()
+}
 
-	start := time.Now()
+// Generate ...
+func (gal *GalaxyData) Generate() {
+	const fName = "(createGalaxy)"
 
-	////////////////////////////////////////////////////////////
 	// initialize Solarsystemslice
-	////////////////////////////////////////////////////////////
-
-	totalNumSystems := maxNumberOfPlayers * numSystemsPerPlayer
-	GLOBAL.galaxy.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
-	for i := range GLOBAL.galaxy.Solarsystemslice {
-		GLOBAL.galaxy.Solarsystemslice[i] = &SolarSystem{}
+	gal.Data.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
+	for i := range gal.Data.Solarsystemslice {
+		gal.Data.Solarsystemslice[i] = &SolarSystem{}
 	}
 
-	////////////////////////////////////////////////////////////
 	// spawn goroutines to generate systems
-	////////////////////////////////////////////////////////////
-
-	logInfo(fName, fmt.Sprintf("generating %s systems", commaFormatUint(uint64(totalNumSystems))))
-	parallelProcessSystems(GLOBAL.galaxy, func(ss *SolarSystem, coreID int) {
+	logInfo(fName, fmt.Sprintf("generating %s systems", commaFormatNum(totalNumSystems)))
+	gal.Data.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
 		generateSystem(ss)
 		generateEllipticalCoordinates(ss)
 	})
 	rtreeObjects := make([]rtreego.Spatial, totalNumSystems)
 	for {
 		badSystems := int32(0)
-		for idx, ss := range GLOBAL.galaxy.Solarsystemslice {
+		for idx, ss := range gal.Data.Solarsystemslice {
 			x := float64(ss.InterX)
 			y := float64(ss.InterY)
 			rtreeObjects[idx] = &SystemBox{rtreego.Point{x, y}, ss.Name, idx}
 		}
-		rtree := rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
-		parallelProcessSystems(GLOBAL.galaxy, func(ss *SolarSystem, coreID int) {
-			if badCoordinates(ss, rtree) {
+		gal.Rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
+		gal.Data.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
+			if badCoordinates(ss, gal.Rtree) {
 				generateEllipticalCoordinates(ss)
 				atomic.AddInt32(&badSystems, 1)
 			}
@@ -68,14 +126,8 @@ func generateGalaxy(galaxyType int32) {
 		if badSystems == 0 {
 			break
 		}
-		logInfo(fName, fmt.Sprintf("regenerating %s systems", commaFormatUint(uint64(badSystems))))
+		logInfo(fName, fmt.Sprintf("regenerating %s systems", commaFormatNum(badSystems)))
 	}
-	logDebug(fmt.Sprintf("Random System Name (0): %s", GLOBAL.galaxy.Solarsystemslice[0].GetName()))
-	logTelemetry(fName, fmt.Sprintf("finished in %v milliseconds",
-		time.Since(start).Nanoseconds()/1e6))
-	// logDebug(fmt.Sprintf("Random System Name (123): %s", GLOBAL.galaxy.Solarsystemslice[123].Name))
-	// logDebug(fmt.Sprintf("Random System Name (4834): %s", GLOBAL.galaxy.Solarsystemslice[4834].Name))
-	// logDebug(fmt.Sprintf("Random System Name (9183): %s", GLOBAL.galaxy.Solarsystemslice[9183].Name))
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -242,6 +294,23 @@ func generateSystem(ss *SolarSystem) {
 		ss.Solarobjectslice = append(ss.Solarobjectslice, newObj)
 	}
 
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+// SystemBox ...
+type SystemBox struct {
+	location rtreego.Point
+	sysName  string
+	sysIndex int
+}
+
+// Bounds ...
+func (sb *SystemBox) Bounds() *rtreego.Rect {
+	tol := 0.01
+	return sb.location.ToRect(tol)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

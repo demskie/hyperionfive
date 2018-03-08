@@ -48,12 +48,12 @@ func generateGlobalGalaxyInfo(remoteIP string) bool {
 	// if conflict arises, come up with different data and try again
 	// other servers will need to be able to gracefully handle change
 
-	GLOBAL.frontendData.Lock()
-	GLOBAL.frontendData.GalGlobalX[galName] = glblX
-	GLOBAL.frontendData.GalGlobalY[galName] = glblY
-	GLOBAL.frontendData.GalClientIDs[galName] = []string{} // TODO // not sure about this
-	GLOBAL.frontendData.GalBackends[galName] = []string{remoteIP}
-	GLOBAL.frontendData.Unlock()
+	// GLOBAL.frontendData.Lock()
+	// GLOBAL.frontendData.GalGlobalX[galName] = glblX
+	// GLOBAL.frontendData.GalGlobalY[galName] = glblY
+	// GLOBAL.frontendData.GalClientIDs[galName] = []string{} // TODO // not sure about this
+	// GLOBAL.frontendData.GalBackends[galName] = []string{remoteIP}
+	// GLOBAL.frontendData.Unlock()
 
 	// TODO //
 	// handle the edge case where galaxyName already exists and/or

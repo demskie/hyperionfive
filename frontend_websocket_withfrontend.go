@@ -12,7 +12,6 @@ import (
 
 func frontendToFrontendCommunication(conn *websocket.Conn) {
 	const fName = "(frontendToFrontend)"
-	//remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
 	////////////////////////////////////////////////////////////
 	// create channel to backout of nested gofuncs and for loops
@@ -64,12 +63,7 @@ func frontendToFrontendCommunication(conn *websocket.Conn) {
 				}
 				logDebug(fName, fmt.Sprint("inMsg=\t\t", inMsg))
 
-				GLOBAL.frontendData.Lock()
-				GLOBAL.frontendData.GalGlobalX = inMsg.GalGlobalX
-				GLOBAL.frontendData.GalGlobalY = inMsg.GalGlobalY
-				GLOBAL.frontendData.GalClientIDs = inMsg.GalClientIDs
-				GLOBAL.frontendData.GalBackends = inMsg.GalBackends
-				GLOBAL.frontendData.Unlock()
+				// TODO // need to reimplment
 			}
 		}
 	}()
@@ -85,23 +79,9 @@ func frontendToFrontendCommunication(conn *websocket.Conn) {
 				return
 			default:
 				// prepare outgoing message
-				outMsg := frontendToFrontendMessage{}
-				GLOBAL.frontendData.RLock()
-				for key, val := range GLOBAL.frontendData.GalGlobalX {
-					outMsg.GalGlobalX[key] = val
+				outMsg := frontendToFrontendMessage{
+				// TODO // need to reimplement
 				}
-				for key, val := range GLOBAL.frontendData.GalGlobalY {
-					outMsg.GalGlobalY[key] = val
-				}
-				for key, val := range GLOBAL.frontendData.GalClientIDs {
-					outMsg.GalClientIDs[key] = append(outMsg.GalClientIDs[key], val...)
-				}
-				for key, val := range GLOBAL.frontendData.GalBackends {
-					outMsg.GalBackends[key] = append(outMsg.GalBackends[key], val...)
-				}
-				outMsg.OtherFrontends = append(outMsg.OtherFrontends,
-					GLOBAL.frontendData.OtherFrontends...)
-				GLOBAL.frontendData.RUnlock()
 				// send outgoing message
 				networkOut.Reset()
 				err := enc.Encode(outMsg)
