@@ -119,7 +119,8 @@ type GalaxyStruct struct {
 	PointerMappings *pointerMappings
 
 	// used when serializing data for players
-	PlayerFogOfWar map[string]map[string]*SolarSystem // playerName // sysName // sysPtr
+	PlayerFogOfWarMutex *sync.Mutex
+	PlayerFogOfWar      map[string]map[string]*SolarSystem // playerName // sysName // sysPtr
 }
 
 // Initialize preallocates the variables
@@ -141,6 +142,7 @@ func (g *GalaxyStruct) Initialize() {
 	g.NeutralTerranPlanetSlice = make([]*SolarObject, 0, oneMillion)
 	g.PointerMappings = &pointerMappings{}
 	g.PointerMappings.Initialize()
+	g.PlayerFogOfWarMutex = &sync.Mutex{}
 	g.PlayerFogOfWar = make(map[string]map[string]*SolarSystem, 2*maxNumberOfPlayers)
 }
 
