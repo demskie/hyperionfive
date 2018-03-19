@@ -6,9 +6,9 @@ package main;
 
 
 message SolarObject {
-	string name = 1;
-	int64 interX = 2;
-	int64 interY = 3;
+	string name = 2;
+	int64 interX = 3;
+	int64 interY = 4;
 	string owner = 16;
 	int32 food = 17;
 	uint64 population = 18;
@@ -16,6 +16,7 @@ message SolarObject {
 	int32 health = 20;
 	int32 behavior = 21;
 	int32 count = 22;
+	string parentSystemName = 23;
 	int32 dockedFighterCount = 32;
 }
 
@@ -30,8 +31,21 @@ message SolarSystem {
 }
 
 
+message Galaxy {
+    string name = 1;
+    int64 globalX = 2;
+    int64 globalY = 3;
+    int32 type = 16;
+	repeated SolarSystem solarsystemslice = 64;
+	repeated GalacticFleet galacticfleetslice = 128;
+	repeated OngoingBattle ongoingbattleslice = 129;
+	repeated OngoingSiege ongoingsiegeslice = 130;
+	repeated OutstandingAction outstandingactionslice = 131;
+}
+
+
 message GalacticFleet {
-	string uniqueID = 1;
+	int32 fleetID = 1;
 	int64 interX = 2;
 	int64 interY = 3;
 	string owner = 4;
@@ -44,38 +58,33 @@ message GalacticFleet {
 
 
 message OngoingBattle {
-	int32 strategy = 1;
-	string fightingOverObjectName = 2;
+	int32 battleID = 1;
+	int32 strategy = 2;
+	repeated int32 aggressorFleetIDs = 4;
+	repeated int32 defendingFleetIDs = 5;
+}
+
+
+message OngoingSiege {
+	int32 siegeID = 1;
+	int64 timeLeft = 2;
 	string fightingOverSystemName = 3;
-	repeated string aggressorFleetUniqueIDs = 4;
-	repeated string defendingFleetUniqueIDs = 5;
+	repeated int32 aggressorFleetIDs = 4;
 }
 
 
 message OutstandingAction {
-	int64 action = 1;
-	int64 timeLeft = 2;
-	string owner = 3;
-	string solarObjectName = 4;
-	string solarSystemName = 5;
-	uint64 galacticFleetName = 6;
-}
-
-
-message Galaxy {
-    string name = 1;
-    int64 globalX = 2;
-    int64 globalY = 3;
-    int32 type = 16;
-	repeated SolarSystem solarsystemslice = 128;
-	repeated GalacticFleet galacticfleetslice = 129;
-	repeated OngoingBattle ongoingbattleslice = 130;
-	repeated OutstandingAction outstandingactionslice = 131;
+	int32 actionID = 1;
+	int64 action = 2;
+	int64 timeLeft = 3;
+	string owner = 4;
+	string solarObjectName = 5;
+	string solarSystemName = 6;
+	int32 galacticFleetIDs = 7;
 }
 
 
 /*
-
 
 //////////// OSX ////////////
 go get github.com/golang/protobuf/proto
@@ -83,17 +92,17 @@ go get github.com/golang/protobuf/protoc-gen-go
 go install github.com/golang/protobuf/protoc-gen-go
 https://github.com/google/protobuf/releases
 cp ~/Downloads/protoc-3.4.0-osx-x86_64/bin/protoc ~/OneDrive/GoPrototypes/bin/
-~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ protobuf.proto
-~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ protobuf.proto
+~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf.proto
+~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf.proto
 brew install node
 npm install npm@latest -g
 npm update
-cd ~/OneDrive/GoPrototypes/src/GOSERVER/node_modules
+cd /Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/node_modules
 npm install --save google-protobuf
 npm install --global browserify
 browserify ../protobuf_pb.js -o ../websiteroot/protobuf.js
 /////////////////////////////
-protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/GOSERVER/ protobuf.proto
+protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf.proto
 
 
 ////////// WINDOWS //////////

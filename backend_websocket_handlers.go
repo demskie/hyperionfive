@@ -44,7 +44,7 @@ func handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func spawnBackendToFrontend(host string, galaxy *GalaxyData) {
+func spawnBackendToFrontend(host string, galaxy *GalaxyStruct) {
 	const fName = "(backendToFrontend)"
 
 	dialer := getWebsocketDialer()

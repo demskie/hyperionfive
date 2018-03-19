@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"os"
 	"regexp"
 	"sync"
@@ -14,17 +13,15 @@ import (
 
 	"github.com/dhconnelly/rtreego"
 	"github.com/gogo/protobuf/proto"
-
-	cryptorand "crypto/rand"
 )
 
 // UnmarshalFile ...
-func (gal *GalaxyData) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) {
+func (gal *GalaxyStruct) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) {
 	const fName = "(galaxy.UnmarshalFile)"
 	// after deserialization we need to call the following function
 	createTree := func() {
 		rtreeObjects := make([]rtreego.Spatial, totalNumSystems)
-		for idx, ss := range gal.Data.Solarsystemslice {
+		for idx, ss := range gal.Protobuf.Solarsystemslice {
 			x := float64(ss.InterX)
 			y := float64(ss.InterY)
 			rtreeObjects[idx] = &SystemBox{rtreego.Point{x, y}, ss.Name, idx}
@@ -43,7 +40,7 @@ func (gal *GalaxyData) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) {
 				logError(fName, err.Error())
 			}
 		}
-		err = proto.Unmarshal(in, gal.Data)
+		err = proto.Unmarshal(in, gal.Protobuf)
 		checkError(err, fName)
 		createTree()
 		return
@@ -60,7 +57,7 @@ func (gal *GalaxyData) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) {
 				logError(fName, err.Error())
 			}
 		}
-		err = json.Unmarshal(in, gal.Data)
+		err = json.Unmarshal(in, gal.Protobuf)
 		checkError(err, fName)
 		createTree()
 		return
@@ -72,7 +69,7 @@ func (gal *GalaxyData) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) {
 }
 
 // MakeTree ...
-func (gal *GalaxyData) MakeTree() {
+func (gal *GalaxyStruct) MakeTree() {
 	// TODO // actually implement
 }
 
@@ -82,7 +79,7 @@ func (galaxy *Galaxy) ParallelProcessSystems(doSomething func(ss *SolarSystem, c
 	wg.Add(GLOBAL.numberOfCores)
 	for coreNum := 0; coreNum < GLOBAL.numberOfCores; coreNum++ {
 		go func(cn int) {
-			startIndex, stopIndex := calculateCoreSlice(cn, len(galaxy.Solarsystemslice))
+			startIndex, stopIndex := getStartAndStopIndexForCore(cn, len(galaxy.Solarsystemslice))
 			for ssIndex := startIndex; ssIndex < stopIndex; ssIndex++ {
 				doSomething(galaxy.Solarsystemslice[ssIndex], cn)
 			}
@@ -93,33 +90,33 @@ func (galaxy *Galaxy) ParallelProcessSystems(doSomething func(ss *SolarSystem, c
 }
 
 // Generate ...
-func (gal *GalaxyData) Generate() {
+func (gal *GalaxyStruct) Generate() {
 	const fName = "(createGalaxy)"
 
 	// initialize Solarsystemslice
-	gal.Data.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
-	for i := range gal.Data.Solarsystemslice {
-		gal.Data.Solarsystemslice[i] = &SolarSystem{}
+	gal.Protobuf.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
+	for i := range gal.Protobuf.Solarsystemslice {
+		gal.Protobuf.Solarsystemslice[i] = &SolarSystem{}
 	}
 
 	// spawn goroutines to generate systems
 	logInfo(fName, fmt.Sprintf("generating %s systems", commaFormatNum(totalNumSystems)))
-	gal.Data.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
-		generateSystem(ss)
-		generateEllipticalCoordinates(ss)
+	gal.Protobuf.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
+		generateSystem(ss, gal.ProcessingRnumSlice[coreID])
+		generateEllipticalCoordinates(ss, gal.ProcessingRnumSlice[coreID])
 	})
 	rtreeObjects := make([]rtreego.Spatial, totalNumSystems)
 	for {
 		badSystems := int32(0)
-		for idx, ss := range gal.Data.Solarsystemslice {
+		for idx, ss := range gal.Protobuf.Solarsystemslice {
 			x := float64(ss.InterX)
 			y := float64(ss.InterY)
 			rtreeObjects[idx] = &SystemBox{rtreego.Point{x, y}, ss.Name, idx}
 		}
 		gal.Rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
-		gal.Data.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
+		gal.Protobuf.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
 			if badCoordinates(ss, gal.Rtree) {
-				generateEllipticalCoordinates(ss)
+				generateEllipticalCoordinates(ss, gal.ProcessingRnumSlice[coreID])
 				atomic.AddInt32(&badSystems, 1)
 			}
 		})
@@ -134,11 +131,8 @@ func (gal *GalaxyData) Generate() {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func generateSystem(ss *SolarSystem) {
+func generateSystem(ss *SolarSystem, rnum *rand.Rand) {
 	fName := "(generateSystem)"
-
-	// initialize random seed
-	rnum := getCryptoRnum()
 
 	// define weight for systemTypes
 	weightedSystemTypes := []weightedObj{
@@ -290,6 +284,8 @@ func generateSystem(ss *SolarSystem) {
 		// generate name
 		canidateName := generateName(SOLARSYSTEMNAME, newObj.Type)
 		newObj.Name = canidateName.GetFullName()
+		// insert parentSystemName
+		newObj.ParentSystemName = ss.Name
 		// append result
 		ss.Solarobjectslice = append(ss.Solarobjectslice, newObj)
 	}
@@ -317,8 +313,7 @@ func (sb *SystemBox) Bounds() *rtreego.Rect {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-func generateSpiralCoordinates(ss *SolarSystem, numArms int) {
-	rnum := getCryptoRnum()
+func generateSpiralCoordinates(ss *SolarSystem, numArms int, rnum *rand.Rand) {
 	roundFloat := func(val float64) float64 {
 		if val < 0 {
 			return float64(int64(val - 0.5))
@@ -331,36 +326,28 @@ func generateSpiralCoordinates(ss *SolarSystem, numArms int) {
 	fNumArms := float64(numArms)
 	fK := float64(1)
 	fR := float64(rnum.Int63n(galaxyRadius))
-	fQ := float64(rnum.Int63n(int64(fAngularSpread))) * float64(getPosOrNegOne())
+	fQ := float64(rnum.Int63n(int64(fAngularSpread))) * float64(getPosOrNegOne(rnum))
 	fA := float64(roundFloat(rnum.Float64()*fNumArms)) * fArmAngle
 	ss.InterX = int64(fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ)))
 	fR = float64(rnum.Int63n(galaxyRadius))
-	fQ = float64(rnum.Int63n(int64(fAngularSpread))) * float64(getPosOrNegOne())
+	fQ = float64(rnum.Int63n(int64(fAngularSpread))) * float64(getPosOrNegOne(rnum))
 	fA = float64(roundFloat(rnum.Float64()*fNumArms)) * fArmAngle
 	ss.InterY = int64(fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ)))
 }
 
-func generateEllipticalCoordinates(ss *SolarSystem) {
-	b := make([]byte, 8)
-	var interX int64
-	var interY int64
+func generateEllipticalCoordinates(ss *SolarSystem, rnum *rand.Rand) {
+	var A2, B2, C float64
 	for {
-		cryptorand.Read(b)
-		buf := bytes.NewBuffer(b)
-		binary.Read(buf, binary.LittleEndian, &interX)
-		cryptorand.Read(b)
-		buf = bytes.NewBuffer(b)
-		binary.Read(buf, binary.LittleEndian, &interY)
-		A2 := float64(interX * interX)
-		B2 := float64(interY * interY)
-		C := math.Sqrt(A2 + B2)
+		ss.InterX = rnum.Int63() * int64(getPosOrNegOne(rnum))
+		ss.InterY = rnum.Int63() * int64(getPosOrNegOne(rnum))
+		A2 = float64(ss.InterX * ss.InterX)
+		B2 = float64(ss.InterY * ss.InterY)
+		C = math.Sqrt(A2 + B2)
 		if C >= galaxyRadius {
 			continue
 		}
 		break
 	}
-	ss.InterX = interX
-	ss.InterY = interY
 }
 
 func badCoordinates(ss *SolarSystem, rtree *rtreego.Rtree) bool {

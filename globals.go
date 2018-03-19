@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AlexDemskie/simplesync"
 	"github.com/dhconnelly/rtreego"
 )
 
@@ -79,30 +80,68 @@ type galaxyInfo struct {
 	GlobalX             int64
 	GlobalY             int64
 	PlayerPtrs          map[string][]*SolarSystem
-	PendingPlayerSpawns []playerInfo
+	PendingPlayerSpawns []*playerInfo
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// GalaxyData ...
-type GalaxyData struct {
-	Data              *Galaxy
-	TickTime          *tickCounterData
-	ProcessingQueue   chan func(coreNum int)
-	TimeMultiplier    float64
-	RnumSlice         []*rand.Rand
-	PlanetPtrs        []*SolarObject
-	TerranPlanetPtrs  []*SolarObject
-	NeutralPlanetPtrs []*SolarObject
-	TitanPtrs         []*SolarObject
-	Rtree             *rtreego.Rtree
-	PlayerPtrs        map[string][]*SolarSystem
-	ObjectNamePtrs    map[string]*SolarObject
-	SystemNamePtrs    map[string]*SolarSystem
-	GalacticFleetPtrs map[string]*GalacticFleet
-	SystemLinkPtrs    map[string][]*SolarSystem
+// GalaxyStruct ...
+type GalaxyStruct struct {
+	// holds protobuf prestructured data
+	Protobuf *Galaxy
+
+	// created when generating galaxy to ensure objects are far enough apart
+	Rtree *rtreego.Rtree
+
+	// secondary random number generator for use outside ProcessingQueue
+	SingleRnumMutex *sync.Mutex
+	SingleRnum      *rand.Rand
+
+	// implement variable tick rate by multiplying against TimeMultiplier
+	TickTime       *tickCounterData
+	TimeMultiplier float64
+
+	// worker queue implementation
+	ProcessingQueue     *simplesync.WorkerPool
+	ProcessingRnumSlice []*rand.Rand
+
+	// all objects that have a population
+	PopulationObjectsMutex *sync.Mutex
+	PopulationObjectsSlice []*SolarObject
+
+	// used when spawning new players
+	NeutralTerranPlanetMutex *sync.Mutex
+	NeutralTerranPlanetSlice []*SolarObject
+
+	// used to get pointers based on ID or Name
+	PointerMappings *pointerMappings
+
+	// used when serializing data for players
+	PlayerFogOfWar map[string]map[string]*SolarSystem // playerName // sysName // sysPtr
+}
+
+// Initialize preallocates the variables
+func (g *GalaxyStruct) Initialize() {
+	g.Protobuf = &Galaxy{}
+	g.Rtree = &rtreego.Rtree{}
+	g.SingleRnumMutex = &sync.Mutex{}
+	g.SingleRnum = rand.New(rand.NewSource(time.Now().UnixNano() - 99))
+	g.TickTime = &tickCounterData{lastTick: time.Now()}
+	g.TimeMultiplier = float64(1)
+	g.ProcessingQueue = simplesync.NewWorkerPool(GLOBAL.numberOfCores)
+	g.ProcessingRnumSlice = make([]*rand.Rand, GLOBAL.numberOfCores)
+	for i := int64(0); i < int64(GLOBAL.numberOfCores); i++ {
+		g.ProcessingRnumSlice[i] = rand.New(rand.NewSource(i + time.Now().UnixNano()))
+	}
+	g.PopulationObjectsMutex = &sync.Mutex{}
+	g.PopulationObjectsSlice = make([]*SolarObject, 0, oneMillion)
+	g.NeutralTerranPlanetMutex = &sync.Mutex{}
+	g.NeutralTerranPlanetSlice = make([]*SolarObject, 0, oneMillion)
+	g.PointerMappings = &pointerMappings{}
+	g.PointerMappings.Initialize()
+	g.PlayerFogOfWar = make(map[string]map[string]*SolarSystem, 2*maxNumberOfPlayers)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,6 +207,76 @@ const (
 	oneTrillion = 1000000000000
 )
 
+// IsPlanet ...
+func (obj *SolarObject) IsPlanet() bool {
+	if obj.Type < 10 {
+		return true
+	}
+	return false
+}
+
+// IsShip ...
+func (obj *SolarObject) IsShip() bool {
+	if (13 < obj.Type) && (obj.Type < 20) {
+		return true
+	}
+	return false
+}
+
+// defining types of objects
+const (
+	TERRAN         int32 = iota // -20% population
+	DESERT                      // -50% population, 2x logistics
+	VOLCANIC                    // -75% population, lots of metal
+	ICE                         // -50% population, lots of crystal
+	BARREN                      // -90% population, 3x logistics
+	FERROUS                     //
+	GREENHOUSE                  //
+	OCEANIC                     // max population
+	LARGEASTEROID               //
+	DWARF                       //
+	_                           // _10_
+	ASTEROIDBELT                //
+	PLASMASTORM                 //
+	_                           // _13_
+	LARGETRADESHIP              // spawns and moves automatically from trading nations
+	FIGHTER                     // close range combat
+	FLAKCORVETTE                // block point-defense damage
+	COLONIZER                   // colonize a single planet in new system
+	CAPITALSHIP                 // long range ship-to-ship combat
+	TITAN                       // can colonize, block point-defense and engage long-range
+	_                           // _20_
+)
+
+// solarsystem type
+const (
+	YELLOWGIANT int32 = iota // most desirable
+	REDGIANT                 // mostly lava
+	BLUEGIANT                // mostly ice
+	NEUTRONSTAR              // just gas clouds
+	WHITEDWARF               // just asteroids
+	BLACKHOLE                // random, dangerous and AI spawn here
+)
+
+// galaxy type
+const (
+	ELLIPTICAL int32 = iota
+	SPIRAL
+	BARREDSPIRAL
+	IRREGULAR
+)
+
+// empty string on obj.Type() means NEUTRAL
+const (
+	NEUTRAL string = ""
+)
+
+// used to determine what the odds of success will be
+const (
+	ATTACKING int32 = iota
+	RUSHING
+)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +296,7 @@ func init() {
 
 	GLOBAL.clientSignal = make(chan struct{})
 	GLOBAL.clientBlacklist = clientBlacklist{}
-	GLOBAL.clientBlacklist.LiveConnections = map[string][]string{} // remoteIP : fName
+	GLOBAL.clientBlacklist.LiveConnections = map[string][]string{}
 	GLOBAL.clientBlacklist.FailedChallengeCount = map[string]uint16{}
 	GLOBAL.clientBlacklist.FailedChallengeTime = map[string]time.Time{}
 	GLOBAL.clientBlacklist.FailedGoogleAuthCount = map[string]uint16{}

@@ -7,16 +7,17 @@ import (
 )
 
 // CalculatePopulation ...
-func (gal *GalaxyData) CalculatePopulation() {
+func (gal *GalaxyStruct) CalculatePopulation() {
+	const fName = "(calculatePopulation)"
 	if gal.TickTime.HasBeenOneSecond == false {
 		return
 	}
-	gal.ProcessingQueue <- func(coreNum int) {
-		objectsPerCore := len(gal.PlanetPtrs) / GLOBAL.numberOfCores
+	gal.ProcessingQueue.Execute(func(coreNum int) {
+		objectsPerCore := len(gal.PopulationObjectsSlice) / GLOBAL.numberOfCores
 		stopIndex := objectsPerCore * (coreNum + 1)
 		startIndex := stopIndex - objectsPerCore
-		if stopIndex > len(gal.PlanetPtrs) {
-			stopIndex = len(gal.PlanetPtrs)
+		if stopIndex > len(gal.PopulationObjectsSlice) {
+			stopIndex = len(gal.PopulationObjectsSlice)
 		}
 		const (
 			referencePopulation = float64(10000)
@@ -32,14 +33,14 @@ func (gal *GalaxyData) CalculatePopulation() {
 		)
 		for objIndex := startIndex; objIndex < stopIndex; objIndex++ {
 			// https://play.golang.org/p/gWizLY0X2A
-			N = float64(gal.PlanetPtrs[objIndex].Population)
+			N = float64(gal.PopulationObjectsSlice[objIndex].Population)
 			if N < referencePopulation {
 				N = referencePopulation
 			}
-			foodSupplyDbl = float64(1 + gal.PlanetPtrs[objIndex].Food)
-			randomness = (referencePopulation + 123) * (1 + gal.RnumSlice[coreNum].NormFloat64()*.1)
+			foodSupplyDbl = float64(1 + gal.PopulationObjectsSlice[objIndex].Food)
+			randomness = (referencePopulation + 123) * (1 + gal.ProcessingRnumSlice[coreNum].NormFloat64()*.1)
 			K = randomness * math.Pow(foodSupplyDbl, 3.4)
-			switch gal.PlanetPtrs[objIndex].Type {
+			switch gal.PopulationObjectsSlice[objIndex].Type {
 			case TERRAN:
 				K *= 1
 			case DESERT:
@@ -70,14 +71,14 @@ func (gal *GalaxyData) CalculatePopulation() {
 			case logisticPercentChange == 0:
 				logisticPercentChange = .000001 // can't divide by zero!
 			}
-			gal.PlanetPtrs[objIndex].Population = uint64(N + ((N * maxPercentChange) * logisticPercentChange))
-			if gal.PlanetPtrs[objIndex].Population/100000 > uint64(gal.PlanetPtrs[objIndex].DockedFighterCount) {
-				fighterIncrement = 1 + gal.RnumSlice[coreNum].Int31n(3)
-				gal.PlanetPtrs[objIndex].DockedFighterCount += fighterIncrement
+			gal.PopulationObjectsSlice[objIndex].Population = uint64(N + ((N * maxPercentChange) * logisticPercentChange))
+			if gal.PopulationObjectsSlice[objIndex].Population/100000 > uint64(gal.PopulationObjectsSlice[objIndex].DockedFighterCount) {
+				fighterIncrement = 1 + gal.ProcessingRnumSlice[coreNum].Int31n(3)
+				gal.PopulationObjectsSlice[objIndex].DockedFighterCount += fighterIncrement
 				backendCounters.IncrementFighterSpawnCount(fighterIncrement)
 			}
 			if objIndex%oneMillion == 0 {
-				logDebug(fmt.Sprint(objIndex/oneMillion, gal.PlanetPtrs[objIndex].Food), commaFormatNum(gal.PlanetPtrs[objIndex].Population))
+				logDebug(fmt.Sprint(objIndex/oneMillion, gal.PopulationObjectsSlice[objIndex].Food), commaFormatNum(gal.PopulationObjectsSlice[objIndex].Population))
 			}
 			if false {
 				logDebug(
@@ -87,34 +88,36 @@ func (gal *GalaxyData) CalculatePopulation() {
 					"\n\t\t\t", "randomness:", fmt.Sprint(randomness),
 					"\n\t\t\t", "K:", fmt.Sprint(K),
 					"\n\t\t\t", "logisticPercentChange:", fmt.Sprint(logisticPercentChange),
-					"\n\t\t\t", "after:", commaFormatNum(gal.PlanetPtrs[objIndex].Population),
+					"\n\t\t\t", "after:", commaFormatNum(gal.PopulationObjectsSlice[objIndex].Population),
 					"\n\t\t\t", fmt.Sprintf("%v is more than %v",
-						gal.PlanetPtrs[objIndex].Population/100000,
-						uint64(gal.PlanetPtrs[objIndex].DockedFighterCount)))
+						gal.PopulationObjectsSlice[objIndex].Population/100000,
+						uint64(gal.PopulationObjectsSlice[objIndex].DockedFighterCount)))
 			}
 		}
-	}
+	})
 }
 
 // IncreaseFoodOnNeutralPlanets ...
-func (gal *GalaxyData) IncreaseFoodOnNeutralPlanets() {
+func (gal *GalaxyStruct) IncreaseFoodOnNeutralPlanets() {
 	if gal.TickTime.HasBeenOneTenthSecond == false {
 		return
 	}
-	numIterations := len(gal.NeutralPlanetPtrs) / GLOBAL.numberOfCores / 10 / 60 / 60
-	gal.ProcessingQueue <- func(coreNum int) {
+	gal.PopulationObjectsMutex.Lock()
+	numIterations := len(gal.NeutralTerranPlanetSlice) / GLOBAL.numberOfCores / 10 / 60 / 60
+	gal.ProcessingQueue.Execute(func(coreNum int) {
 		var obj *SolarObject
-		var foodCount int32
-		var normalDistVal int32
+		var foodCount, normalDistVal, idx int32
 		for i := 0; i < numIterations; i++ {
-			obj = gal.NeutralPlanetPtrs[gal.RnumSlice[coreNum].Intn(len(gal.NeutralPlanetPtrs))]
+			idx = gal.ProcessingRnumSlice[coreNum].Int31n(int32(len(gal.NeutralTerranPlanetSlice)))
+			obj = gal.NeutralTerranPlanetSlice[idx]
 			foodCount = atomic.LoadInt32(&obj.Food)
 			// https://homepage.divms.uiowa.edu/~mbognar/applets/normal.html
 			const stdDeviation = 21
-			normalDistVal = int32(gal.RnumSlice[coreNum].NormFloat64() * stdDeviation)
+			normalDistVal = int32(gal.ProcessingRnumSlice[coreNum].NormFloat64() * stdDeviation)
 			if absInt32(normalDistVal) >= foodCount {
 				atomic.AddInt32(&obj.Food, 1)
 			}
 		}
-	}
+	})
+	gal.PopulationObjectsMutex.Unlock()
 }

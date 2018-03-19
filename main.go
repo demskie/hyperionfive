@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
 
@@ -33,7 +34,7 @@ func main() {
 }
 
 ////////////////////////////////////////////////////////////
-// generic functions
+// the rest of this file contains generic functions
 ////////////////////////////////////////////////////////////
 
 func suddenExit() {
@@ -161,9 +162,9 @@ func commaFormatNum(n interface{}) string {
 	}
 }
 
-func calculateCoreSlice(coreNum, entireSliceLength int) (startIndex, stopIndex int) {
+func getStartAndStopIndexForCore(coreNum, entireSliceLength int) (startIndex, stopIndex int) {
 	if GLOBAL.numberOfCores > entireSliceLength {
-		if coreNum <= entireSliceLength {
+		if coreNum < entireSliceLength {
 			return coreNum, coreNum + 1
 		}
 		return 0, -1
@@ -242,13 +243,8 @@ func getCryptoRnum() *rand.Rand {
 	return rand.New(seed())
 }
 
-func getPosOrNegOne() int {
-	var randomNum int8
-	b := make([]byte, 1)
-	cryptorand.Read(b)
-	buf := bytes.NewBuffer(b)
-	binary.Read(buf, binary.LittleEndian, &randomNum)
-	if randomNum >= 0 {
+func getPosOrNegOne(rnum *rand.Rand) int {
+	if rnum.Intn(2) == 0 {
 		return 1
 	}
 	return -1
@@ -269,6 +265,27 @@ func text(stuff ...interface{}) (result string) {
 		}
 	}
 	return fmt.Sprintf(result, stuff...)
+}
+
+type weightedObj struct {
+	Weight int
+	Item   interface{}
+}
+
+func weightedChoice(choices []weightedObj, rnum *rand.Rand) (weightedObj, error) {
+	max := 0
+	for _, choice := range choices {
+		max += choice.Weight
+	}
+	num := rnum.Intn(max)
+	for _, choice := range choices {
+		num -= choice.Weight
+		if num <= 0 {
+			return choice, nil
+		}
+	}
+	err := errors.New("weightedChoice func is broken")
+	return weightedObj{}, err
 }
 
 func getNumberString(num int) string {

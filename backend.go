@@ -2,99 +2,37 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
-	"math/rand"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
-
-	"github.com/dhconnelly/rtreego"
 	// runtimepprof "runtime/pprof"
 )
 
 func startBackendMode() {
 	const fName = "(backend)"
 
-	////////////////////////////////////////////////////////////
-	// create or recover galaxy
-	////////////////////////////////////////////////////////////
+	// start monitoring backend atomic counters
+	backendCounters.StartCounting()
 
-	galaxy := &GalaxyData{
-		Data:              &Galaxy{},
-		TickTime:          &tickCounterData{lastTick: time.Now()},
-		ProcessingQueue:   make(chan func(coreNum int), 1),
-		TimeMultiplier:    float64(1),
-		RnumSlice:         make([]*rand.Rand, GLOBAL.numberOfCores),
-		TitanPtrs:         make([]*SolarObject, 0, oneMillion),
-		PlanetPtrs:        make([]*SolarObject, 0, oneMillion),
-		TerranPlanetPtrs:  make([]*SolarObject, 0, oneMillion),
-		NeutralPlanetPtrs: make([]*SolarObject, 0, oneMillion),
-		Rtree:             &rtreego.Rtree{},
-		PlayerPtrs:        make(map[string][]*SolarSystem, oneMillion),
-		ObjectNamePtrs:    make(map[string]*SolarObject, oneMillion),
-		SystemNamePtrs:    make(map[string]*SolarSystem, oneMillion),
-		GalacticFleetPtrs: make(map[string]*GalacticFleet, oneMillion),
-		SystemLinkPtrs:    make(map[string][]*SolarSystem, oneMillion),
-	}
+	// this type and method is defined in globals.go
+	galaxy := &GalaxyStruct{}
+	galaxy.Initialize()
 
-	// create a random number generator for each core
-	seed := time.Now().UnixNano()
-	for coreID := range galaxy.RnumSlice {
-		seed += int64(coreID)
-		galaxy.RnumSlice[coreID] = rand.New(rand.NewSource(seed))
-	}
-
-	// create or deserialize a galaxy
+	// create or deserialize a protobuf galaxy
 	if GLOBAL.inputFile == "" {
 		galaxy.Generate()
 	} else {
 		galaxy.UnmarshalFile(GLOBAL.inputFile)
 	}
 
-	////////////////////////////////////////////////////////////
-	// initialize worker pool
-	////////////////////////////////////////////////////////////
-
-	workerWaitGroup := sync.WaitGroup{}
-	workFuncPerCore := make(chan func(coreNum int), 1)
-	go func() {
-		for {
-			workerWaitGroup.Add(GLOBAL.numberOfCores)
-			workFunc := <-galaxy.ProcessingQueue
-			for i := 0; i < GLOBAL.numberOfCores; i++ {
-				workFuncPerCore <- workFunc
-			}
-			workerWaitGroup.Wait()
-		}
-	}()
-	for cn := 0; cn < GLOBAL.numberOfCores; cn++ {
-		go func(coreNum int) {
-			for {
-				workToDo := <-workFuncPerCore
-				workToDo(coreNum)
-				workerWaitGroup.Done()
-			}
-		}(cn)
-	}
-
-	////////////////////////////////////////////////////////////
 	// preprocess some large datastructures
-	////////////////////////////////////////////////////////////
+	galaxy.PreprocessPointerMappings()
+	galaxy.PreprocessPopulationObjects()
+	galaxy.PreprocessPlayerFogOfWar()
 
-	galaxy.GatherAllPlayerPointers()
-	galaxy.GatherAllPlanetPointers()
-	//galaxy.GatherAllTitanPointers()
-	galaxy.GatherAllObjectAndSystemNames()
-
-	backendCounters.StartCounting()
-
-	////////////////////////////////////////////////////////////
 	// connect to a frontend server
-	////////////////////////////////////////////////////////////
-
 	if false {
 		go func() {
 			for {
@@ -109,19 +47,17 @@ func startBackendMode() {
 	////////////////////////////////////////////////////////////
 
 	go func() {
-
 		// for testing purposes
 		if GLOBAL.debugModeBool {
 			GLOBAL.galaxyInfo.Lock()
 			GLOBAL.galaxyInfo.PendingPlayerSpawns = append(
 				GLOBAL.galaxyInfo.PendingPlayerSpawns,
-				playerInfo{
+				&playerInfo{
 					uniqueID: "AlexDemskie",
 					strength: 1,
 				})
 			GLOBAL.galaxyInfo.Unlock()
 		}
-
 		// start processing loop
 		for {
 			galaxy.TimeMultiplier = galaxy.TickTime.Update()
@@ -138,7 +74,6 @@ func startBackendMode() {
 
 			galaxy.TickTime.WaitOneMillisecondAndReset()
 		}
-
 	}()
 
 	////////////////////////////////////////////////////////////
@@ -166,8 +101,8 @@ func startBackendMode() {
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, // Go 1.8 only
-				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,   // Go 1.8 only
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
@@ -213,42 +148,7 @@ func startBackendMode() {
 		}()
 	}
 
-	if GLOBAL.debugModeBool {
-		// f, err := os.Create("cpuprofile.blob")
-		// checkError(err, fName, "(runtime/pprof)")
-		// runtimepprof.StartCPUProfile(f)
-		// defer runtimepprof.StopCPUProfile()
-	}
-
 	// wait for program to signal exit
 	<-GLOBAL.exitProgram
 	return
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-type weightedObj struct {
-	Weight int
-	Item   interface{}
-}
-
-func weightedChoice(choices []weightedObj, rnum *rand.Rand) (weightedObj, error) {
-	max := 0
-	for _, choice := range choices {
-		max += choice.Weight
-	}
-	num := rnum.Intn(max)
-	//logDebug(fmt.Sprint("num ", num))
-	for _, choice := range choices {
-		num -= choice.Weight
-		if num <= 0 {
-			//logDebug(fmt.Sprint("returning ", choice))
-			return choice, nil
-		}
-		//logDebug(fmt.Sprint("skipping ", choice))
-	}
-	err := errors.New("weightedChoice func is broken")
-	return weightedObj{}, err
 }

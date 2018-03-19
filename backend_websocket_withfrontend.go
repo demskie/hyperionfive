@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func kickoffBackendToFrontendCommunication(conn *websocket.Conn, galaxy *GalaxyData) {
+func kickoffBackendToFrontendCommunication(conn *websocket.Conn, galaxy *GalaxyStruct) {
 	const fName = "(backendToFrontend)"
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
