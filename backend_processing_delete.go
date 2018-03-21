@@ -2,6 +2,9 @@ package main
 
 // DeleteOngoingBattle ...
 func (galaxy *GalaxyStruct) DeleteOngoingBattle(battle *OngoingBattle) {
+	galaxy.PointerMappings.ongoingBattleMutex.Lock()
+	defer galaxy.PointerMappings.ongoingBattleMutex.Unlock()
+	delete(galaxy.PointerMappings.ongoingBattleMappings, battle.BattleID)
 	rmv := battle.BattleID
 	s := galaxy.Protobuf.Ongoingbattleslice
 	s[rmv] = s[len(s)-1]

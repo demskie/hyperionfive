@@ -29,19 +29,15 @@ func (ptrMappings *pointerMappings) Initialize() {
 
 	ptrMappings.galacticFleetMutex = &sync.RWMutex{}
 	ptrMappings.galacticFleetMappings = map[int32]*GalacticFleet{}
-	ptrMappings.galacticFleetSlice = []*GalacticFleet{}
 
-	ptrMappings.ongoingSiegeMutex = &sync.RWMutex{}
+	ptrMappings.ongoingBattleMutex = &sync.RWMutex{}
 	ptrMappings.ongoingBattleMappings = map[int32]*OngoingBattle{}
-	ptrMappings.ongoingBattleSlice = []*OngoingBattle{}
 
 	ptrMappings.ongoingSiegeMutex = &sync.RWMutex{}
 	ptrMappings.ongoingSiegeMappings = map[int32]*OngoingSiege{}
-	ptrMappings.ongoingSiegeSlice = []*OngoingSiege{}
 
 	ptrMappings.outstandingActionMutex = &sync.RWMutex{}
 	ptrMappings.outstandingActionMappings = map[int32]*OutstandingAction{}
-	ptrMappings.outstandingActionSlice = []*OutstandingAction{}
 }
 
 // GetSolarObjectFromName ...
@@ -58,26 +54,26 @@ func (galaxy *GalaxyStruct) GetSolarSystemFromName(sysName string) *SolarSystem 
 func (galaxy *GalaxyStruct) GetFleetFromID(fleetID int32) *GalacticFleet {
 	galaxy.PointerMappings.galacticFleetMutex.RLock()
 	defer galaxy.PointerMappings.galacticFleetMutex.RUnlock()
-	return galaxy.PointerMappings.galacticFleetSlice[int(fleetID)]
+	return galaxy.Protobuf.Galacticfleetslice[int(fleetID)]
 }
 
 // GetBattleFromID ...
 func (galaxy *GalaxyStruct) GetBattleFromID(battleID int32) *OngoingBattle {
 	galaxy.PointerMappings.ongoingBattleMutex.RLock()
 	defer galaxy.PointerMappings.ongoingBattleMutex.RUnlock()
-	return galaxy.PointerMappings.ongoingBattleSlice[int(battleID)]
+	return galaxy.Protobuf.Ongoingbattleslice[int(battleID)]
 }
 
 // GetSiegeFromID ...
 func (galaxy *GalaxyStruct) GetSiegeFromID(siegeID int32) *OngoingSiege {
 	galaxy.PointerMappings.ongoingSiegeMutex.RLock()
 	defer galaxy.PointerMappings.ongoingSiegeMutex.RUnlock()
-	return galaxy.PointerMappings.ongoingSiegeSlice[int(siegeID)]
+	return galaxy.Protobuf.Ongoingsiegeslice[int(siegeID)]
 }
 
 // GetActionFromID ...
 func (galaxy *GalaxyStruct) GetActionFromID(actionID int32) *OutstandingAction {
 	galaxy.PointerMappings.outstandingActionMutex.RLock()
 	defer galaxy.PointerMappings.outstandingActionMutex.RUnlock()
-	return galaxy.PointerMappings.outstandingActionSlice[int(actionID)]
+	return galaxy.Protobuf.Outstandingactionslice[int(actionID)]
 }
