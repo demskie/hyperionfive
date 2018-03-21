@@ -4,14 +4,14 @@ import "fmt"
 
 // ChangeOwner ...
 func (obj *SolarObject) ChangeOwner(newOwner string, galaxy *GalaxyStruct) {
+	galaxy.PlayerFogOfWarMutex.Lock()
+	defer galaxy.PlayerFogOfWarMutex.Unlock()
 	if obj.Owner == newOwner {
 		logError(fmt.Sprintf("obj.ChangeOwner called unnecessarily on '%s'", obj.Owner))
 		return
 	}
 	oldOwner := obj.Owner
 	obj.Owner = newOwner
-
-	galaxy.PlayerFogOfWarMutex.Lock()
 
 	if oldOwner != "" {
 		_, playerExists := galaxy.PlayerFogOfWar[oldOwner]
@@ -63,6 +63,5 @@ func (obj *SolarObject) ChangeOwner(newOwner string, galaxy *GalaxyStruct) {
 		galaxy.NeutralTerranPlanetMutex.Unlock()
 	}
 
-	galaxy.PlayerFogOfWarMutex.Unlock()
 	return
 }

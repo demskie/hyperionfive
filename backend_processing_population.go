@@ -7,18 +7,20 @@ import (
 )
 
 // CalculatePopulation ...
-func (gal *GalaxyStruct) CalculatePopulation() {
+func (galaxy *GalaxyStruct) CalculatePopulation() {
 	const fName = "(calculatePopulation)"
-	if gal.TickTime.HasBeenOneSecond == false {
+	const imprecisionFactor = 1000
+	if galaxy.TickTime.HasBeenOneHundrethSecond == false {
 		return
 	}
-	gal.ProcessingQueue.Execute(func(coreNum int) {
-		objectsPerCore := len(gal.PopulationObjectsSlice) / GLOBAL.numberOfCores
-		stopIndex := objectsPerCore * (coreNum + 1)
-		startIndex := stopIndex - objectsPerCore
-		if stopIndex > len(gal.PopulationObjectsSlice) {
-			stopIndex = len(gal.PopulationObjectsSlice)
+	galaxy.ProcessingQueue.Execute(func(coreNum int) {
+		startIndex, stopIndex := getStartAndStopIndexForCore(coreNum, len(galaxy.PopulationObjectsSlice))
+		if stopIndex <= startIndex {
+			return
 		}
+		rnum := galaxy.ProcessingRnumSlice[coreNum]
+		startIndex = rnum.Intn(imprecisionFactor)
+
 		const (
 			referencePopulation = float64(10000)
 			maxPercentChange    = float64(.007)
@@ -31,16 +33,16 @@ func (gal *GalaxyStruct) CalculatePopulation() {
 			logisticPercentChange float64
 			fighterIncrement      int32
 		)
-		for objIndex := startIndex; objIndex < stopIndex; objIndex++ {
+		for objIndex := startIndex; objIndex < stopIndex; objIndex += imprecisionFactor {
 			// https://play.golang.org/p/gWizLY0X2A
-			N = float64(gal.PopulationObjectsSlice[objIndex].Population)
+			N = float64(galaxy.PopulationObjectsSlice[objIndex].Population)
 			if N < referencePopulation {
 				N = referencePopulation
 			}
-			foodSupplyDbl = float64(1 + gal.PopulationObjectsSlice[objIndex].Food)
-			randomness = (referencePopulation + 123) * (1 + gal.ProcessingRnumSlice[coreNum].NormFloat64()*.1)
+			foodSupplyDbl = float64(1 + galaxy.PopulationObjectsSlice[objIndex].Food)
+			randomness = (referencePopulation + 123) * (1 + galaxy.ProcessingRnumSlice[coreNum].NormFloat64()*.1)
 			K = randomness * math.Pow(foodSupplyDbl, 3.4)
-			switch gal.PopulationObjectsSlice[objIndex].Type {
+			switch galaxy.PopulationObjectsSlice[objIndex].Type {
 			case TERRAN:
 				K *= 1
 			case DESERT:
@@ -71,53 +73,63 @@ func (gal *GalaxyStruct) CalculatePopulation() {
 			case logisticPercentChange == 0:
 				logisticPercentChange = .000001 // can't divide by zero!
 			}
-			gal.PopulationObjectsSlice[objIndex].Population = uint64(N + ((N * maxPercentChange) * logisticPercentChange))
-			if gal.PopulationObjectsSlice[objIndex].Population/100000 > uint64(gal.PopulationObjectsSlice[objIndex].DockedFighterCount) {
-				fighterIncrement = 1 + gal.ProcessingRnumSlice[coreNum].Int31n(3)
-				gal.PopulationObjectsSlice[objIndex].DockedFighterCount += fighterIncrement
+			galaxy.PopulationObjectsSlice[objIndex].Population = uint64(N + ((N * maxPercentChange) * logisticPercentChange))
+			if galaxy.PopulationObjectsSlice[objIndex].Population/100000 > uint64(galaxy.PopulationObjectsSlice[objIndex].DockedFighterCount) {
+				fighterIncrement = 1 + galaxy.ProcessingRnumSlice[coreNum].Int31n(3)
+				galaxy.PopulationObjectsSlice[objIndex].DockedFighterCount += fighterIncrement
 				backendCounters.IncrementFighterSpawnCount(fighterIncrement)
 			}
 			if objIndex%oneMillion == 0 {
-				logDebug(fmt.Sprint(objIndex/oneMillion, gal.PopulationObjectsSlice[objIndex].Food), commaFormatNum(gal.PopulationObjectsSlice[objIndex].Population))
+				logDebug(fmt.Sprint(objIndex/oneMillion, galaxy.PopulationObjectsSlice[objIndex].Food), commaFormatNum(galaxy.PopulationObjectsSlice[objIndex].Population))
 			}
 			if false {
 				logDebug(
-					"\n\t\t\t", "timeMultiplier:", fmt.Sprint(gal.TimeMultiplier),
+					"\n\t\t\t", "timeMultiplier:", fmt.Sprint(galaxy.TimeMultiplier),
 					"\n\t\t\t", "N:", commaFormatNum(uint64(N)),
 					"\n\t\t\t", "foodSupplyDbl:", fmt.Sprint(foodSupplyDbl),
 					"\n\t\t\t", "randomness:", fmt.Sprint(randomness),
 					"\n\t\t\t", "K:", fmt.Sprint(K),
 					"\n\t\t\t", "logisticPercentChange:", fmt.Sprint(logisticPercentChange),
-					"\n\t\t\t", "after:", commaFormatNum(gal.PopulationObjectsSlice[objIndex].Population),
+					"\n\t\t\t", "after:", commaFormatNum(galaxy.PopulationObjectsSlice[objIndex].Population),
 					"\n\t\t\t", fmt.Sprintf("%v is more than %v",
-						gal.PopulationObjectsSlice[objIndex].Population/100000,
-						uint64(gal.PopulationObjectsSlice[objIndex].DockedFighterCount)))
+						galaxy.PopulationObjectsSlice[objIndex].Population/100000,
+						uint64(galaxy.PopulationObjectsSlice[objIndex].DockedFighterCount)))
 			}
 		}
 	})
 }
 
 // IncreaseFoodOnNeutralPlanets ...
-func (gal *GalaxyStruct) IncreaseFoodOnNeutralPlanets() {
-	if gal.TickTime.HasBeenOneTenthSecond == false {
+func (galaxy *GalaxyStruct) IncreaseFoodOnNeutralPlanets() {
+	const fName = "(increaseFoodOnNeutralPlanets)"
+	const imprecisionFactor = 1000
+	if galaxy.TickTime.HasBeenOneHundrethSecond == false {
 		return
 	}
-	gal.PopulationObjectsMutex.Lock()
-	numIterations := len(gal.NeutralTerranPlanetSlice) / GLOBAL.numberOfCores / 10 / 60 / 60
-	gal.ProcessingQueue.Execute(func(coreNum int) {
-		var obj *SolarObject
-		var foodCount, normalDistVal, idx int32
-		for i := 0; i < numIterations; i++ {
-			idx = gal.ProcessingRnumSlice[coreNum].Int31n(int32(len(gal.NeutralTerranPlanetSlice)))
-			obj = gal.NeutralTerranPlanetSlice[idx]
+	galaxy.PopulationObjectsMutex.Lock()
+	galaxy.ProcessingQueue.Execute(func(coreNum int) {
+		startIndex, stopIndex := getStartAndStopIndexForCore(coreNum, len(galaxy.NeutralTerranPlanetSlice))
+		if stopIndex <= startIndex {
+			return
+		}
+		rnum := galaxy.ProcessingRnumSlice[coreNum]
+		startIndex = rnum.Intn(imprecisionFactor)
+
+		var (
+			obj                           *SolarObject
+			foodCount, normalDistVal, idx int32
+		)
+		for i := startIndex; i < stopIndex; i += imprecisionFactor {
+			idx = galaxy.ProcessingRnumSlice[coreNum].Int31n(int32(len(galaxy.NeutralTerranPlanetSlice)))
+			obj = galaxy.NeutralTerranPlanetSlice[idx]
 			foodCount = atomic.LoadInt32(&obj.Food)
 			// https://homepage.divms.uiowa.edu/~mbognar/applets/normal.html
 			const stdDeviation = 21
-			normalDistVal = int32(gal.ProcessingRnumSlice[coreNum].NormFloat64() * stdDeviation)
+			normalDistVal = int32(galaxy.ProcessingRnumSlice[coreNum].NormFloat64() * stdDeviation)
 			if absInt32(normalDistVal) >= foodCount {
 				atomic.AddInt32(&obj.Food, 1)
 			}
 		}
 	})
-	gal.PopulationObjectsMutex.Unlock()
+	galaxy.PopulationObjectsMutex.Unlock()
 }

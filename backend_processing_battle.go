@@ -5,34 +5,32 @@ import "sync/atomic"
 // ProcessOngoingBattles ...
 func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 	const fName = "(processBattles)"
-	const precisionFactor = 5
-	if galaxy.TickTime.HasBeenOneSecond == false {
+	const imprecisionFactor = 1000
+	if galaxy.TickTime.HasBeenOneHundrethSecond == false {
 		return
 	}
-	battleSlices := make([][]*OngoingBattle, GLOBAL.numberOfCores)
 	deleteBattle := make([][]*OngoingBattle, GLOBAL.numberOfCores)
-	var numBattlesToDelete int32
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		var battle *OngoingBattle
-		var disadvantageScaler, lossesMultiplier float64
-		var aggressorStrength, defenderStrength, totalStrength, idx, failedIterations int64
-		var fleetID int32
-		var fleet *GalacticFleet
-		battleSlices[coreNum] = []*OngoingBattle{}
-		deleteBattle[coreNum] = []*OngoingBattle{}
-
 		startIndex, stopIndex := getStartAndStopIndexForCore(coreNum, len(galaxy.Protobuf.Ongoingbattleslice))
 		if stopIndex <= startIndex {
 			return
 		}
-		battleSlices[coreNum] = galaxy.Protobuf.Ongoingbattleslice[startIndex:stopIndex]
-		galaxy.ProcessingRnumSlice[coreNum].Shuffle(len(battleSlices[coreNum]), func(i, j int) {
-			battleSlices[coreNum][i], battleSlices[coreNum][j] =
-				battleSlices[coreNum][j], battleSlices[coreNum][i]
-		})
+		rnum := galaxy.ProcessingRnumSlice[coreNum]
+		startIndex = rnum.Intn(imprecisionFactor)
 
-		for battleIndex := 0; battleIndex < len(battleSlices[coreNum]); battleIndex += precisionFactor {
-			battle = battleSlices[coreNum][battleIndex]
+		var (
+			battle                               *OngoingBattle
+			disadvantageScaler, lossesMultiplier float64
+			aggressorStrength, defenderStrength  int64
+			totalStrength, idx, failedIterations int64
+			fleetID                              int32
+			fleet                                *GalacticFleet
+		)
+
+		deleteBattle[coreNum] = []*OngoingBattle{}
+
+		for battleIndex := startIndex; battleIndex < stopIndex; battleIndex += imprecisionFactor {
+			battle = galaxy.Protobuf.Ongoingbattleslice[battleIndex]
 			if battle.Strategy == RUSHING {
 				disadvantageScaler = float64(0.72)
 				lossesMultiplier = float64(0.06)
@@ -61,10 +59,10 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 			// if true the Aggressor wins and the Defender loses forces
 			aggressorStrength = int64(float64(aggressorStrength) * disadvantageScaler)
 			totalStrength = aggressorStrength * defenderStrength
-			if galaxy.ProcessingRnumSlice[coreNum].Int63n(totalStrength) < aggressorStrength {
+			if rnum.Int63n(totalStrength) < aggressorStrength {
 				failedIterations = 0
 				defenderStrength = 1 + int64(float64(defenderStrength)*lossesMultiplier)
-				fleetID = int32(galaxy.ProcessingRnumSlice[coreNum].Intn(len(battle.DefendingFleetIDs)))
+				fleetID = int32(rnum.Intn(len(battle.DefendingFleetIDs)))
 				for {
 					if defenderStrength <= 0 {
 						break
@@ -86,14 +84,13 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 					failedIterations++
 					if failedIterations >= int64(len(battle.DefendingFleetIDs)) {
 						deleteBattle[coreNum] = append(deleteBattle[coreNum], battle)
-						atomic.AddInt32(&numBattlesToDelete, 1)
 						break
 					}
 				}
 			} else {
 				failedIterations = 0
 				aggressorStrength = 1 + int64(float64(aggressorStrength)*lossesMultiplier)
-				fleetID = int32(galaxy.ProcessingRnumSlice[coreNum].Intn(len(battle.AggressorFleetIDs)))
+				fleetID = int32(rnum.Intn(len(battle.AggressorFleetIDs)))
 				for {
 					if aggressorStrength <= 0 {
 						break
@@ -115,7 +112,6 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 					failedIterations++
 					if failedIterations >= int64(len(battle.AggressorFleetIDs)) {
 						deleteBattle[coreNum] = append(deleteBattle[coreNum], battle)
-						atomic.AddInt32(&numBattlesToDelete, 1)
 						break
 					}
 				}
@@ -123,8 +119,8 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 		}
 	})
 
-	for i := range battleSlices {
-		for _, battle := range battleSlices[i] {
+	for i := range deleteBattle {
+		for _, battle := range deleteBattle[i] {
 			galaxy.DeleteOngoingBattle(battle)
 		}
 	}
