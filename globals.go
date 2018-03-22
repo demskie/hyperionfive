@@ -143,7 +143,7 @@ func (g *GalaxyStruct) Initialize() {
 	g.PointerMappings = &pointerMappings{}
 	g.PointerMappings.Initialize()
 	g.PlayerFogOfWarMutex = &sync.Mutex{}
-	g.PlayerFogOfWar = make(map[string]map[string]*SolarSystem, 2*maxNumberOfPlayers)
+	g.PlayerFogOfWar = make(map[string]map[string]*SolarSystem, maxNumberOfPlayers)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
