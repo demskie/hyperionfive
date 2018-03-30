@@ -8,7 +8,7 @@ import (
 // SpawnFighters ...
 func (galaxy *GalaxyStruct) SpawnFighters() {
 	const fName = "(spawnFighters)"
-	const imprecisionFactor = 10000
+	const imprecisionFactor = 10 * 10
 	if galaxy.TickTime.HasBeenOneTenthSecond == false {
 		return
 	}
@@ -35,7 +35,7 @@ func (galaxy *GalaxyStruct) SpawnFighters() {
 // CalculatePopulation ...
 func (galaxy *GalaxyStruct) CalculatePopulation() {
 	const fName = "(calculatePopulation)"
-	const imprecisionFactor = 1000
+	const imprecisionFactor = 10 * 1
 	if galaxy.TickTime.HasBeenOneTenthSecond == false {
 		return
 	}
@@ -102,7 +102,7 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 			}
 			obj.Population = uint64(N + ((N * maxPercentChange) * logisticPercentChange))
 			if GLOBAL.debugModeBool {
-				if objIndex%oneMillion == 0 {
+				if objIndex == 0 {
 					logDebug(fmt.Sprint(objIndex/oneMillion, obj.Food), commaFormatNum(obj.Population))
 				}
 			}
@@ -124,7 +124,7 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 // IncreaseFoodOnNeutralPlanets ...
 func (galaxy *GalaxyStruct) IncreaseFoodOnNeutralPlanets() {
 	const fName = "(increaseFoodOnNeutralPlanets)"
-	const imprecisionFactor = 100000
+	const imprecisionFactor = 10 * 30
 	if galaxy.TickTime.HasBeenOneTenthSecond == false {
 		return
 	}

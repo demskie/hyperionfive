@@ -6,7 +6,7 @@ import "sync/atomic"
 func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 	const fName = "(processBattles)"
 	const imprecisionFactor = 1000
-	if galaxy.TickTime.HasBeenOneHundrethSecond == false {
+	if galaxy.TickTime.HasBeenOneTenthSecond == false {
 		return
 	}
 	deleteBattle := make([][]*OngoingBattle, GLOBAL.numberOfCores)

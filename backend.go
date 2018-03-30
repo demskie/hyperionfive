@@ -71,8 +71,6 @@ func startBackendMode() {
 
 			close(GLOBAL.clientSignal)
 			GLOBAL.clientSignal = make(chan struct{})
-
-			galaxy.TickTime.WaitOneMillisecondAndReset()
 		}
 	}()
 

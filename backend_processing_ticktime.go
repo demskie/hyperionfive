@@ -3,95 +3,81 @@ package main
 import "time"
 
 type tickCounterData struct {
-	lastTick                 time.Time
-	overtimeCount            int
-	twentyFiveSecondCounter  float64
+	lastTick time.Time
+
+	twentyFiveSecondCounter  time.Duration
 	HasBeenTwentyFiveSeconds bool
-	fiveSecondCounter        float64
-	HasBeenFiveSeconds       bool
-	oneSecondCounter         float64
-	HasBeenOneSecond         bool
-	halfSecondCounter        float64
-	HasBeenOneHalfSecond     bool
-	deciSecondCounter        float64
-	HasBeenOneTenthSecond    bool
-	centiSecondCounter       float64
-	HasBeenOneHundrethSecond bool
+
+	fiveSecondCounter  time.Duration
+	HasBeenFiveSeconds bool
+
+	oneSecondCounter time.Duration
+	HasBeenOneSecond bool
+
+	halfSecondCounter    time.Duration
+	HasBeenOneHalfSecond bool
+
+	deciSecondCounter     time.Duration
+	HasBeenOneTenthSecond bool
 }
 
 const (
-	twentyfiveseconds = float64(25)
-	fiveseconds       = float64(5)
-	onesecond         = float64(1)
-	halfsecond        = float64(1 / 2)
-	decisecond        = float64(1 / 10)
-	centisecond       = float64(1 / 100)
+	oneminute         = time.Second * 60
+	twentyfiveseconds = time.Second * 25
+	fiveseconds       = time.Second * 5
+	onesecond         = time.Second
+	halfsecond        = time.Second / 2
+	decisecond        = time.Second / 10
+	waitTime          = time.Second / 1000
 )
 
 func (data *tickCounterData) Update() float64 {
-	prevLastTick := data.lastTick
-	data.lastTick = time.Now()
-	timeMultiplier := data.lastTick.Sub(prevLastTick).Seconds()
-	backendCounters.IncrementTickCount()
-	data.twentyFiveSecondCounter += timeMultiplier
-	if data.twentyFiveSecondCounter >= twentyfiveseconds {
-		data.twentyFiveSecondCounter -= twentyfiveseconds
-		data.HasBeenTwentyFiveSeconds = true
-	}
-	data.fiveSecondCounter += timeMultiplier
-	if data.fiveSecondCounter >= fiveseconds {
-		data.fiveSecondCounter -= fiveseconds
-		data.HasBeenFiveSeconds = true
-	}
-	data.oneSecondCounter += timeMultiplier
-	if data.oneSecondCounter >= onesecond {
-		data.oneSecondCounter -= onesecond
-		data.HasBeenOneSecond = true
-	}
-	data.halfSecondCounter += timeMultiplier
-	if data.halfSecondCounter >= halfsecond {
-		data.halfSecondCounter -= halfsecond
-		data.HasBeenOneHalfSecond = true
-	}
-	data.deciSecondCounter += timeMultiplier
-	if data.deciSecondCounter >= decisecond {
-		data.deciSecondCounter -= decisecond
-		data.HasBeenOneTenthSecond = true
-	}
-	data.centiSecondCounter += timeMultiplier
-	if data.centiSecondCounter >= centisecond {
-		data.centiSecondCounter -= centisecond
-		data.HasBeenOneHundrethSecond = true
-	}
-	return timeMultiplier
-}
+	const fName = "(tickCounterData.Update)"
+	timeSince := time.Since(data.lastTick)
+	data.lastTick = data.lastTick.Add(timeSince)
 
-func (data *tickCounterData) WaitOneMillisecondAndReset() {
-	const fName = "(tickCounterData)"
-	switch {
-	case data.twentyFiveSecondCounter > twentyfiveseconds:
-		data.overtimeCount = 0
-	case data.fiveSecondCounter > fiveseconds:
-		data.overtimeCount = 0
-	case data.oneSecondCounter > onesecond:
-		data.overtimeCount = 0
-	case data.halfSecondCounter > halfsecond:
-		data.overtimeCount = 0
-	case data.deciSecondCounter > decisecond:
-		data.overtimeCount = 0
-	case data.centiSecondCounter > centisecond:
-		data.overtimeCount = 0
-	default:
-		data.overtimeCount++
-		time.Sleep(time.Millisecond)
+	data.twentyFiveSecondCounter += timeSince
+	data.fiveSecondCounter += timeSince
+	data.oneSecondCounter += timeSince
+	data.halfSecondCounter += timeSince
+	data.deciSecondCounter += timeSince
+
+	if data.twentyFiveSecondCounter >= twentyfiveseconds {
+		data.twentyFiveSecondCounter = 0
+		data.HasBeenTwentyFiveSeconds = true
+	} else {
+		data.HasBeenTwentyFiveSeconds = false
 	}
-	if data.overtimeCount%100 == 0 && data.overtimeCount != 0 {
-		logError(fName, "overtime detected", text(data.overtimeCount), "times")
+
+	if data.fiveSecondCounter >= fiveseconds {
+		data.fiveSecondCounter = 0
+		data.HasBeenFiveSeconds = true
+	} else {
+		data.HasBeenFiveSeconds = false
 	}
-	data.HasBeenFiveSeconds = false
-	data.HasBeenOneSecond = false
-	data.HasBeenOneSecond = false
-	data.HasBeenOneHalfSecond = false
-	data.HasBeenOneTenthSecond = false
-	data.HasBeenOneHundrethSecond = false
+
+	if data.oneSecondCounter >= onesecond {
+		data.oneSecondCounter = 0
+		data.HasBeenOneSecond = true
+	} else {
+		data.HasBeenOneSecond = false
+	}
+
+	if data.halfSecondCounter >= halfsecond {
+		data.halfSecondCounter = 0
+		data.HasBeenOneHalfSecond = true
+	} else {
+		data.HasBeenOneHalfSecond = false
+	}
+
+	if data.deciSecondCounter >= decisecond {
+		data.deciSecondCounter = 0
+		data.HasBeenOneTenthSecond = true
+	} else {
+		data.HasBeenOneTenthSecond = false
+	}
+
+	time.Sleep(waitTime)
+	backendCounters.IncrementTickCount()
+	return timeSince.Seconds()
 }
