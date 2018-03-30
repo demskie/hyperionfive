@@ -20,13 +20,16 @@ func (galaxy *GalaxyStruct) SpawnFighters() {
 		rnum := galaxy.ProcessingRnumSlice[coreNum]
 		startIndex += rnum.Intn(imprecisionFactor)
 		var (
-			obj *SolarObject
+			obj               *SolarObject
+			availableFighters int32
 		)
 		for i := startIndex; i < stopIndex; i += imprecisionFactor {
 			obj = galaxy.AnyPlanetSlice[i]
-			if obj.Population/100000 > uint64(obj.DockedFighterCount) {
-				obj.DockedFighterCount++
-				backendCounters.IncrementFighterSpawnCount(1)
+			availableFighters = int32(obj.Population/100000) - obj.DockedFighterCount
+			if availableFighters > 0 {
+				availableFighters = rnum.Int31n(1 + (availableFighters / 13))
+				obj.DockedFighterCount += availableFighters
+				backendCounters.IncrementFighterSpawnCount(availableFighters)
 			}
 		}
 	})
@@ -49,7 +52,7 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 
 		const (
 			referencePopulation = float64(10000)
-			maxPercentChange    = float64(.007)
+			maxPercentChange    = float64(.07)
 		)
 		var (
 			N                     float64
