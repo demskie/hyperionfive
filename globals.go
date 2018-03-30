@@ -108,8 +108,12 @@ type GalaxyStruct struct {
 	ProcessingRnumSlice []*rand.Rand
 
 	// all objects that have a population
-	PopulationObjectsMutex *sync.Mutex
-	PopulationObjectsSlice []*SolarObject
+	AnyPlanetMutex *sync.Mutex
+	AnyPlanetSlice []*SolarObject
+
+	// neutral planets
+	NeutralAnyPlanetMutex *sync.Mutex
+	NeutralAnyPlanetSlice []*SolarObject
 
 	// used when spawning new players
 	NeutralTerranPlanetMutex *sync.Mutex
@@ -136,8 +140,10 @@ func (g *GalaxyStruct) Initialize() {
 	for i := int64(0); i < int64(GLOBAL.numberOfCores); i++ {
 		g.ProcessingRnumSlice[i] = rand.New(rand.NewSource(i + time.Now().UnixNano()))
 	}
-	g.PopulationObjectsMutex = &sync.Mutex{}
-	g.PopulationObjectsSlice = make([]*SolarObject, 0, oneMillion)
+	g.AnyPlanetMutex = &sync.Mutex{}
+	g.AnyPlanetSlice = make([]*SolarObject, 0, oneMillion)
+	g.NeutralAnyPlanetMutex = &sync.Mutex{}
+	g.NeutralAnyPlanetSlice = make([]*SolarObject, 0, oneMillion)
 	g.NeutralTerranPlanetMutex = &sync.Mutex{}
 	g.NeutralTerranPlanetSlice = make([]*SolarObject, 0, oneMillion)
 	g.PointerMappings = &pointerMappings{}

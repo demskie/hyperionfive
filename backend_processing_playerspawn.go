@@ -32,6 +32,4 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers() {
 		obj.ChangeOwner(playerData.uniqueID, galaxy)
 	}
 	GLOBAL.galaxyInfo.PendingPlayerSpawns = []*playerInfo{}
-	logDebug(fName, "finished")
-	galaxy.NeutralTerranPlanetMutex.Unlock()
 }

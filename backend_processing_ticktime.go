@@ -4,6 +4,7 @@ import "time"
 
 type tickCounterData struct {
 	lastTick                 time.Time
+	overtimeCount            int
 	twentyFiveSecondCounter  float64
 	HasBeenTwentyFiveSeconds bool
 	fiveSecondCounter        float64
@@ -28,8 +29,9 @@ const (
 )
 
 func (data *tickCounterData) Update() float64 {
-	timeMultiplier := time.Since(data.lastTick).Seconds()
+	prevLastTick := data.lastTick
 	data.lastTick = time.Now()
+	timeMultiplier := data.lastTick.Sub(prevLastTick).Seconds()
 	backendCounters.IncrementTickCount()
 	data.twentyFiveSecondCounter += timeMultiplier
 	if data.twentyFiveSecondCounter >= twentyfiveseconds {
@@ -47,8 +49,8 @@ func (data *tickCounterData) Update() float64 {
 		data.HasBeenOneSecond = true
 	}
 	data.halfSecondCounter += timeMultiplier
-	if data.halfSecondCounter >= onesecond {
-		data.halfSecondCounter -= onesecond
+	if data.halfSecondCounter >= halfsecond {
+		data.halfSecondCounter -= halfsecond
 		data.HasBeenOneHalfSecond = true
 	}
 	data.deciSecondCounter += timeMultiplier
@@ -65,7 +67,27 @@ func (data *tickCounterData) Update() float64 {
 }
 
 func (data *tickCounterData) WaitOneMillisecondAndReset() {
-	time.Sleep(time.Millisecond)
+	const fName = "(tickCounterData)"
+	switch {
+	case data.twentyFiveSecondCounter > twentyfiveseconds:
+		data.overtimeCount = 0
+	case data.fiveSecondCounter > fiveseconds:
+		data.overtimeCount = 0
+	case data.oneSecondCounter > onesecond:
+		data.overtimeCount = 0
+	case data.halfSecondCounter > halfsecond:
+		data.overtimeCount = 0
+	case data.deciSecondCounter > decisecond:
+		data.overtimeCount = 0
+	case data.centiSecondCounter > centisecond:
+		data.overtimeCount = 0
+	default:
+		data.overtimeCount++
+		time.Sleep(time.Millisecond)
+	}
+	if data.overtimeCount%100 == 0 && data.overtimeCount != 0 {
+		logError(fName, "overtime detected", text(data.overtimeCount), "times")
+	}
 	data.HasBeenFiveSeconds = false
 	data.HasBeenOneSecond = false
 	data.HasBeenOneSecond = false

@@ -125,12 +125,13 @@ browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
 
 
 ////////// PROFILING NOTES //////////
-go-torch -u http://192.168.99.1:8080/debug/pprof/profile?seconds=30
+cd $GOPATH/src/github.com/uber/go-torch
+go-torch -u http://localhost:8080/debug/pprof/profile?seconds=30
 
-wget http://192.168.99.1:8080/debug/pprof/trace?seconds=30
+wget http://localhost:8080/debug/pprof/trace?seconds=30
 go tool trace trace?seconds=30
 
-go tool pprof -png http://192.168.99.1:8080/debug/pprof/heap > out3.png
+go tool pprof -png http://localhost:8080/debug/pprof/heap > out3.png
 /////////////////////////////////////
 
 */

@@ -38,7 +38,7 @@ func (galaxy *GalaxyStruct) PreprocessPointerMappings() {
 
 // PreprocessPopulationObjects ...
 func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
-	const fName = "(preprocessAllPlanetPointers)"
+	const fName = "(preprocessPopulationObjects)"
 	logDebug(fName, "starting")
 	var (
 		ss  *SolarSystem
@@ -47,7 +47,10 @@ func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
 	for _, ss = range galaxy.Protobuf.Solarsystemslice {
 		for _, obj = range ss.Solarobjectslice {
 			if obj.IsPlanet() {
-				galaxy.PopulationObjectsSlice = append(galaxy.PopulationObjectsSlice, obj)
+				galaxy.AnyPlanetSlice = append(galaxy.AnyPlanetSlice, obj)
+				if obj.Owner == NEUTRAL {
+					galaxy.NeutralAnyPlanetSlice = append(galaxy.NeutralAnyPlanetSlice, obj)
+				}
 				if obj.Owner == NEUTRAL && obj.Type == TERRAN {
 					galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, obj)
 				}
