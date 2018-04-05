@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	_ "net/http/pprof"
+	_ "net/http/pprof" //
 
 	"github.com/fatih/color"
 	"github.com/gorilla/websocket"
@@ -43,7 +43,7 @@ func suddenExit() {
 	for len(GLOBAL.logInfoChan) != 0 {
 		logError("(suddenExit) shutting down in", fmt.Sprint(15-i), "seconds")
 		time.Sleep(time.Second)
-		if i > 15 {
+		if i >= 15 {
 			break
 		}
 		i++

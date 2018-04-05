@@ -62,11 +62,12 @@ func startBackendMode() {
 			galaxy.TimeMultiplier = galaxy.TickTime.Update()
 
 			GLOBAL.galaxyInfo.Lock()
-			galaxy.SpawnNewPlayers()
-			galaxy.SpawnFighters()
-			galaxy.CalculatePopulation()
-			galaxy.IncreaseFoodOnNeutralPlanets()
-			galaxy.ProcessOngoingBattles()
+			galaxy.SpawnNewPlayers()              // backend_processing_playerspawn.go
+			galaxy.SpawnFighters()                // backend_processing_population.go
+			galaxy.CalculatePopulation()          // backend_processing_population.go
+			galaxy.IncreaseFoodOnNeutralPlanets() // backend_processing_population.go
+			galaxy.ProcessOngoingBattles()        // backend_processing_battle.go
+			galaxy.ProcessActors()                // backend_processing_actor.go
 			GLOBAL.galaxyInfo.Unlock()
 
 			close(GLOBAL.clientSignal)

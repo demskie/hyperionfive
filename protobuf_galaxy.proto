@@ -92,8 +92,9 @@ go get github.com/golang/protobuf/protoc-gen-go
 go install github.com/golang/protobuf/protoc-gen-go
 https://github.com/google/protobuf/releases
 cp ~/Downloads/protoc-3.4.0-osx-x86_64/bin/protoc ~/OneDrive/GoPrototypes/bin/
-~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf.proto
-~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf.proto
+~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_galaxy.proto
+~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_actor.proto
+~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_galaxy.proto
 brew install node
 npm install npm@latest -g
 npm update
@@ -102,7 +103,8 @@ npm install --save google-protobuf
 npm install --global browserify
 browserify ../protobuf_pb.js -o ../websiteroot/protobuf.js
 /////////////////////////////
-protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf.proto
+protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_galaxy.proto
+protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_actor.proto
 
 
 ////////// WINDOWS //////////

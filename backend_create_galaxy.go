@@ -3,30 +3,26 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"hyperionfive/simpletree"
 	"io/ioutil"
 	"math"
 	"math/rand"
 	"os"
 	"regexp"
-	"sync"
-	"sync/atomic"
 
-	"github.com/dhconnelly/rtreego"
 	"github.com/gogo/protobuf/proto"
 )
 
 // UnmarshalFile ...
-func (gal *GalaxyStruct) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) {
+func (gal *GalaxyStruct) UnmarshalFile(inputFile string) (rt *simpletree.Tree) {
 	const fName = "(galaxy.UnmarshalFile)"
 	// after deserialization we need to call the following function
 	createTree := func() {
-		rtreeObjects := make([]rtreego.Spatial, totalNumSystems)
-		for idx, ss := range gal.Protobuf.Solarsystemslice {
+		for _, ss := range gal.Protobuf.Solarsystemslice {
 			x := float64(ss.InterX)
 			y := float64(ss.InterY)
-			rtreeObjects[idx] = &SystemBox{rtreego.Point{x, y}, ss.Name, idx}
+			gal.Rtree.Insert(ss.Name, x, y)
 		}
-		gal.Rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
 	}
 	// parse filename to determine if it is a 'blob' file
 	foundMatch, _ := regexp.MatchString(".*blob$", inputFile)
@@ -68,63 +64,42 @@ func (gal *GalaxyStruct) UnmarshalFile(inputFile string) (rtree *rtreego.Rtree) 
 	return
 }
 
-// MakeTree ...
-func (gal *GalaxyStruct) MakeTree() {
-	// TODO // actually implement
-}
-
-// ParallelProcessSystems ...
-func (galaxy *Galaxy) ParallelProcessSystems(doSomething func(ss *SolarSystem, core int)) {
-	wg := sync.WaitGroup{}
-	wg.Add(GLOBAL.numberOfCores)
-	for coreNum := 0; coreNum < GLOBAL.numberOfCores; coreNum++ {
-		go func(cn int) {
-			startIndex, stopIndex := getStartAndStopIndexForCore(cn, len(galaxy.Solarsystemslice))
-			for ssIndex := startIndex; ssIndex < stopIndex; ssIndex++ {
-				doSomething(galaxy.Solarsystemslice[ssIndex], cn)
-			}
-			wg.Done()
-		}(coreNum)
-	}
-	wg.Wait()
-}
-
 // Generate ...
 func (gal *GalaxyStruct) Generate() {
 	const fName = "(createGalaxy)"
 
-	// initialize Solarsystemslice
 	gal.Protobuf.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
 	for i := range gal.Protobuf.Solarsystemslice {
 		gal.Protobuf.Solarsystemslice[i] = &SolarSystem{}
 	}
-
-	// spawn goroutines to generate systems
-	logInfo(fName, fmt.Sprintf("generating %s systems", commaFormatNum(totalNumSystems)))
-	gal.Protobuf.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
-		generateSystem(ss, gal.ProcessingRnumSlice[coreID])
-		generateEllipticalCoordinates(ss, gal.ProcessingRnumSlice[coreID])
-	})
-	rtreeObjects := make([]rtreego.Spatial, totalNumSystems)
-	for {
-		badSystems := int32(0)
-		for idx, ss := range gal.Protobuf.Solarsystemslice {
-			x := float64(ss.InterX)
-			y := float64(ss.InterY)
-			rtreeObjects[idx] = &SystemBox{rtreego.Point{x, y}, ss.Name, idx}
+	logInfo(fName, fmt.Sprintf("generating %s systems", commaFormatNum(len(gal.Protobuf.Solarsystemslice))))
+	gal.ProcessingQueue.Execute(func(coreNum int) {
+		startIndex, stopIndex := getStartAndStopIndexForCore(coreNum, len(gal.Protobuf.Solarsystemslice))
+		if stopIndex <= startIndex {
+			return
 		}
-		gal.Rtree = rtreego.NewTree(numDimensions, minBranchFactor, maxBranchFactor, rtreeObjects...)
-		gal.Protobuf.ParallelProcessSystems(func(ss *SolarSystem, coreID int) {
-			if badCoordinates(ss, gal.Rtree) {
-				generateEllipticalCoordinates(ss, gal.ProcessingRnumSlice[coreID])
-				atomic.AddInt32(&badSystems, 1)
+		var ss *SolarSystem
+		rnum := gal.ProcessingRnumSlice[coreNum]
+		for i := startIndex; i < stopIndex; i++ {
+			ss = gal.Protobuf.Solarsystemslice[i]
+			generateSystem(ss, rnum)
+			for {
+				generateEllipticalCoordinates(ss, rnum)
+				gal.Rtree.Insert(ss.Name, float64(ss.InterX), float64(ss.InterY))
+				objects, err := gal.Rtree.NearestNeighbors(ss.Name, 1)
+				if checkError(err, fName) {
+					suddenExit()
+				}
+				hypotenuse := math.Sqrt((objects[0].X * objects[0].X) + (objects[0].Y * objects[0].Y))
+				if hypotenuse <= minimumDistanceBetweenSystems {
+					gal.Rtree.Delete(ss.Name)
+					continue
+				}
+				break
 			}
-		})
-		if badSystems == 0 {
-			break
+
 		}
-		logInfo(fName, fmt.Sprintf("regenerating %s systems", commaFormatNum(badSystems)))
-	}
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -296,23 +271,6 @@ func generateSystem(ss *SolarSystem, rnum *rand.Rand) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-// SystemBox ...
-type SystemBox struct {
-	location rtreego.Point
-	sysName  string
-	sysIndex int
-}
-
-// Bounds ...
-func (sb *SystemBox) Bounds() *rtreego.Rect {
-	tol := 0.01
-	return sb.location.ToRect(tol)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 func generateSpiralCoordinates(ss *SolarSystem, numArms int, rnum *rand.Rand) {
 	roundFloat := func(val float64) float64 {
 		if val < 0 {
@@ -348,63 +306,4 @@ func generateEllipticalCoordinates(ss *SolarSystem, rnum *rand.Rand) {
 		}
 		break
 	}
-}
-
-func badCoordinates(ss *SolarSystem, rtree *rtreego.Rtree) bool {
-	x, y := float64(ss.InterX), float64(ss.InterY)
-	nearestNeighbors := rtree.NearestNeighbors(2, rtreego.Point{x, y})
-	var validNeighborX int64
-	var validNeighborY int64
-	var distanceBetweenSystems int64
-
-	// BUG // why is this library returning nil values?
-	foundValidNeighbor := false
-	if nearestNeighbors[0] != nil {
-		if nearestNeighbors[0].(*SystemBox).sysName != ss.Name {
-			validNeighborX = int64(nearestNeighbors[0].Bounds().PointCoord(0))
-			validNeighborY = int64(nearestNeighbors[0].Bounds().PointCoord(1))
-			foundValidNeighbor = true
-		}
-	}
-	if foundValidNeighbor == false {
-		if nearestNeighbors[1] != nil {
-			if nearestNeighbors[1].(*SystemBox).sysName != ss.Name {
-				validNeighborX = int64(nearestNeighbors[1].Bounds().PointCoord(0))
-				validNeighborY = int64(nearestNeighbors[1].Bounds().PointCoord(1))
-			}
-		} else {
-			// BUG // why is this library returning nil values?
-			return true
-		}
-	}
-
-	value := ss.InterX - validNeighborX
-	if value < 0 {
-		distanceBetweenSystems = -value
-	} else {
-		distanceBetweenSystems = value
-	}
-	if distanceBetweenSystems <= minimumDistanceBetweenSystems {
-		//logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
-		//	ss.Name,
-		//	ss.InterX,
-		//	validNeighborX,
-		//	distanceBetweenSystems))
-		return true
-	}
-	value = ss.InterY - validNeighborY
-	if value < 0 {
-		distanceBetweenSystems = -value
-	} else {
-		distanceBetweenSystems = value
-	}
-	if distanceBetweenSystems <= minimumDistanceBetweenSystems {
-		//logDebug(fmt.Sprintf("%s\t%v\t%v\t%v",
-		//	ss.Name,
-		//	ss.InterY,
-		//	validNeighborY,
-		//	distanceBetweenSystems))
-		return true
-	}
-	return false
 }

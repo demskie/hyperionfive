@@ -26,9 +26,6 @@ type loggingMessage struct {
 
 const defaultTimeLayout string = "2006-01-02 15:04:05"
 
-//t = time.Now().UTC().Format(defaultTimeLayout)
-//t = time.Now()
-
 func handleLogging() {
 	for {
 		var firstLog loggingMessage

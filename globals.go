@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"hyperionfive/simpletree"
 	"math"
 	"math/rand"
 	"runtime"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/AlexDemskie/simplesync"
-	"github.com/dhconnelly/rtreego"
 )
 
 // GLOBAL variables
@@ -93,7 +93,7 @@ type GalaxyStruct struct {
 	Protobuf *Galaxy
 
 	// created when generating galaxy to ensure objects are far enough apart
-	Rtree *rtreego.Rtree
+	Rtree *simpletree.Tree
 
 	// secondary random number generator for use outside ProcessingQueue
 	SingleRnumMutex *sync.Mutex
@@ -106,6 +106,9 @@ type GalaxyStruct struct {
 	// worker queue implementation
 	ProcessingQueue     *simplesync.WorkerPool
 	ProcessingRnumSlice []*rand.Rand
+
+	// track ai state of mind
+	ActorStateSlice []*ActorState
 
 	// all objects that have a population
 	AnyPlanetMutex *sync.Mutex
@@ -130,11 +133,12 @@ type GalaxyStruct struct {
 // Initialize preallocates the variables
 func (g *GalaxyStruct) Initialize() {
 	g.Protobuf = &Galaxy{}
-	g.Rtree = &rtreego.Rtree{}
+	g.Rtree = simpletree.NewTree()
 	g.SingleRnumMutex = &sync.Mutex{}
 	g.SingleRnum = rand.New(rand.NewSource(time.Now().UnixNano() - 99))
 	g.TickTime = &tickCounterData{lastTick: time.Now()}
 	g.TimeMultiplier = float64(1)
+	g.ActorStateSlice = make([]*ActorState, 0)
 	g.ProcessingQueue = simplesync.NewWorkerPool(GLOBAL.numberOfCores)
 	g.ProcessingRnumSlice = make([]*rand.Rand, GLOBAL.numberOfCores)
 	for i := int64(0); i < int64(GLOBAL.numberOfCores); i++ {
@@ -191,12 +195,6 @@ const (
 	constChallenge     = 1
 	constGoogleAuth    = 3
 	constClientSession = 25
-)
-
-const (
-	numDimensions   = 2
-	minBranchFactor = 2
-	maxBranchFactor = 2
 )
 
 const (

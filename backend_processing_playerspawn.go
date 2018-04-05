@@ -18,7 +18,7 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers() {
 	)
 	for _, playerData = range GLOBAL.galaxyInfo.PendingPlayerSpawns {
 		if len(galaxy.NeutralTerranPlanetSlice) < 1 {
-			logError(fName, "ran out TerranPlanetPtrs")
+			logError(fName, "ran out NeutralTerranPlanets")
 			return
 		}
 		galaxy.SingleRnumMutex.Lock()
