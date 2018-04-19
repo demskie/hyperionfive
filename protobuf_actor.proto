@@ -1,8 +1,0 @@
-syntax = "proto3";
-package main;
-
-
-message ActorState {
-	int32 id = 1;
-    repeated string borderSolarSystems = 2;
-}

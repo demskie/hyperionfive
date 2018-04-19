@@ -11,12 +11,12 @@ import (
 type Tree struct {
 	rt     *rtreego.Rtree
 	mtx    *sync.RWMutex
-	objMap map[string]*customSpatial
+	objMap map[uint64]*customSpatial
 }
 
 type customSpatial struct {
 	rct *rtreego.Rect
-	nm  string
+	id  uint64
 }
 
 func (sp *customSpatial) Bounds() *rtreego.Rect {
@@ -26,39 +26,39 @@ func (sp *customSpatial) Bounds() *rtreego.Rect {
 // NewTree ...
 func NewTree() *Tree {
 	return &Tree{
-		rt:     rtreego.NewTree(2, 5, 10),
+		rt:     rtreego.NewTree(2, 10, 10),
 		mtx:    &sync.RWMutex{},
-		objMap: make(map[string]*customSpatial),
+		objMap: make(map[uint64]*customSpatial),
 	}
 }
 
 // Insert ...
-func (t *Tree) Insert(name string, x, y float64) error {
+func (t *Tree) Insert(id uint64, x, y float64) error {
 	rect, err := rtreego.NewRect(rtreego.Point{x, y}, []float64{0.01, 0.01})
 	if err != nil {
 		return err
 	}
 	t.mtx.Lock()
-	_, exists := t.objMap[name]
+	_, exists := t.objMap[id]
 	if exists {
 		t.mtx.Unlock()
 		return errors.New("duplicate n value")
 	}
-	t.objMap[name] = &customSpatial{rect, name}
+	t.objMap[id] = &customSpatial{rect, id}
 	t.rt.Insert(&customSpatial{rct: rect})
 	t.mtx.Unlock()
 	return nil
 }
 
 // Delete ...
-func (t *Tree) Delete(n string) error {
+func (t *Tree) Delete(id uint64) error {
 	t.mtx.Lock()
-	obj, exists := t.objMap[n]
+	obj, exists := t.objMap[id]
 	if !exists {
 		t.mtx.Unlock()
-		return errors.New("n value does not exist")
+		return errors.New("id does not exist")
 	}
-	delete(t.objMap, n)
+	delete(t.objMap, id)
 	t.rt.Delete(obj)
 	t.mtx.Unlock()
 	return nil
@@ -66,14 +66,14 @@ func (t *Tree) Delete(n string) error {
 
 // Object ...
 type Object struct {
-	Name string
+	ID   uint64
 	X, Y float64
 }
 
 // NearestNeighbors ...
-func (t *Tree) NearestNeighbors(name string, number int) (results []Object, err error) {
+func (t *Tree) NearestNeighbors(id uint64, number int) (results []Object, err error) {
 	t.mtx.RLock()
-	obj, exists := t.objMap[name]
+	obj, exists := t.objMap[id]
 	if !exists {
 		t.mtx.RUnlock()
 		return []Object{}, errors.New("n value does not exist")
@@ -83,16 +83,16 @@ func (t *Tree) NearestNeighbors(name string, number int) (results []Object, err 
 		obj.rct.PointCoord(1),
 	})
 	for i := 0; i < len(spatials); i++ {
-		if spatials[i].(*customSpatial).nm == name {
+		if spatials[i].(*customSpatial).id == id {
 			spatials = append(spatials[:i], spatials[i+1:]...)
 			break
 		}
 	}
 	results = make([]Object, number)
 	for i, spatial := range spatials[:number] {
-		if spatial.(*customSpatial).nm != name {
+		if spatial.(*customSpatial).id != id {
 			results[i] = Object{
-				name,
+				id,
 				obj.rct.PointCoord(0),
 				obj.rct.PointCoord(1),
 			}

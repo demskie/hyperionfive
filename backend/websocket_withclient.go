@@ -1,0 +1,112 @@
+package backend
+
+import (
+	"fmt"
+	"sync"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
+)
+
+// ClientToBackendCommunication ...
+func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Conn, authenticatedUserID int32) {
+	fName := "(clientToBackend)"
+
+	////////////////////////////////////////////////////////////
+	// create channel to backout of nested gofuncs and for loops
+	////////////////////////////////////////////////////////////
+
+	backoutSignal := make(chan struct{})
+	var backoutOnce sync.Once
+	killFunc := func() {
+		close(backoutSignal)
+	}
+	defer backoutOnce.Do(killFunc)
+
+	////////////////////////////////////////////////////////////
+	// reused objects
+	////////////////////////////////////////////////////////////
+
+	protoBuffer := &proto.Buffer{}
+
+	////////////////////////////////////////////////////////////
+	// receive request from client
+	////////////////////////////////////////////////////////////
+
+	go func() {
+		for {
+			select {
+			case <-backoutSignal:
+				return
+			default:
+				var inMsg struct {
+					ClientMessage string   `json:"clientMessage"`
+					ClientValues  []string `json:"clientValues"`
+				}
+				err := conn.ReadJSON(&inMsg)
+				if log.CheckError(err, fName, "error receiving request from Client") {
+					backoutOnce.Do(killFunc)
+					return
+				}
+				log.Debug(fName, "received the following JSON client request:\n",
+					fmt.Sprintf("%v\n", inMsg))
+				// TODO // not implemented
+				//	GLOBAL.clientRequests.Lock()
+				//	GLOBAL.clientRequests.Data = append(GLOBAL.clientRequests.Data,
+				//		modifiedClientRequest{
+				//			ClientID:      authenticatedUserID,
+				//			ClientMessage: inMsg.ClientMessage,
+				//			ClientValues:  inMsg.ClientValues,
+				//		})
+				//	GLOBAL.clientRequests.Unlock()
+			}
+		}
+	}()
+
+	////////////////////////////////////////////////////////////
+	// send data to client
+	////////////////////////////////////////////////////////////
+
+	go func() {
+		for {
+			// zeroise buffer
+			protoBuffer.Reset()
+
+			// wait for new tick
+			<-universe.ClientSignal
+
+			// block global mutation
+			universe.RLock()
+
+			// prepare data
+			partialGalaxy := &Galaxy{
+				NameInt:          universe.GalaxyNameInt,
+				GlobalX:          universe.GlobalX,
+				GlobalY:          universe.GlobalY,
+				Solarsystemslice: universe.PlayerPtrs[authenticatedUserID],
+			}
+
+			// serialize this information
+			err := protoBuffer.Marshal(partialGalaxy)
+			if log.CheckError(err, fName, "unable to marshal playerData") {
+				continue
+			}
+
+			// unblock global mutuation
+			universe.RLock()
+
+			err = conn.WriteMessage(websocket.BinaryMessage, protoBuffer.Bytes())
+			if log.CheckError(err, fName, "error sending message to client") {
+				backoutOnce.Do(killFunc)
+				return
+			}
+		}
+	}()
+
+	////////////////////////////////////////////////////////////
+	// do not finish terminating unless we receive signal
+	////////////////////////////////////////////////////////////
+
+	<-backoutSignal
+	return
+}
