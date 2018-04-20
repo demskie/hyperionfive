@@ -103,14 +103,14 @@ func (l *Logger) startLogging() {
 					}
 					switch aColor {
 					case RED:
-						fmt.Printf("\033[1;31m%s\033[0m", aMsg)
+						fmt.Printf("\033[1;31m%s\033[0m\n", aMsg)
 					case CYAN:
-						fmt.Printf("\033[1;36m%s\033[0m", aMsg)
+						fmt.Printf("\033[1;36m%s\033[0m\n", aMsg)
 					case WHITE:
-						fmt.Printf("\033[1;37m%s\033[0m", aMsg)
+						fmt.Printf("\033[1;37m%s\033[0m\n", aMsg)
 					case MAGENTA:
 						if l.debugMode {
-							fmt.Printf("\033[1;35m%s\033[0m", aMsg)
+							fmt.Printf("\033[1;35m%s\033[0\n", aMsg)
 						}
 					}
 				}
@@ -162,7 +162,7 @@ func (l *Logger) Debug(arrayOfStrings ...string) {
 	msg := time.Now().UTC().Format(defaultTimeLayout)
 	msg += " /d " + concatenateMessages(arrayOfStrings)
 	l.mtx.Lock()
-	fmt.Printf("\033[1;32m%s\033[0m", msg)
+	fmt.Printf("\033[1;32m%s\033[0m\n", msg)
 	l.mtx.Unlock()
 }
 
@@ -200,6 +200,6 @@ func (l *Logger) SuddenExit() {
 	}
 	t := time.Now().UTC().Format(defaultTimeLayout)
 	l.mtx.Lock()
-	fmt.Printf("\033[1;31m%s\033[0m /e (suddenExit) program has finished executing", t)
+	fmt.Printf("\033[1;31m%s\033[0m /e (suddenExit) program has finished executing\n", t)
 	os.Exit(1)
 }

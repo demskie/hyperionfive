@@ -45,7 +45,7 @@ type GalaxyStruct struct {
 	NeutralTerranPlanetSlice []*SolarObject
 
 	// used to get pointers based on ID or Name
-	PointerMappings *pointerMappings
+	PointerMappings *PointerMappings
 
 	// used when serializing data for players
 	PlayerFogOfWarMutex *sync.Mutex

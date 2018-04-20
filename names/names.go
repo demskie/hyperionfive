@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // NameStruct ...
@@ -32,6 +33,7 @@ func (n *NameStruct) GetNameUint() uint64 {
 
 // NameGenerator ...
 type NameGenerator struct {
+	mtx         *sync.RWMutex
 	loadedVerbs []string
 	loadedNouns []string
 	rnum        *rand.Rand
@@ -68,6 +70,7 @@ func NewNameGenerator(args *arguments.Args, log *logging.Logger) *NameGenerator 
 		}
 	}
 	nameGen := &NameGenerator{
+		mtx:         &sync.RWMutex{},
 		loadedVerbs: verbs,
 		loadedNouns: nouns,
 		rnum:        randutil.GetMathRnum(),
@@ -78,6 +81,7 @@ func NewNameGenerator(args *arguments.Args, log *logging.Logger) *NameGenerator 
 
 // GenerateName ...
 func (n *NameGenerator) GenerateName() (newName *NameStruct) {
+	n.mtx.Lock()
 	for {
 		newName = &NameStruct{
 			verb: uint16(n.rnum.Intn(len(n.loadedVerbs))),
@@ -90,16 +94,22 @@ func (n *NameGenerator) GenerateName() (newName *NameStruct) {
 		}
 	}
 	n.generated[newName.GetNameUint()] = *newName
+	n.mtx.Unlock()
 	return newName
 }
 
 // GetNameStruct ...
 func (n *NameGenerator) GetNameStruct(num uint64) (NameStruct, bool) {
+	n.mtx.RLock()
 	val, exists := n.generated[num]
+	n.mtx.RUnlock()
 	return val, exists
 }
 
 // GetNameString ...
 func (n *NameGenerator) GetNameString(obj NameStruct) string {
-	return n.loadedVerbs[obj.verb] + n.loadedNouns[obj.noun] + strconv.FormatInt(int64(obj.hex), 16)
+	n.mtx.RLock()
+	result := n.loadedVerbs[obj.verb] + n.loadedNouns[obj.noun] + strconv.FormatInt(int64(obj.hex), 16)
+	n.mtx.RUnlock()
+	return result
 }

@@ -2,7 +2,8 @@ package backend
 
 import "sync"
 
-type pointerMappings struct {
+// PointerMappings ...
+type PointerMappings struct {
 	solarObjectMappings map[uint64]*SolarObject
 	solarSystemMappings map[uint64]*SolarSystem
 
@@ -23,8 +24,9 @@ type pointerMappings struct {
 	outstandingActionSlice    []*OutstandingAction
 }
 
-func NewPointerMappings() *pointerMappings {
-	ptrMappings := &pointerMappings{}
+// NewPointerMappings ...
+func NewPointerMappings() *PointerMappings {
+	ptrMappings := &PointerMappings{}
 
 	ptrMappings.solarObjectMappings = map[uint64]*SolarObject{}
 	ptrMappings.solarSystemMappings = map[uint64]*SolarSystem{}

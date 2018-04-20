@@ -24,19 +24,18 @@ import (
 )
 
 var (
-	log   *logging.Logger
 	args  *arguments.Args
+	log   *logging.Logger
 	fwall *firewall.Checker
 )
 
+// Start ...
 func Start(arguments *arguments.Args, logger *logging.Logger) {
 	const fName = "(backend)"
 
-	var (
-		args  = arguments
-		log   = logger
-		fwall = firewall.New()
-	)
+	args = arguments
+	log = logger
+	fwall = firewall.New()
 
 	galaxy := &GalaxyStruct{
 		Protobuf:                 &Galaxy{},

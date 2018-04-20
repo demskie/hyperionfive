@@ -81,5 +81,9 @@ func Get(log *logging.Logger) (args *Args) {
 		args.Mode = "backend"
 	}
 
+	if args.DebugModeBool {
+		log.EnableDebugMode()
+	}
+
 	return args
 }

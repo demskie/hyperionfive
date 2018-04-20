@@ -15,19 +15,18 @@ import (
 )
 
 var (
-	log   *logging.Logger
 	args  *arguments.Args
+	log   *logging.Logger
 	fwall *firewall.Checker
 )
 
+// Start ...
 func Start(arguments *arguments.Args, logger *logging.Logger) {
 	const fName = "(frontend)"
 
-	var (
-		args  = arguments
-		log   = logger
-		fwall = firewall.New()
-	)
+	args = arguments
+	log = logger
+	fwall = firewall.New()
 
 	// setup httpMux to avoid leaking default handlers
 	muxSecure := http.NewServeMux()

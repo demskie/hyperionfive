@@ -29,6 +29,9 @@ func generateGlobalGalaxyInfo(remoteIP string) bool {
 		A2 := float64(glblX * glblX)
 		B2 := float64(glblY * glblY)
 		C := math.Sqrt(A2 + B2)
+		if C >= math.MaxFloat64 {
+			continue
+		}
 		// TODO // not implemented
 		// if C >= galaxyRadius {
 		// 	continue

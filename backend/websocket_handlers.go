@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// HandleClientToBackend ...
 func (universe *UniverseStruct) HandleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	const fName = "(clientToBackend)"
 
@@ -49,6 +50,7 @@ func (universe *UniverseStruct) HandleClientToBackend(w http.ResponseWriter, r *
 	}
 }
 
+// SpawnBackendToFrontend ...
 func (universe *UniverseStruct) SpawnBackendToFrontend(host string, galaxy *GalaxyStruct) {
 	const fName = "(backendToFrontend)"
 

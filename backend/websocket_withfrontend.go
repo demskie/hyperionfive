@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"hyperionfive/frontend"
 	"net"
 	"sync"
 	"time"
@@ -12,7 +11,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type BackendToFrontendMessage struct {
+type frontendToBackendMessage struct {
+	GalaxyNameInt  int32
+	GlobalX        int64
+	GlobalY        int64
+	PlayersToSpawn []playerInfo
+}
+
+type backendToFrontendMessage struct {
 	GalaxyNameInt int32
 	GlobalX       int64
 	GlobalY       int64
@@ -66,17 +72,17 @@ func (universe *UniverseStruct) KickoffBackendToFrontendCommunication(conn *webs
 				}
 				networkIn.Reset()
 				networkIn.Write(newData)
-				inMsg := frontend.FrontendToBackendMessage{}
+				inMsg := frontendToBackendMessage{}
 				err = dec.Decode(&inMsg)
-				if checkError(err, fName, "error decoding incoming message") {
+				if log.CheckError(err, fName, "error decoding incoming message") {
 					backoutOnce.Do(killFunc)
 					return
 				}
-				GLOBAL.galaxyInfo.Lock()
-				GLOBAL.galaxyInfo.GalaxyNameInt = inMsg.GalaxyNameInt
-				GLOBAL.galaxyInfo.GlobalX = inMsg.GlobalX
-				GLOBAL.galaxyInfo.GlobalY = inMsg.GlobalY
-				GLOBAL.galaxyInfo.Unlock()
+				universe.Lock()
+				universe.GalaxyNameInt = inMsg.GalaxyNameInt
+				universe.GlobalX = inMsg.GlobalX
+				universe.GlobalY = inMsg.GlobalY
+				universe.Unlock()
 			}
 		}
 	}()
@@ -92,24 +98,24 @@ func (universe *UniverseStruct) KickoffBackendToFrontendCommunication(conn *webs
 				return
 			default:
 				// prepare outgoing message
-				GLOBAL.galaxyInfo.RLock()
+				universe.RLock()
 				outMsg := backendToFrontendMessage{
-					GalaxyNameInt: GLOBAL.galaxyInfo.GalaxyNameInt,
-					GlobalX:       GLOBAL.galaxyInfo.GlobalX,
-					GlobalY:       GLOBAL.galaxyInfo.GlobalY,
-					ClientIDs:     make([]string, len(GLOBAL.galaxyInfo.PlayerPtrs)),
+					GalaxyNameInt: universe.GalaxyNameInt,
+					GlobalX:       universe.GlobalX,
+					GlobalY:       universe.GlobalY,
+					ClientIDs:     make([]string, len(universe.PlayerPtrs)),
 				}
 				i := 0
-				for playerID := range GLOBAL.galaxyInfo.PlayerPtrs {
-					outMsg.ClientIDs[i] = GLOBAL.galaxyInfo.PlayerNameData.GetString(playerID)
+				for playerID := range universe.PlayerPtrs {
+					outMsg.ClientIDs[i] = universe.PlayerNameData.GetString(playerID)
 					i++
 				}
-				GLOBAL.galaxyInfo.RUnlock()
-				logDebug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
+				universe.RUnlock()
+				log.Debug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
 				// send outgoing message
 				networkOut.Reset()
 				err := enc.Encode(outMsg)
-				if checkError(err, fName, "error encoding outgoing message") {
+				if log.CheckError(err, fName, "error encoding outgoing message") {
 					backoutOnce.Do(killFunc)
 					return
 				}

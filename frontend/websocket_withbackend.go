@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"hyperionfive/backend"
 	"net"
 	"sync"
 	"time"
@@ -12,11 +11,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type FrontendToBackendMessage struct {
+// frontendToBackendMessage ...
+type frontendToBackendMessage struct {
 	GalaxyNameInt  int32
 	GlobalX        int64
 	GlobalY        int64
 	PlayersToSpawn []playerInfo
+}
+
+// backendToFrontendMessage ...
+type backendToFrontendMessage struct {
+	GalaxyNameInt int32
+	GlobalX       int64
+	GlobalY       int64
+	ClientIDs     []string
 }
 
 type playerInfo struct {
@@ -64,7 +72,7 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 			default:
 				// prepare outgoing message
 				networkOut.Reset()
-				outMsg := FrontendToBackendMessage{
+				outMsg := frontendToBackendMessage{
 				// TODO // need to reimplement
 				}
 				log.Debug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
@@ -103,7 +111,7 @@ func handleBackendToFrontendCommunication(conn *websocket.Conn) {
 				}
 				networkIn.Reset()
 				networkIn.Write(newData)
-				inMsg := backend.BackendToFrontendMessage{}
+				inMsg := backendToFrontendMessage{}
 				err = dec.Decode(&inMsg)
 				if log.CheckError(err, fName, "error decoding incoming message") {
 					backoutOnce.Do(killFunc)

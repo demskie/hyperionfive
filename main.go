@@ -11,14 +11,14 @@ import (
 
 func main() {
 	log := logging.New()
-	args := arguments.GetArgs(log)
-	log.Info(fName, fmt.Sprintf("using %v threads",
+	args := arguments.Get(log)
+	log.Info(fmt.Sprintf("(main) using %v threads",
 		intutil.GetNumberString(args.NumberOfCores)))
 
-	switch {
-	case args.EnableFrontendBool:
+	switch args.Mode {
+	case "frontend":
 		frontend.Start(args, log)
-	case args.EnableBackendBool:
+	case "backend":
 		backend.Start(args, log)
 	default:
 		log.Error("no operating mode was specified")

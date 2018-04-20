@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+// UniverseStruct ...
 type UniverseStruct struct {
 	sync.RWMutex
 	GalaxyData           *GalaxyStruct

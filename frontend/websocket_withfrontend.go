@@ -45,23 +45,23 @@ func frontendToFrontendCommunication(conn *websocket.Conn) {
 			default:
 				// receive incoming message
 				msgType, newData, err := conn.ReadMessage()
-				if checkError(err, fName, "error receiving message") {
+				if log.CheckError(err, fName, "error receiving message") {
 					backoutOnce.Do(killFunc)
 					return
 				}
 				if msgType != websocket.BinaryMessage {
-					logInfo(fName, "messageType is invalid")
+					log.Info(fName, "messageType is invalid")
 					return
 				}
 				networkIn.Reset()
 				networkIn.Write(newData)
 				inMsg := frontendToFrontendMessage{}
 				err = dec.Decode(&inMsg)
-				if checkError(err, fName, "error decoding incoming message") {
+				if log.CheckError(err, fName, "error decoding incoming message") {
 					backoutOnce.Do(killFunc)
 					return
 				}
-				logDebug(fName, fmt.Sprint("inMsg=\t\t", inMsg))
+				log.Debug(fName, fmt.Sprint("inMsg=\t\t", inMsg))
 
 				// TODO // need to reimplment
 			}
@@ -85,7 +85,7 @@ func frontendToFrontendCommunication(conn *websocket.Conn) {
 				// send outgoing message
 				networkOut.Reset()
 				err := enc.Encode(outMsg)
-				if checkError(err, fName, "error encoding outgoing message") {
+				if log.CheckError(err, fName, "error encoding outgoing message") {
 					backoutOnce.Do(killFunc)
 					return
 				}
