@@ -38,7 +38,7 @@ func New() *Logger {
 		logChan:   make(chan loggingMessage, oneMillion),
 	}
 	log.startLogging()
-	log.Info("Logger has initialized")
+	log.Info("(logging) initialized")
 	return log
 }
 

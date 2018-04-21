@@ -53,7 +53,7 @@ func Get(log *logging.Logger) (args *Args) {
 	}
 
 	if args.AuthPassword == "" {
-		log.Info("no password provided, using default password")
+		log.Info("(arguments) no password provided, using default password")
 		args.AuthPassword += "uVXMHpASbDngPe41pUP1"
 		args.AuthPassword += "CKwRCU6ZGap6IxQ6OQaM"
 		args.AuthPassword += "AtJgeaIhHLzO0IibxE8B"

@@ -98,6 +98,9 @@ func (gal *GalaxyStruct) Generate() {
 				if log.CheckError(err, fName) {
 					log.SuddenExit()
 				}
+				if len(objects) == 0 {
+					continue
+				}
 				x2, y2 = objects[0].X, objects[0].Y
 				math.Sqrt(math.Pow(x2-x1, 2) + math.Pow(y2-y1, 2))
 				hypotenuse := math.Sqrt((objects[0].X * objects[0].X) + (objects[0].Y * objects[0].Y))

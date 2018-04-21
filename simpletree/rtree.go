@@ -44,8 +44,9 @@ func (t *Tree) Insert(id uint64, x, y float64) error {
 		t.mtx.Unlock()
 		return errors.New("duplicate n value")
 	}
-	t.objMap[id] = &customSpatial{rect, id}
-	t.rt.Insert(&customSpatial{rct: rect})
+	newSpatial := &customSpatial{rect, id}
+	t.objMap[id] = newSpatial
+	t.rt.Insert(newSpatial)
 	t.mtx.Unlock()
 	return nil
 }
@@ -88,15 +89,12 @@ func (t *Tree) NearestNeighbors(id uint64, number int) (results []Object, err er
 			break
 		}
 	}
-	results = make([]Object, number)
-	for i, spatial := range spatials[:number] {
-		if spatial.(*customSpatial).id != id {
-			results[i] = Object{
-				id,
-				obj.rct.PointCoord(0),
-				obj.rct.PointCoord(1),
-			}
-			break
+	results = make([]Object, len(spatials))
+	for i := 0; i < len(spatials); i++ {
+		results[i] = Object{
+			spatials[i].(*customSpatial).id,
+			spatials[i].(*customSpatial).rct.PointCoord(0),
+			spatials[i].(*customSpatial).rct.PointCoord(1),
 		}
 	}
 	t.mtx.RUnlock()

@@ -12,7 +12,7 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers(universe *UniverseStruct) {
 		len(universe.PendingPlayerSpawns) < 1 {
 		return
 	}
-	log.Telemetry(fName, fmt.Sprintf("processing %v new player spawns", universe.PendingPlayerSpawns))
+	log.Telemetry(fName, fmt.Sprintf("processing %v new player spawns", len(universe.PendingPlayerSpawns)))
 	var (
 		obj        *SolarObject
 		playerData *playerInfo

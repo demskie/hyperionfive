@@ -12,7 +12,7 @@ import (
 func main() {
 	log := logging.New()
 	args := arguments.Get(log)
-	log.Info(fmt.Sprintf("(main) using %v threads",
+	log.Info(fmt.Sprintf("(hyperionfive) using %v threads",
 		intutil.GetNumberString(args.NumberOfCores)))
 
 	switch args.Mode {
