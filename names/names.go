@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hyperionfive/arguments"
 	"hyperionfive/logging"
-	"hyperionfive/randutil"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -33,10 +32,9 @@ func (n *NameStruct) GetNameUint() uint64 {
 
 // NameGenerator ...
 type NameGenerator struct {
-	mtx         *sync.RWMutex
+	mtx         *sync.Mutex
 	loadedVerbs []string
 	loadedNouns []string
-	rnum        *rand.Rand
 	generated   map[uint64]NameStruct
 }
 
@@ -70,46 +68,37 @@ func NewNameGenerator(args *arguments.Args, log *logging.Logger) *NameGenerator 
 		}
 	}
 	nameGen := &NameGenerator{
-		mtx:         &sync.RWMutex{},
 		loadedVerbs: verbs,
 		loadedNouns: nouns,
-		rnum:        randutil.GetMathRnum(),
 		generated:   map[uint64]NameStruct{},
 	}
 	return nameGen
 }
 
 // GenerateName ...
-func (n *NameGenerator) GenerateName() (newName *NameStruct) {
-	n.mtx.Lock()
-	for {
-		newName = &NameStruct{
-			verb: uint16(n.rnum.Intn(len(n.loadedVerbs))),
-			noun: uint16(n.rnum.Intn(len(n.loadedNouns))),
-			hex:  uint32(n.rnum.Int63()),
-		}
-		_, exists := n.generated[newName.GetNameUint()]
-		if exists == false {
-			break
-		}
+func (n *NameGenerator) GenerateName(rnum *rand.Rand) (newName *NameStruct) {
+	return &NameStruct{
+		verb: uint16(rnum.Intn(len(n.loadedVerbs))),
+		noun: uint16(rnum.Intn(len(n.loadedNouns))),
+		hex:  uint32(rnum.Int31()),
 	}
-	n.generated[newName.GetNameUint()] = *newName
+}
+
+// AddToIndex ...
+func (n *NameGenerator) AddToIndex(name *NameStruct) {
+	n.mtx.Lock()
+	n.generated[name.GetNameUint()] = *name
 	n.mtx.Unlock()
-	return newName
 }
 
 // GetNameStruct ...
-func (n *NameGenerator) GetNameStruct(num uint64) (NameStruct, bool) {
-	n.mtx.RLock()
+func (n *NameGenerator) GetNameStruct(num uint64) (*NameStruct, bool) {
 	val, exists := n.generated[num]
-	n.mtx.RUnlock()
-	return val, exists
+	return &val, exists
 }
 
 // GetNameString ...
 func (n *NameGenerator) GetNameString(obj NameStruct) string {
-	n.mtx.RLock()
 	result := n.loadedVerbs[obj.verb] + n.loadedNouns[obj.noun] + strconv.FormatInt(int64(obj.hex), 16)
-	n.mtx.RUnlock()
 	return result
 }

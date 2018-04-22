@@ -68,6 +68,8 @@ func (gal *GalaxyStruct) UnmarshalFile() (rt *simpletree.Tree) {
 	return
 }
 
+// TODO // unorganized - need to refactor
+
 // Generate ...
 func (gal *GalaxyStruct) Generate() {
 	const fName = "(createGalaxy)"
@@ -156,13 +158,17 @@ func generateSystem(ss *SolarSystem, rnum *rand.Rand, nameGen *names.NameGenerat
 		randutil.WeightedObj{Weight: 10, Item: WHITEDWARF},
 		randutil.WeightedObj{Weight: 5, Item: BLACKHOLE},
 	}
+
 	// generate systemType
 	result, err := randutil.WeightedChoice(weightedSystemTypes, rnum)
 	log.CheckError(err, fName)
 	ss.Type = result.Item.(int32)
 
 	// generate name
-	ss.NameInt = nameGen.GenerateName().GetNameUint()
+	var rawName *names.NameStruct
+	rawName = nameGen.GenerateName(rnum)
+	ss.NameInt = rawName.GetNameUint()
+	nameGen.AddToIndex(rawName)
 
 	// generate number of objects
 	var numObj int64
@@ -294,7 +300,9 @@ func generateSystem(ss *SolarSystem, rnum *rand.Rand, nameGen *names.NameGenerat
 		log.CheckError(err, fName)
 		newObj.Type = result.Item.(int32)
 		// generate name
-		newObj.NameInt = nameGen.GenerateName().GetNameUint()
+		rawName = nameGen.GenerateName(rnum)
+		newObj.NameInt = rawName.GetNameUint()
+		nameGen.AddToIndex(rawName)
 		// insert parentSystemName
 		newObj.ParentSystemName = ss.NameInt
 		// append result
