@@ -212,13 +212,12 @@ const (
 	totalNumSystems     = maxNumberOfPlayers * numSystemsPerPlayer
 
 	galaxyRadius                  = math.MaxInt64
-	realLifeGalaxyRadius          = 125000
-	lightyear                     = galaxyRadius / realLifeGalaxyRadius
-	minimumDistanceBetweenSystems = 7 * lightyear
+	realMilkyWayRadius            = 100000
+	lightYear                     = galaxyRadius / realMilkyWayRadius
+	minimumDistanceBetweenSystems = 3 * lightYear
 
-	oneMillion  = 1000000
-	oneBillion  = 1000000000
-	oneTrillion = 1000000000000
+	oneMillion = 1000000
+	oneBillion = 1000000000
 )
 
 // IsPlanet ...

@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 // used colors
@@ -164,6 +166,11 @@ func (l *Logger) Debug(arrayOfStrings ...string) {
 	l.mtx.Lock()
 	fmt.Printf("\033[1;32m%s\033[0m\n", msg)
 	l.mtx.Unlock()
+}
+
+// Dump ...
+func (l *Logger) Dump(iface ...interface{}) {
+	l.Debug(spew.Sdump(iface))
 }
 
 // Info ...

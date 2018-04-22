@@ -37,21 +37,18 @@ func Get(log *logging.Logger) (args *Args) {
 	)
 
 	flag.Parse()
-	args = &Args{
-		InputFile:      *inputFilePtr,
-		OutputFile:     *outputFilePtr,
-		GoogleAudience: *googleAudiencePtr,
-		AuthPassword:   *authPasswordPtr,
-		StaticFrontend: *staticFrontendPtr,
-		LocalInterface: *localInterfacePtr,
-		LocalAddress:   *localAddressPtr,
-		DebugModeBool:  *debugModeBoolPtr,
-	}
+	args = &Args{}
 
+	args.InputFile = *inputFilePtr
+
+	args.OutputFile = *outputFilePtr
+
+	args.GoogleAudience = *googleAudiencePtr
 	if args.GoogleAudience == "" {
 		args.GoogleAudience = "771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com"
 	}
 
+	args.AuthPassword = *authPasswordPtr
 	if args.AuthPassword == "" {
 		log.Info("(arguments) no password provided, using default password")
 		args.AuthPassword += "uVXMHpASbDngPe41pUP1"
@@ -64,6 +61,17 @@ func Get(log *logging.Logger) (args *Args) {
 		args.AuthPassword += "cPk93TWZs0kllqVhCN0G"
 		args.AuthPassword += "9oKiFpa0p7Mfwd8CqHiz"
 		args.AuthPassword += "3ghjZw6FI17DjdObCXSF"
+	}
+
+	args.StaticFrontend = *staticFrontendPtr
+
+	args.LocalInterface = *localInterfacePtr
+
+	args.LocalAddress = *localAddressPtr
+
+	args.DebugModeBool = *debugModeBoolPtr
+	if args.DebugModeBool {
+		log.EnableDebugMode()
 	}
 
 	if *singleThreadedBoolPtr == true {
@@ -79,10 +87,6 @@ func Get(log *logging.Logger) (args *Args) {
 		args.Mode = "frontend"
 	} else if *enableBackendBoolPtr {
 		args.Mode = "backend"
-	}
-
-	if args.DebugModeBool {
-		log.EnableDebugMode()
 	}
 
 	return args
