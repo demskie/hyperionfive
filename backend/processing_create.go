@@ -1,7 +1,9 @@
 package backend
 
+import "github.com/demskie/hyperionfive/gamestate"
+
 // CreateGalacticFleet ...
-func (galaxy *GalaxyStruct) CreateGalacticFleet(fleet *GalacticFleet) {
+func (galaxy *GalaxyStruct) CreateGalacticFleet(fleet *gamestate.GalacticFleet) {
 	galaxy.PointerMappings.galacticFleetMutex.Lock()
 	defer galaxy.PointerMappings.galacticFleetMutex.Unlock()
 	fleet.FleetID = int32(len(galaxy.Protobuf.Galacticfleetslice))
@@ -9,7 +11,7 @@ func (galaxy *GalaxyStruct) CreateGalacticFleet(fleet *GalacticFleet) {
 }
 
 // CreateOngoingBattle ...
-func (galaxy *GalaxyStruct) CreateOngoingBattle(battle *OngoingBattle) {
+func (galaxy *GalaxyStruct) CreateOngoingBattle(battle *gamestate.OngoingBattle) {
 	galaxy.PointerMappings.ongoingBattleMutex.Lock()
 	defer galaxy.PointerMappings.ongoingBattleMutex.Unlock()
 	battle.BattleID = int32(len(galaxy.Protobuf.Ongoingbattleslice))
@@ -17,7 +19,7 @@ func (galaxy *GalaxyStruct) CreateOngoingBattle(battle *OngoingBattle) {
 }
 
 // CreateOngoingSiege ...
-func (galaxy *GalaxyStruct) CreateOngoingSiege(siege *OngoingSiege) {
+func (galaxy *GalaxyStruct) CreateOngoingSiege(siege *gamestate.OngoingSiege) {
 	galaxy.PointerMappings.ongoingSiegeMutex.Lock()
 	defer galaxy.PointerMappings.ongoingSiegeMutex.Unlock()
 	siege.SiegeID = int32(len(galaxy.Protobuf.Ongoingsiegeslice))
@@ -25,7 +27,7 @@ func (galaxy *GalaxyStruct) CreateOngoingSiege(siege *OngoingSiege) {
 }
 
 // CreateOutstandingAction ...
-func (galaxy *GalaxyStruct) CreateOutstandingAction(action *OutstandingAction) {
+func (galaxy *GalaxyStruct) CreateOutstandingAction(action *gamestate.OutstandingAction) {
 	galaxy.PointerMappings.outstandingActionMutex.Lock()
 	defer galaxy.PointerMappings.outstandingActionMutex.Unlock()
 	action.ActionID = int32(len(galaxy.Protobuf.Outstandingactionslice))

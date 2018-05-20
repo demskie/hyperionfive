@@ -1,22 +1,24 @@
 package backend
 
+import "github.com/demskie/hyperionfive/gamestate"
+
 // PreprocessPointerMappings ...
 func (galaxy *GalaxyStruct) PreprocessPointerMappings() {
 	const fName = "(preprocessPointerMappings)"
 	log.Debug(fName, "starting")
 	var (
-		ss     *SolarSystem
-		obj    *SolarObject
-		fleet  *GalacticFleet
-		battle *OngoingBattle
-		siege  *OngoingSiege
-		action *OutstandingAction
+		ss     *gamestate.SolarSystem
+		obj    *gamestate.SolarObject
+		fleet  *gamestate.GalacticFleet
+		battle *gamestate.OngoingBattle
+		siege  *gamestate.OngoingSiege
+		action *gamestate.OutstandingAction
 	)
 	for _, ss = range galaxy.Protobuf.Solarsystemslice {
 		for _, obj = range ss.Solarobjectslice {
-			galaxy.PointerMappings.solarObjectMappings[obj.NameInt] = obj
+			galaxy.PointerMappings.solarObjectMappings[obj.NameUint] = obj
 		}
-		galaxy.PointerMappings.solarSystemMappings[ss.NameInt] = ss
+		galaxy.PointerMappings.solarSystemMappings[ss.NameUint] = ss
 	}
 	for _, fleet = range galaxy.Protobuf.Galacticfleetslice {
 		galaxy.PointerMappings.galacticFleetMappings[fleet.FleetID] = fleet
@@ -41,8 +43,8 @@ func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
 	const fName = "(preprocessPopulationObjects)"
 	log.Debug(fName, "starting")
 	var (
-		ss  *SolarSystem
-		obj *SolarObject
+		ss  *gamestate.SolarSystem
+		obj *gamestate.SolarObject
 	)
 	for _, ss = range galaxy.Protobuf.Solarsystemslice {
 		for _, obj = range ss.Solarobjectslice {
@@ -51,7 +53,7 @@ func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
 				if obj.Owner == 0 {
 					galaxy.NeutralAnyPlanetSlice = append(galaxy.NeutralAnyPlanetSlice, obj)
 				}
-				if obj.Owner == 0 && obj.Type == TERRAN {
+				if obj.Owner == 0 && obj.ObjectType == gamestate.TERRAN {
 					galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, obj)
 				}
 			}
@@ -64,8 +66,8 @@ func (galaxy *GalaxyStruct) PreprocessPlayerFogOfWar() {
 	const fName = "(preprocessPlayerFogOfWar)"
 	log.Debug(fName, "starting")
 	var (
-		ss     *SolarSystem
-		obj    *SolarObject
+		ss     *gamestate.SolarSystem
+		obj    *gamestate.SolarObject
 		exists bool
 	)
 	for _, ss = range galaxy.Protobuf.Solarsystemslice {
@@ -75,10 +77,10 @@ func (galaxy *GalaxyStruct) PreprocessPlayerFogOfWar() {
 			}
 			_, exists = galaxy.PlayerFogOfWar[obj.Owner]
 			if !exists {
-				galaxy.PlayerFogOfWar[obj.Owner] = map[uint64]*SolarSystem{}
-				galaxy.PlayerFogOfWar[obj.Owner][ss.NameInt] = ss
-			} else if galaxy.PlayerFogOfWar[obj.Owner][ss.NameInt] != ss {
-				galaxy.PlayerFogOfWar[obj.Owner][ss.NameInt] = ss
+				galaxy.PlayerFogOfWar[obj.Owner] = map[uint64]*gamestate.SolarSystem{}
+				galaxy.PlayerFogOfWar[obj.Owner][ss.NameUint] = ss
+			} else if galaxy.PlayerFogOfWar[obj.Owner][ss.NameUint] != ss {
+				galaxy.PlayerFogOfWar[obj.Owner][ss.NameUint] = ss
 			}
 		}
 	}

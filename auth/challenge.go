@@ -5,11 +5,12 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"fmt"
-	"hyperionfive/arguments"
-	"hyperionfive/firewall"
-	"hyperionfive/logging"
 	"io"
 	"net"
+
+	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/logging"
 
 	"github.com/gorilla/websocket"
 

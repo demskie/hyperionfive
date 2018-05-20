@@ -1,19 +1,49 @@
-BACKEND_TO_BACKEND SYNC PROCESS:
+//////////// OSX ////////////
+go get github.com/golang/protobuf/proto
+go get github.com/golang/protobuf/protoc-gen-go
+go install github.com/golang/protobuf/protoc-gen-go
+https://github.com/google/protobuf/releases
+cp ~/Downloads/protoc-3.4.0-osx-x86_64/bin/protoc ~/OneDrive/GoPrototypes/bin/
+~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/backend/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_galaxy.proto
+~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/backend/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_actor.proto
+~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_galaxy.proto
+brew install node
+npm install npm@latest -g
+npm update
+cd /Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/node_modules
+npm install --save google-protobuf
+npm install --global browserify
+browserify ../protobuf_pb.js -o ../websiteroot/protobuf.js
+/////////////////////////////
+protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=$GOPATH/src/hyperionfive/backend/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/backend/ protobuf_galaxy.proto
+protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=$GOPATH/src/github.com/AlexDemskie/hyperionfivebot/actor --proto_path=$GOPATH/src/github.com/AlexDemskie/hyperionfivebot/actor gamestate.proto
 
-    0) Bravo is fully synced with Alpha and Theta.
 
-    1) Bravo notices one or more hashes are invalid (via CurrentSystemHashes)
+////////// WINDOWS //////////
+go get github.com/golang/protobuf/proto
+go get github.com/golang/protobuf/protoc-gen-go
+go install github.com\golang\protobuf\protoc-gen-go
+https://github.com/google/protobuf/releases
+**extract_protoc.exe_here**-->   U:\OneDrive\GoPrototypes\bin
+U:
+cd U:\OneDrive\GoPrototypes\src\GOSERVER
+U:\OneDrive\GoPrototypes\bin\protoc --go_out=U:\OneDrive\GoPrototypes\src\GOSERVER\ protobuf.proto
+U:\OneDrive\GoPrototypes\bin\protoc --js_out=import_style=commonjs,binary:U:\OneDrive\GoPrototypes\src\GOSERVER protobuf.proto
+npm install npm@latest -g
+npm update
+cd U:\OneDrive\GoPrototypes\src\GOSERVER\node_modules
+npm install --save google-protobuf
+npm install --global browserify
+browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
+/////////////////////////////
 
-    2) Bravo forcefully disconnects all of his clients if more than half of
-        its Systems are out-of-sync. Otherwise he just disconnects the clients
-        asking for one of the out-of-sync systems
 
-    3) Bravo sends known (and invalid) currentSystemHashes to
+////////// PROFILING NOTES //////////
+cd $GOPATH/src/github.com/uber/go-torch
+go-torch -u http://localhost:8080/debug/pprof/profile?seconds=30
 
-    4) Alpha and Theta receive the message and send random sampling of missing
-        data and _all?_ bufferedRequests to Bravo
+wget http://localhost:8080/debug/pprof/trace?seconds=30
+go tool trace trace?seconds=30
 
-    5) Bravo responds with confirmation of received requests using the
-        ConfirmUniqueID field (regardless if data is relevant)
-
-    6) Alpha and Theta receive confirmation and update their confirmedRequests
+go tool pprof -png http://localhost:8080/debug/pprof/heap > out3.png
+/////////////////////////////////////

@@ -3,10 +3,6 @@ package backend
 import (
 	"encoding/json"
 	"fmt"
-	"hyperionfive/intutil"
-	"hyperionfive/names"
-	"hyperionfive/randutil"
-	"hyperionfive/simpletree"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -14,18 +10,24 @@ import (
 	"regexp"
 	"sync/atomic"
 
+	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/intutil"
+	"github.com/demskie/hyperionfive/names"
+	"github.com/demskie/randutil"
+	"github.com/demskie/spatialindex"
+
 	"github.com/gogo/protobuf/proto"
 )
 
 // UnmarshalFile ...
-func (gal *GalaxyStruct) UnmarshalFile() (rt *simpletree.Tree) {
+func (gal *GalaxyStruct) UnmarshalFile() (rt *spatialindex.Tree) {
 	const fName = "(galaxy.UnmarshalFile)"
 	// after deserialization we need to call the following function
 	createTree := func() {
 		for _, ss := range gal.Protobuf.Solarsystemslice {
 			x := float64(ss.InterX)
 			y := float64(ss.InterY)
-			gal.Rtree.Insert(ss.NameInt, x, y)
+			gal.Rtree.Add(ss.NameUint, x, y)
 		}
 	}
 	// parse filename to determine if it is a 'blob' file
@@ -73,9 +75,9 @@ func (gal *GalaxyStruct) UnmarshalFile() (rt *simpletree.Tree) {
 // Generate ...
 func (gal *GalaxyStruct) Generate() {
 	const fName = "(createGalaxy)"
-	gal.Protobuf.Solarsystemslice = make([]*SolarSystem, totalNumSystems)
+	gal.Protobuf.Solarsystemslice = make([]*gamestate.SolarSystem, totalNumSystems)
 	for i := range gal.Protobuf.Solarsystemslice {
-		gal.Protobuf.Solarsystemslice[i] = &SolarSystem{}
+		gal.Protobuf.Solarsystemslice[i] = &gamestate.SolarSystem{}
 	}
 	badSystems := int32(0)
 	log.Info(fName, fmt.Sprintf("generating %v systems",
@@ -86,7 +88,7 @@ func (gal *GalaxyStruct) Generate() {
 		if stopIndex <= startIndex {
 			return
 		}
-		var ss *SolarSystem
+		var ss *gamestate.SolarSystem
 		var x1, y1, x2, y2 float64
 		rnum := gal.ProcessingRnumSlice[coreNum]
 		for i := startIndex; i < stopIndex; i++ {
@@ -95,8 +97,8 @@ func (gal *GalaxyStruct) Generate() {
 			for {
 				generateEllipticalCoordinates(ss, rnum)
 				x1, y1 = float64(ss.InterX), float64(ss.InterY)
-				gal.Rtree.Insert(ss.NameInt, x1, y1)
-				objects, err := gal.Rtree.NearestNeighbors(ss.NameInt, 1)
+				gal.Rtree.Add(ss.NameUint, x1, y1)
+				objects, err := gal.Rtree.NearestNeighbors(ss.NameUint, 1)
 				if log.CheckError(err, fName) {
 					log.SuddenExit()
 				}
@@ -106,7 +108,7 @@ func (gal *GalaxyStruct) Generate() {
 				x2, y2 = objects[0].X, objects[0].Y
 				hypotenuse := math.Sqrt(math.Pow(x2-x1, 2) + math.Pow(y2-y1, 2))
 				if hypotenuse <= minimumDistanceBetweenSystems {
-					gal.Rtree.Delete(ss.NameInt)
+					gal.Rtree.Delete(ss.NameUint)
 					atomic.AddInt32(&badSystems, 1)
 					continue
 				}
@@ -122,7 +124,7 @@ func (gal *GalaxyStruct) Generate() {
 		if stopIndex <= startIndex {
 			return
 		}
-		var ss *SolarSystem
+		var ss *gamestate.SolarSystem
 		var normalDistVal int
 		rnum := gal.ProcessingRnumSlice[coreNum]
 		for i := startIndex; i < stopIndex; i++ {
@@ -134,55 +136,55 @@ func (gal *GalaxyStruct) Generate() {
 			} else if normalDistVal > 9 {
 				normalDistVal = 9
 			}
-			ss.ConnectedSolarSystems = make([]uint64, normalDistVal)
-			neighbors, err := gal.Rtree.NearestNeighbors(ss.NameInt, normalDistVal)
+			ss.ConnectedSolarSystemsNameUint = make([]uint64, normalDistVal)
+			neighbors, err := gal.Rtree.NearestNeighbors(ss.NameUint, normalDistVal)
 			if log.CheckError(err, fName) {
 				log.SuddenExit()
 			}
 			for i, neighbor := range neighbors {
-				ss.ConnectedSolarSystems[i] = neighbor.ID
+				ss.ConnectedSolarSystemsNameUint[i] = neighbor.ID
 			}
 		}
 	})
 }
 
-func generateSystem(ss *SolarSystem, rnum *rand.Rand, nameGen *names.NameGenerator) {
+func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.NameGenerator) {
 	const fName = "(generateSystem)"
 
 	// define weight for systemTypes
 	weightedSystemTypes := []randutil.WeightedObj{
-		randutil.WeightedObj{Weight: 50, Item: YELLOWGIANT},
-		randutil.WeightedObj{Weight: 50, Item: REDGIANT},
-		randutil.WeightedObj{Weight: 50, Item: BLUEGIANT},
-		randutil.WeightedObj{Weight: 10, Item: NEUTRONSTAR},
-		randutil.WeightedObj{Weight: 10, Item: WHITEDWARF},
-		randutil.WeightedObj{Weight: 5, Item: BLACKHOLE},
+		randutil.WeightedObj{Weight: 50, Object: gamestate.YELLOWGIANT},
+		randutil.WeightedObj{Weight: 50, Object: gamestate.REDGIANT},
+		randutil.WeightedObj{Weight: 50, Object: gamestate.BLUEGIANT},
+		randutil.WeightedObj{Weight: 10, Object: gamestate.NEUTRONSTAR},
+		randutil.WeightedObj{Weight: 10, Object: gamestate.WHITEDWARF},
+		randutil.WeightedObj{Weight: 5, Object: gamestate.BLACKHOLE},
 	}
 
 	// generate systemType
 	result, err := randutil.WeightedChoice(weightedSystemTypes, rnum)
 	log.CheckError(err, fName)
-	ss.Type = result.Item.(int32)
+	ss.SystemType = result.Object.(int32)
 
 	// generate name
 	var rawName *names.NameStruct
 	rawName = nameGen.GenerateName(rnum)
-	ss.NameInt = rawName.GetNameUint()
+	ss.NameUint = rawName.GetNameUint()
 	nameGen.AddToIndex(rawName)
 
 	// generate number of objects
 	var numObj int64
-	if ss.Type == YELLOWGIANT {
+	if ss.SystemType == gamestate.YELLOWGIANT {
 		numObj = int64(math.Abs(rnum.NormFloat64()*7) + 20)
-	} else if ss.Type == REDGIANT {
+	} else if ss.SystemType == gamestate.REDGIANT {
 		numObj = int64(math.Abs(rnum.NormFloat64()*3) + 25)
-	} else if ss.Type == BLUEGIANT {
+	} else if ss.SystemType == gamestate.BLUEGIANT {
 		numObj = int64(math.Abs(rnum.NormFloat64()*7) + 20)
-	} else if ss.Type == NEUTRONSTAR {
+	} else if ss.SystemType == gamestate.NEUTRONSTAR {
 		numObj = int64(math.Abs(rnum.NormFloat64()*7) + 10)
-	} else if ss.Type == WHITEDWARF {
+	} else if ss.SystemType == gamestate.WHITEDWARF {
 		numObj = int64(0)
-	} else if ss.Type == BLACKHOLE {
+	} else if ss.SystemType == gamestate.BLACKHOLE {
 		numObj = int64(rnum.NormFloat64()*10 + 30)
 		if numObj < int64(11) {
 			numObj = int64(11)
@@ -190,7 +192,7 @@ func generateSystem(ss *SolarSystem, rnum *rand.Rand, nameGen *names.NameGenerat
 			numObj = int64(52)
 		}
 	} else {
-		log.Error(fName, fmt.Sprintf("invalid system.Type: %v", ss.Type))
+		log.Error(fName, fmt.Sprintf("invalid system.Type: %v", ss.SystemType))
 		log.SuddenExit()
 	}
 	if numObj > int64(72) {
@@ -199,119 +201,119 @@ func generateSystem(ss *SolarSystem, rnum *rand.Rand, nameGen *names.NameGenerat
 
 	// define weight for this object based on SolarSystemType
 	var weightedObjTypes []randutil.WeightedObj
-	if ss.Type == YELLOWGIANT {
+	if ss.SystemType == gamestate.YELLOWGIANT {
 		weightedObjTypes = []randutil.WeightedObj{
-			randutil.WeightedObj{Weight: 50, Item: TERRAN},
-			randutil.WeightedObj{Weight: 50, Item: DESERT},
-			randutil.WeightedObj{Weight: 50, Item: VOLCANIC},
-			randutil.WeightedObj{Weight: 10, Item: ICE},
-			randutil.WeightedObj{Weight: 10, Item: BARREN},
-			randutil.WeightedObj{Weight: 5, Item: FERROUS},
-			randutil.WeightedObj{Weight: 5, Item: GREENHOUSE},
-			randutil.WeightedObj{Weight: 5, Item: OCEANIC},
-			randutil.WeightedObj{Weight: 5, Item: LARGEASTEROID},
-			randutil.WeightedObj{Weight: 5, Item: DWARF},
-			randutil.WeightedObj{Weight: 5, Item: ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Item: PLASMASTORM},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.TERRAN},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.DESERT},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.VOLCANIC},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.ICE},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.BARREN},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.FERROUS},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.GREENHOUSE},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
-	} else if ss.Type == REDGIANT {
+	} else if ss.SystemType == gamestate.REDGIANT {
 		weightedObjTypes = []randutil.WeightedObj{
-			randutil.WeightedObj{Weight: 50, Item: TERRAN},
-			randutil.WeightedObj{Weight: 50, Item: DESERT},
-			randutil.WeightedObj{Weight: 50, Item: VOLCANIC},
-			randutil.WeightedObj{Weight: 10, Item: ICE},
-			randutil.WeightedObj{Weight: 10, Item: BARREN},
-			randutil.WeightedObj{Weight: 5, Item: FERROUS},
-			randutil.WeightedObj{Weight: 5, Item: GREENHOUSE},
-			randutil.WeightedObj{Weight: 5, Item: OCEANIC},
-			randutil.WeightedObj{Weight: 5, Item: LARGEASTEROID},
-			randutil.WeightedObj{Weight: 5, Item: DWARF},
-			randutil.WeightedObj{Weight: 5, Item: ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Item: PLASMASTORM},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.TERRAN},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.DESERT},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.VOLCANIC},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.ICE},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.BARREN},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.FERROUS},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.GREENHOUSE},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
-	} else if ss.Type == BLUEGIANT {
+	} else if ss.SystemType == gamestate.BLUEGIANT {
 		weightedObjTypes = []randutil.WeightedObj{
-			randutil.WeightedObj{Weight: 50, Item: TERRAN},
-			randutil.WeightedObj{Weight: 50, Item: DESERT},
-			randutil.WeightedObj{Weight: 50, Item: VOLCANIC},
-			randutil.WeightedObj{Weight: 10, Item: ICE},
-			randutil.WeightedObj{Weight: 10, Item: BARREN},
-			randutil.WeightedObj{Weight: 5, Item: FERROUS},
-			randutil.WeightedObj{Weight: 5, Item: GREENHOUSE},
-			randutil.WeightedObj{Weight: 5, Item: OCEANIC},
-			randutil.WeightedObj{Weight: 5, Item: LARGEASTEROID},
-			randutil.WeightedObj{Weight: 5, Item: DWARF},
-			randutil.WeightedObj{Weight: 5, Item: ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Item: PLASMASTORM},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.TERRAN},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.DESERT},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.VOLCANIC},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.ICE},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.BARREN},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.FERROUS},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.GREENHOUSE},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
-	} else if ss.Type == NEUTRONSTAR {
+	} else if ss.SystemType == gamestate.NEUTRONSTAR {
 		weightedObjTypes = []randutil.WeightedObj{
-			randutil.WeightedObj{Weight: 50, Item: TERRAN},
-			randutil.WeightedObj{Weight: 50, Item: DESERT},
-			randutil.WeightedObj{Weight: 50, Item: VOLCANIC},
-			randutil.WeightedObj{Weight: 10, Item: ICE},
-			randutil.WeightedObj{Weight: 10, Item: BARREN},
-			randutil.WeightedObj{Weight: 5, Item: FERROUS},
-			randutil.WeightedObj{Weight: 5, Item: GREENHOUSE},
-			randutil.WeightedObj{Weight: 5, Item: OCEANIC},
-			randutil.WeightedObj{Weight: 5, Item: LARGEASTEROID},
-			randutil.WeightedObj{Weight: 5, Item: DWARF},
-			randutil.WeightedObj{Weight: 5, Item: ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Item: PLASMASTORM},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.TERRAN},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.DESERT},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.VOLCANIC},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.ICE},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.BARREN},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.FERROUS},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.GREENHOUSE},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
-	} else if ss.Type == WHITEDWARF {
+	} else if ss.SystemType == gamestate.WHITEDWARF {
 		weightedObjTypes = []randutil.WeightedObj{
-			randutil.WeightedObj{Weight: 50, Item: TERRAN},
-			randutil.WeightedObj{Weight: 50, Item: DESERT},
-			randutil.WeightedObj{Weight: 50, Item: VOLCANIC},
-			randutil.WeightedObj{Weight: 10, Item: ICE},
-			randutil.WeightedObj{Weight: 10, Item: BARREN},
-			randutil.WeightedObj{Weight: 5, Item: FERROUS},
-			randutil.WeightedObj{Weight: 5, Item: GREENHOUSE},
-			randutil.WeightedObj{Weight: 5, Item: OCEANIC},
-			randutil.WeightedObj{Weight: 5, Item: LARGEASTEROID},
-			randutil.WeightedObj{Weight: 5, Item: DWARF},
-			randutil.WeightedObj{Weight: 5, Item: ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Item: PLASMASTORM},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.TERRAN},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.DESERT},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.VOLCANIC},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.ICE},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.BARREN},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.FERROUS},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.GREENHOUSE},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
-	} else if ss.Type == BLACKHOLE {
+	} else if ss.SystemType == gamestate.BLACKHOLE {
 		weightedObjTypes = []randutil.WeightedObj{
-			randutil.WeightedObj{Weight: 50, Item: TERRAN},
-			randutil.WeightedObj{Weight: 50, Item: DESERT},
-			randutil.WeightedObj{Weight: 50, Item: VOLCANIC},
-			randutil.WeightedObj{Weight: 10, Item: ICE},
-			randutil.WeightedObj{Weight: 10, Item: BARREN},
-			randutil.WeightedObj{Weight: 5, Item: FERROUS},
-			randutil.WeightedObj{Weight: 5, Item: GREENHOUSE},
-			randutil.WeightedObj{Weight: 5, Item: OCEANIC},
-			randutil.WeightedObj{Weight: 5, Item: LARGEASTEROID},
-			randutil.WeightedObj{Weight: 5, Item: DWARF},
-			randutil.WeightedObj{Weight: 5, Item: ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Item: PLASMASTORM},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.TERRAN},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.DESERT},
+			randutil.WeightedObj{Weight: 50, Object: gamestate.VOLCANIC},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.ICE},
+			randutil.WeightedObj{Weight: 10, Object: gamestate.BARREN},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.FERROUS},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.GREENHOUSE},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
+			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
 	}
 
 	// start building objects
-	ss.Solarobjectslice = []*SolarObject{}
+	ss.Solarobjectslice = []*gamestate.SolarObject{}
 	for i := 0; i < int(numObj); i++ {
-		newObj := &SolarObject{}
+		newObj := &gamestate.SolarObject{}
 		// generate type
 		result, err := randutil.WeightedChoice(weightedObjTypes, rnum)
 		log.CheckError(err, fName)
-		newObj.Type = result.Item.(int32)
+		newObj.ObjectType = result.Object.(int32)
 		// generate name
 		rawName = nameGen.GenerateName(rnum)
-		newObj.NameInt = rawName.GetNameUint()
+		newObj.NameUint = rawName.GetNameUint()
 		nameGen.AddToIndex(rawName)
 		// insert parentSystemName
-		newObj.ParentSystemName = ss.NameInt
+		newObj.ParentSystemNameUint = ss.NameUint
 		// append result
 		ss.Solarobjectslice = append(ss.Solarobjectslice, newObj)
 	}
 
 }
 
-func generateSpiralCoordinates(ss *SolarSystem, numArms int, rnum *rand.Rand) {
+func generateSpiralCoordinates(ss *gamestate.SolarSystem, numArms int, rnum *rand.Rand) {
 	roundFloat := func(val float64) float64 {
 		if val < 0 {
 			return float64(int64(val - 0.5))
@@ -333,7 +335,7 @@ func generateSpiralCoordinates(ss *SolarSystem, numArms int, rnum *rand.Rand) {
 	ss.InterY = int64(fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ)))
 }
 
-func generateEllipticalCoordinates(ss *SolarSystem, rnum *rand.Rand) {
+func generateEllipticalCoordinates(ss *gamestate.SolarSystem, rnum *rand.Rand) {
 	var X, Y float64
 	for {
 		ss.InterX = rnum.Int63() * int64(randutil.GetPosOrNegOne(rnum))

@@ -1,0 +1,83 @@
+syntax = "proto3";
+package gamestate;
+
+
+message SolarObject {
+	uint64 nameUint = 1;
+	int64 interX = 2;
+	int64 interY = 3;
+	int32 owner = 4;
+	int32 food = 5;
+	int64 population = 6;
+	int32 objectType = 7;
+	int32 health = 8;
+	int32 behavior = 9;
+	int32 count = 10;
+	uint64 parentSystemNameUint = 11;
+	int32 dockedFighterCount = 12;
+}
+
+
+message SolarSystem {
+    uint64 nameUint = 1;
+    int64 interX = 2;
+    int64 interY = 3;
+	int32 primaryOwner = 4;
+    int32 systemType = 16;
+	repeated SolarObject solarobjectslice = 128;
+	repeated uint64 connectedSolarSystemsNameUint = 129;
+}
+
+
+message Galaxy {
+    uint64 nameUint = 1;
+    int64 globalX = 2;
+    int64 globalY = 3;
+    int32 galaxyType = 16;
+	repeated SolarSystem solarsystemslice = 128;
+	repeated GalacticFleet galacticfleetslice = 129;
+	repeated OngoingBattle ongoingbattleslice = 130;
+	repeated OngoingSiege ongoingsiegeslice = 131;
+	repeated OutstandingAction outstandingactionslice = 132;
+}
+
+
+message GalacticFleet {
+	int32 fleetID = 1;
+	int64 interX = 2;
+	int64 interY = 3;
+	int32 owner = 4;
+	uint64 closestSystemNameUint = 5;
+	int32 capitalCount = 32;
+	int32 fighterCount = 33;
+}
+
+
+message OngoingBattle {
+	int32 battleID = 1;
+	int32 strategy = 2;
+	repeated int32 attackingFleetIDs = 128;
+	repeated int32 defendingFleetIDs = 129;
+}
+
+
+message OngoingSiege {
+	int32 siegeID = 1;
+	int64 timeLeft = 2;
+	uint64 fightingOverSystemNameUint = 3;
+	repeated int32 aggressorFleetIDs = 128;
+}
+
+
+message OutstandingAction {
+	int32 actionID = 1;
+	int32 actionType = 2;
+	int64 timeLeft = 3;
+	int32 owner = 4;
+	repeated int64 actionValues = 128;
+}
+
+
+/*
+protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=$GOPATH/src/github.com/demskie/hyperionfive/gamestate --proto_path=$GOPATH/src/github.com/demskie/hyperionfive/gamestate gamestate.proto
+*/

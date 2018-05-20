@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"hyperionfive/arguments"
-	"hyperionfive/firewall"
-	"hyperionfive/logging"
 	"net"
 	"net/http"
+
+	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/logging"
 
 	"github.com/gorilla/websocket"
 	oauth2 "google.golang.org/api/oauth2/v1"

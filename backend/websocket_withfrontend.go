@@ -12,17 +12,17 @@ import (
 )
 
 type frontendToBackendMessage struct {
-	GalaxyNameInt  int32
+	GalaxyNameUint uint64
 	GlobalX        int64
 	GlobalY        int64
 	PlayersToSpawn []playerInfo
 }
 
 type backendToFrontendMessage struct {
-	GalaxyNameInt int32
-	GlobalX       int64
-	GlobalY       int64
-	ClientIDs     []string
+	GalaxyNameUint uint64
+	GlobalX        int64
+	GlobalY        int64
+	ClientIDs      []string
 }
 
 // KickoffBackendToFrontendCommunication ...
@@ -79,7 +79,7 @@ func (universe *UniverseStruct) KickoffBackendToFrontendCommunication(conn *webs
 					return
 				}
 				universe.Lock()
-				universe.GalaxyNameInt = inMsg.GalaxyNameInt
+				universe.GalaxyNameUint = inMsg.GalaxyNameUint
 				universe.GlobalX = inMsg.GlobalX
 				universe.GlobalY = inMsg.GlobalY
 				universe.Unlock()
@@ -100,10 +100,10 @@ func (universe *UniverseStruct) KickoffBackendToFrontendCommunication(conn *webs
 				// prepare outgoing message
 				universe.RLock()
 				outMsg := backendToFrontendMessage{
-					GalaxyNameInt: universe.GalaxyNameInt,
-					GlobalX:       universe.GlobalX,
-					GlobalY:       universe.GlobalY,
-					ClientIDs:     make([]string, len(universe.PlayerPtrs)),
+					GalaxyNameUint: universe.GalaxyNameUint,
+					GlobalX:        universe.GlobalX,
+					GlobalY:        universe.GlobalY,
+					ClientIDs:      make([]string, len(universe.PlayerPtrs)),
 				}
 				i := 0
 				for playerID := range universe.PlayerPtrs {

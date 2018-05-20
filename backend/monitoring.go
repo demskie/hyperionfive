@@ -2,9 +2,10 @@ package backend
 
 import (
 	"fmt"
-	"hyperionfive/intutil"
 	"sync/atomic"
 	"time"
+
+	"github.com/demskie/hyperionfive/intutil"
 )
 
 var backendCounters *backendCounterData

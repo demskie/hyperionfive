@@ -2,14 +2,6 @@ package backend
 
 import (
 	"crypto/tls"
-	"hyperionfive/arguments"
-	"hyperionfive/firewall"
-	"hyperionfive/logging"
-	"hyperionfive/names"
-	"hyperionfive/netutil"
-	"hyperionfive/randutil"
-	"hyperionfive/simpletree"
-	"hyperionfive/stringdatastore"
 	"math"
 	"net/http"
 	"net/http/pprof"
@@ -18,7 +10,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AlexDemskie/simplesync"
+	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/names"
+	"github.com/demskie/hyperionfive/netutil"
+	"github.com/demskie/hyperionfive/stringdatastore"
+	"github.com/demskie/logging"
+	"github.com/demskie/randutil"
+	"github.com/demskie/spatialindex"
+
+	"github.com/demskie/simplesync"
 	// runtimepprof "runtime/pprof"
 	_ "net/http/pprof"
 )
@@ -38,33 +40,32 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	fwall = firewall.New()
 
 	galaxy := &GalaxyStruct{
-		Protobuf:                 &Galaxy{},
-		Rtree:                    simpletree.NewTree(),
+		Protobuf:                 &gamestate.Galaxy{},
+		Rtree:                    spatialindex.NewTree(),
 		SingleRnumMutex:          &sync.Mutex{},
-		SingleRnum:               randutil.GetUniqueMathRnum(),
+		SingleRnum:               randutil.CreateUniqueMathRnum(),
 		TickTime:                 &tickCounterData{lastTick: time.Now()},
 		TimeMultiplier:           float64(1),
-		ActorStateSlice:          make([]*ActorState, 0),
 		ProcessingQueue:          simplesync.NewWorkerPool(args.NumberOfCores),
-		ProcessingRnumSlice:      randutil.GetMultipleUniqueMathRnum(args.NumberOfCores),
+		ProcessingRnumSlice:      randutil.CreateMultipleUniqueMathRnum(args.NumberOfCores),
 		AnyPlanetMutex:           &sync.Mutex{},
-		AnyPlanetSlice:           make([]*SolarObject, 0),
+		AnyPlanetSlice:           make([]*gamestate.SolarObject, 0),
 		NeutralAnyPlanetMutex:    &sync.Mutex{},
-		NeutralAnyPlanetSlice:    make([]*SolarObject, 0),
+		NeutralAnyPlanetSlice:    make([]*gamestate.SolarObject, 0),
 		NeutralTerranPlanetMutex: &sync.Mutex{},
-		NeutralTerranPlanetSlice: make([]*SolarObject, 0),
+		NeutralTerranPlanetSlice: make([]*gamestate.SolarObject, 0),
 		PointerMappings:          NewPointerMappings(),
 		PlayerFogOfWarMutex:      &sync.Mutex{},
-		PlayerFogOfWar:           make(map[int32]map[uint64]*SolarSystem, maxNumberOfPlayers),
+		PlayerFogOfWar:           make(map[int32]map[uint64]*gamestate.SolarSystem, maxNumberOfPlayers),
 		SystemAndPlanetNames:     names.NewNameGenerator(args, log),
 	}
 
 	universe := &UniverseStruct{
-		GalaxyNameInt:        int32(-1),
+		GalaxyNameUint:       uint64(math.MaxUint64),
 		GlobalX:              int64(0),
 		GlobalY:              int64(0),
 		ClientSignal:         make(chan struct{}),
-		PlayerPtrs:           make(map[int32][]*SolarSystem),
+		PlayerPtrs:           make(map[int32][]*gamestate.SolarSystem),
 		PlayerNameData:       stringdatastore.New(),
 		SystemAndPlanetNames: galaxy.SystemAndPlanetNames,
 		PendingPlayerSpawns:  make([]*playerInfo, 0),
@@ -120,7 +121,6 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			galaxy.CalculatePopulation()          // processing_population.go
 			galaxy.IncreaseFoodOnNeutralPlanets() // processing_population.go
 			galaxy.ProcessOngoingBattles()        // processing_battle.go
-			galaxy.ProcessActors()                // processing_actor.go
 			universe.Unlock()
 
 			close(universe.ClientSignal)
@@ -218,65 +218,6 @@ const (
 
 	oneMillion = 1000000
 	oneBillion = 1000000000
-)
-
-// IsPlanet ...
-func (obj *SolarObject) IsPlanet() bool {
-	if obj.Type < 10 {
-		return true
-	}
-	return false
-}
-
-// IsShip ...
-func (obj *SolarObject) IsShip() bool {
-	if (13 < obj.Type) && (obj.Type < 20) {
-		return true
-	}
-	return false
-}
-
-// defining types of objects
-const (
-	TERRAN         int32 = iota // -20% population
-	DESERT                      // -50% population, 2x logistics
-	VOLCANIC                    // -75% population, lots of metal
-	ICE                         // -50% population, lots of crystal
-	BARREN                      // -90% population, 3x logistics
-	FERROUS                     //
-	GREENHOUSE                  //
-	OCEANIC                     // max population
-	LARGEASTEROID               //
-	DWARF                       //
-	_                           // _10_
-	ASTEROIDBELT                //
-	PLASMASTORM                 //
-	_                           // _13_
-	LARGETRADESHIP              // spawns and moves automatically from trading nations
-	FIGHTER                     // close range combat
-	FLAKCORVETTE                // block point-defense damage
-	COLONIZER                   // colonize a single planet in new system
-	CAPITALSHIP                 // long range ship-to-ship combat
-	TITAN                       // can colonize, block point-defense and engage long-range
-	_                           // _20_
-)
-
-// solarsystem type
-const (
-	YELLOWGIANT int32 = iota // most desirable
-	REDGIANT                 // mostly lava
-	BLUEGIANT                // mostly ice
-	NEUTRONSTAR              // just gas clouds
-	WHITEDWARF               // just asteroids
-	BLACKHOLE                // random, dangerous and AI spawn here
-)
-
-// galaxy type
-const (
-	ELLIPTICAL int32 = iota
-	SPIRAL
-	BARREDSPIRAL
-	IRREGULAR
 )
 
 // used to determine what the odds of success will be

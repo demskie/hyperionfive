@@ -3,8 +3,6 @@ package names
 import (
 	"encoding/binary"
 	"fmt"
-	"hyperionfive/arguments"
-	"hyperionfive/logging"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -12,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/logging"
 )
 
 // NameStruct ...

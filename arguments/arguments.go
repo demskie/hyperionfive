@@ -2,8 +2,9 @@ package arguments
 
 import (
 	"flag"
-	"hyperionfive/logging"
 	"runtime"
+
+	"github.com/demskie/logging"
 )
 
 // Args ...

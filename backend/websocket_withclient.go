@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/demskie/hyperionfive/gamestate"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
@@ -79,8 +80,8 @@ func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Con
 			universe.RLock()
 
 			// prepare data
-			partialGalaxy := &Galaxy{
-				NameInt:          universe.GalaxyNameInt,
+			partialGalaxy := &gamestate.Galaxy{
+				NameUint:         universe.GalaxyNameUint, // TODO // fix this
 				GlobalX:          universe.GlobalX,
 				GlobalY:          universe.GlobalY,
 				Solarsystemslice: universe.PlayerPtrs[authenticatedUserID],

@@ -1,21 +1,23 @@
 package backend
 
 import (
-	"hyperionfive/names"
-	"hyperionfive/simpletree"
 	"math/rand"
 	"sync"
 
-	"github.com/AlexDemskie/simplesync"
+	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/names"
+	"github.com/demskie/spatialindex"
+
+	"github.com/demskie/simplesync"
 )
 
 // GalaxyStruct ...
 type GalaxyStruct struct {
 	// holds protobuf prestructured data
-	Protobuf *Galaxy
+	Protobuf *gamestate.Galaxy
 
 	// created when generating galaxy to ensure objects are far enough apart
-	Rtree *simpletree.Tree
+	Rtree *spatialindex.Tree
 
 	// secondary random number generator for use outside ProcessingQueue
 	SingleRnumMutex *sync.Mutex
@@ -29,27 +31,24 @@ type GalaxyStruct struct {
 	ProcessingQueue     *simplesync.WorkerPool
 	ProcessingRnumSlice []*rand.Rand
 
-	// track ai state of mind
-	ActorStateSlice []*ActorState
-
 	// all objects that have a population
 	AnyPlanetMutex *sync.Mutex
-	AnyPlanetSlice []*SolarObject
+	AnyPlanetSlice []*gamestate.SolarObject
 
 	// neutral planets
 	NeutralAnyPlanetMutex *sync.Mutex
-	NeutralAnyPlanetSlice []*SolarObject
+	NeutralAnyPlanetSlice []*gamestate.SolarObject
 
 	// used when spawning new players
 	NeutralTerranPlanetMutex *sync.Mutex
-	NeutralTerranPlanetSlice []*SolarObject
+	NeutralTerranPlanetSlice []*gamestate.SolarObject
 
 	// used to get pointers based on ID or Name
 	PointerMappings *PointerMappings
 
 	// used when serializing data for players
 	PlayerFogOfWarMutex *sync.Mutex
-	PlayerFogOfWar      map[int32]map[uint64]*SolarSystem // playerName // sysName // sysPtr
+	PlayerFogOfWar      map[int32]map[uint64]*gamestate.SolarSystem // playerName // sysName // sysPtr
 
 	// system and planet names
 	SystemAndPlanetNames *names.NameGenerator

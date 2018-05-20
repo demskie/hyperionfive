@@ -1,7 +1,9 @@
 package backend
 
+import "github.com/demskie/hyperionfive/gamestate"
+
 // DeleteOngoingBattle ...
-func (galaxy *GalaxyStruct) DeleteOngoingBattle(battle *OngoingBattle) {
+func (galaxy *GalaxyStruct) DeleteOngoingBattle(battle *gamestate.OngoingBattle) {
 	galaxy.PointerMappings.ongoingBattleMutex.Lock()
 	defer galaxy.PointerMappings.ongoingBattleMutex.Unlock()
 	delete(galaxy.PointerMappings.ongoingBattleMappings, battle.BattleID)

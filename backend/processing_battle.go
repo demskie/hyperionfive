@@ -1,8 +1,10 @@
 package backend
 
 import (
-	"hyperionfive/intutil"
 	"sync/atomic"
+
+	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/intutil"
 )
 
 // ProcessOngoingBattles ...
@@ -12,7 +14,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 	if galaxy.TickTime.HasBeenOneTenthSecond == false {
 		return
 	}
-	deleteBattle := make([][]*OngoingBattle, args.NumberOfCores)
+	deleteBattle := make([][]*gamestate.OngoingBattle, args.NumberOfCores)
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
 		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
 			coreNum, args.NumberOfCores, len(galaxy.Protobuf.Ongoingbattleslice))
@@ -23,15 +25,15 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 		startIndex = rnum.Intn(imprecisionFactor)
 
 		var (
-			battle                               *OngoingBattle
+			battle                               *gamestate.OngoingBattle
 			disadvantageScaler, lossesMultiplier float64
 			aggressorStrength, defenderStrength  int64
 			totalStrength, idx, failedIterations int64
 			fleetID                              int32
-			fleet                                *GalacticFleet
+			fleet                                *gamestate.GalacticFleet
 		)
 
-		deleteBattle[coreNum] = []*OngoingBattle{}
+		deleteBattle[coreNum] = []*gamestate.OngoingBattle{}
 
 		for battleIndex := startIndex; battleIndex < stopIndex; battleIndex += imprecisionFactor {
 			battle = galaxy.Protobuf.Ongoingbattleslice[battleIndex]
@@ -43,7 +45,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 				lossesMultiplier = float64(0.01)
 			}
 			aggressorStrength = 0
-			for _, fleetID = range battle.AggressorFleetIDs {
+			for _, fleetID = range battle.AttackingFleetIDs {
 				aggressorStrength += int64(atomic.LoadInt32(
 					&galaxy.Protobuf.Galacticfleetslice[fleetID].FighterCount))
 				aggressorStrength += int64(atomic.LoadInt32(
@@ -94,7 +96,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 			} else {
 				failedIterations = 0
 				aggressorStrength = 1 + int64(float64(aggressorStrength)*lossesMultiplier)
-				fleetID = int32(rnum.Intn(len(battle.AggressorFleetIDs)))
+				fleetID = int32(rnum.Intn(len(battle.AttackingFleetIDs)))
 				for {
 					if aggressorStrength <= 0 {
 						break
@@ -110,11 +112,11 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 						failedIterations = 0
 					}
 					idx++
-					if idx >= int64(len(battle.AggressorFleetIDs)) {
+					if idx >= int64(len(battle.AttackingFleetIDs)) {
 						idx = 0
 					}
 					failedIterations++
-					if failedIterations >= int64(len(battle.AggressorFleetIDs)) {
+					if failedIterations >= int64(len(battle.AttackingFleetIDs)) {
 						deleteBattle[coreNum] = append(deleteBattle[coreNum], battle)
 						break
 					}

@@ -1,21 +1,23 @@
 package backend
 
 import (
-	"hyperionfive/firewall"
-	"hyperionfive/names"
-	"hyperionfive/stringdatastore"
 	"sync"
+
+	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/names"
+	"github.com/demskie/hyperionfive/stringdatastore"
 )
 
 // UniverseStruct ...
 type UniverseStruct struct {
 	sync.RWMutex
 	GalaxyData           *GalaxyStruct
-	GalaxyNameInt        int32
+	GalaxyNameUint       uint64
 	GlobalX              int64
 	GlobalY              int64
 	ClientSignal         chan struct{}
-	PlayerPtrs           map[int32][]*SolarSystem
+	PlayerPtrs           map[int32][]*gamestate.SolarSystem
 	PlayerNameData       *stringdatastore.References
 	SystemAndPlanetNames *names.NameGenerator
 	PendingPlayerSpawns  []*playerInfo

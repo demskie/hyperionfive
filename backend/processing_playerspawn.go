@@ -1,6 +1,10 @@
 package backend
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/demskie/hyperionfive/gamestate"
+)
 
 // SpawnNewPlayers ...
 // TODO // ensure players have enough space to expand
@@ -14,7 +18,7 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers(universe *UniverseStruct) {
 	}
 	log.Telemetry(fName, fmt.Sprintf("processing %v new player spawns", len(universe.PendingPlayerSpawns)))
 	var (
-		obj        *SolarObject
+		obj        *gamestate.SolarObject
 		playerData *playerInfo
 		randIndex  int
 	)
@@ -28,7 +32,7 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers(universe *UniverseStruct) {
 		galaxy.SingleRnumMutex.Unlock()
 		obj = galaxy.NeutralTerranPlanetSlice[randIndex]
 		obj.Food = int32(1 + playerData.strength)
-		obj.Population = uint64(10000 * playerData.strength * 10)
+		obj.Population = int64(10000 * playerData.strength * 10)
 		obj.DockedFighterCount = int32(1 + (playerData.strength * 10))
 		// BUG // not implemented
 		// obj.ChangeOwner(playerData.uniqueID, galaxy)

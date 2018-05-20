@@ -2,8 +2,10 @@ package backend
 
 import (
 	"fmt"
-	"hyperionfive/intutil"
 	"math"
+
+	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/intutil"
 )
 
 // SpawnFighters ...
@@ -22,7 +24,7 @@ func (galaxy *GalaxyStruct) SpawnFighters() {
 		rnum := galaxy.ProcessingRnumSlice[coreNum]
 		startIndex += rnum.Intn(imprecisionFactor)
 		var (
-			obj               *SolarObject
+			obj               *gamestate.SolarObject
 			availableFighters int32
 		)
 		for i := startIndex; i < stopIndex; i += imprecisionFactor {
@@ -63,7 +65,7 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 			randomness            float64
 			K                     float64
 			logisticPercentChange float64
-			obj                   *SolarObject
+			obj                   *gamestate.SolarObject
 		)
 		for objIndex := startIndex; objIndex < stopIndex; objIndex += imprecisionFactor {
 			obj = galaxy.AnyPlanetSlice[objIndex]
@@ -75,26 +77,26 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 			foodSupplyDbl = float64(1 + obj.Food)
 			randomness = (referencePopulation + 123) * (1 + rnum.NormFloat64()*.1)
 			K = randomness * math.Pow(foodSupplyDbl, 3.4)
-			switch obj.Type {
-			case TERRAN:
+			switch obj.ObjectType {
+			case gamestate.TERRAN:
 				K *= 1
-			case DESERT:
+			case gamestate.DESERT:
 				K *= 0.9
-			case VOLCANIC:
+			case gamestate.VOLCANIC:
 				K *= 0.8
-			case ICE:
+			case gamestate.ICE:
 				K *= 0.8
-			case BARREN:
+			case gamestate.BARREN:
 				K *= 0.5
-			case FERROUS:
+			case gamestate.FERROUS:
 				K *= 0.7
-			case GREENHOUSE:
+			case gamestate.GREENHOUSE:
 				K *= 0.7
-			case OCEANIC:
+			case gamestate.OCEANIC:
 				K *= 0.7
-			case LARGEASTEROID:
+			case gamestate.LARGEASTEROID:
 				K *= 0.1
-			case DWARF:
+			case gamestate.DWARF:
 				K *= 0.2
 			}
 			logisticPercentChange = (K - N) / K
@@ -106,7 +108,7 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 			case logisticPercentChange == 0:
 				logisticPercentChange = .000001 // can't divide by zero!
 			}
-			obj.Population = uint64(N + ((N * maxPercentChange) * logisticPercentChange))
+			obj.Population = int64(N + ((N * maxPercentChange) * logisticPercentChange))
 			if args.DebugModeBool {
 				if objIndex == 0 {
 					log.Debug(fmt.Sprint(objIndex/oneMillion, obj.Food), intutil.CommaFormatNum(obj.Population))
@@ -143,7 +145,7 @@ func (galaxy *GalaxyStruct) IncreaseFoodOnNeutralPlanets() {
 		rnum := galaxy.ProcessingRnumSlice[coreNum]
 		startIndex += rnum.Intn(imprecisionFactor)
 		var (
-			obj           *SolarObject
+			obj           *gamestate.SolarObject
 			normalDistVal int32
 		)
 		for i := startIndex; i < stopIndex; i += imprecisionFactor {

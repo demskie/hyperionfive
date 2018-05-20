@@ -1,9 +1,13 @@
 package backend
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/demskie/hyperionfive/gamestate"
+)
 
 // ChangeOwner ...
-func (obj *SolarObject) ChangeOwner(newOwner int32, galaxy *GalaxyStruct) {
+func (galaxy *GalaxyStruct) ChangeOwner(obj *gamestate.SolarObject, newOwner int32) {
 	galaxy.PlayerFogOfWarMutex.Lock()
 	defer galaxy.PlayerFogOfWarMutex.Unlock()
 	if obj.Owner == newOwner {
@@ -17,7 +21,7 @@ func (obj *SolarObject) ChangeOwner(newOwner int32, galaxy *GalaxyStruct) {
 		_, playerExists := galaxy.PlayerFogOfWar[oldOwner]
 		if playerExists {
 			removeEntireSystem := true
-			systemInQuestion := galaxy.GetSolarSystemFromName(obj.ParentSystemName)
+			systemInQuestion := galaxy.GetSolarSystemFromName(obj.ParentSystemNameUint)
 			for _, solarObject := range systemInQuestion.Solarobjectslice {
 				if solarObject.Owner == oldOwner {
 					removeEntireSystem = false
@@ -25,7 +29,7 @@ func (obj *SolarObject) ChangeOwner(newOwner int32, galaxy *GalaxyStruct) {
 				}
 			}
 			if removeEntireSystem {
-				delete(galaxy.PlayerFogOfWar[oldOwner], obj.ParentSystemName)
+				delete(galaxy.PlayerFogOfWar[oldOwner], obj.ParentSystemNameUint)
 			}
 			if len(galaxy.PlayerFogOfWar[oldOwner]) == 0 {
 				delete(galaxy.PlayerFogOfWar, oldOwner)
@@ -48,12 +52,12 @@ func (obj *SolarObject) ChangeOwner(newOwner int32, galaxy *GalaxyStruct) {
 	}
 
 	if newOwner != 0 {
-		ss := galaxy.GetSolarSystemFromName(obj.ParentSystemName)
+		ss := galaxy.GetSolarSystemFromName(obj.ParentSystemNameUint)
 		_, playerExists := galaxy.PlayerFogOfWar[newOwner]
 		if playerExists {
-			galaxy.PlayerFogOfWar[newOwner][obj.ParentSystemName] = ss
+			galaxy.PlayerFogOfWar[newOwner][obj.ParentSystemNameUint] = ss
 		} else {
-			galaxy.PlayerFogOfWar[newOwner] = map[uint64]*SolarSystem{obj.ParentSystemName: ss}
+			galaxy.PlayerFogOfWar[newOwner] = map[uint64]*gamestate.SolarSystem{obj.ParentSystemNameUint: ss}
 		}
 	}
 

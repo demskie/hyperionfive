@@ -1,12 +1,13 @@
 package backend
 
 import (
-	"hyperionfive/auth"
-	"hyperionfive/firewall"
-	"hyperionfive/netutil"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/demskie/hyperionfive/auth"
+	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/hyperionfive/netutil"
 
 	"github.com/gorilla/websocket"
 )

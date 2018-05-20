@@ -1,10 +1,11 @@
 package netutil
 
 import (
-	"hyperionfive/arguments"
-	"hyperionfive/logging"
 	"net"
 	"time"
+
+	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/logging"
 
 	"github.com/gorilla/websocket"
 )

@@ -48,13 +48,13 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	directoryObject := http.Dir(entireDirPath)
 	fileserverWithModifiedHeaders := addSecurityHeaders(http.FileServer(directoryObject))
 
-	// setup the fileserver handler now that the necessary security headers have been added
-	muxSecure.Handle("/", fileserverWithModifiedHeaders)
-
 	// setup the websocket handlers
 	muxSecure.HandleFunc("/clienttofrontend", handleClientToFrontend)
 	muxSecure.HandleFunc("/backendtofrontend", handleBackendToFrontend)
 	muxSecure.HandleFunc("/frontendtofrontend", handleFrontendToFrontend)
+
+	// setup the fileserver handler now that the necessary security headers have been added
+	muxSecure.Handle("/", fileserverWithModifiedHeaders)
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
