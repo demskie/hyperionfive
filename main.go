@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"hyperionfive/arguments"
-	"hyperionfive/backend"
-	"hyperionfive/frontend"
-	"hyperionfive/intutil"
-	"hyperionfive/logging"
+
+	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/backend"
+	"github.com/demskie/hyperionfive/frontend"
+	"github.com/demskie/hyperionfive/intutil"
+	"github.com/demskie/logging"
 )
 
 func main() {

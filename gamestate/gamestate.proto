@@ -4,17 +4,16 @@ package gamestate;
 
 message SolarObject {
 	uint64 nameUint = 1;
-	int64 interX = 2;
-	int64 interY = 3;
-	int32 owner = 4;
-	int32 food = 5;
-	int64 population = 6;
-	int32 objectType = 7;
-	int32 health = 8;
-	int32 behavior = 9;
-	int32 count = 10;
-	uint64 parentSystemNameUint = 11;
-	int32 dockedFighterCount = 12;
+	uint64 parentSystemNameUint = 2;
+	int64 interX = 3;
+	int64 interY = 4;
+	int32 owner = 5;
+	int32 food = 6;
+	int64 population = 7;
+	int32 objectType = 8;
+	int32 health = 9;
+	int32 focus = 10;
+	int32 progress = 11;
 }
 
 
@@ -48,8 +47,12 @@ message GalacticFleet {
 	int64 interY = 3;
 	int32 owner = 4;
 	uint64 closestSystemNameUint = 5;
-	int32 capitalCount = 32;
-	int32 fighterCount = 33;
+	int32 titanCount = 32;
+	int32 capitalCount = 33;
+	int32 fighterCount = 34;
+	int32 flakCorvetteCount = 35;
+	int32 largeTradeshipCount = 36;
+	int32 colonizerCount = 37;
 }
 
 
@@ -75,6 +78,7 @@ message OutstandingAction {
 	int64 timeLeft = 3;
 	int32 owner = 4;
 	repeated int64 actionValues = 128;
+	repeated uint64 actionNames = 129;
 }
 
 

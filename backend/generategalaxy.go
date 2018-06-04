@@ -99,7 +99,8 @@ func (gal *GalaxyStruct) Generate() {
 				x1, y1 = float64(ss.InterX), float64(ss.InterY)
 				gal.Rtree.Add(ss.NameUint, x1, y1)
 				objects, err := gal.Rtree.NearestNeighbors(ss.NameUint, 1)
-				if log.CheckError(err, fName) {
+				if err != spatialindex.ErrNotEnoughNeighbors &&
+					log.CheckError(err, fName) {
 					log.SuddenExit()
 				}
 				if len(objects) == 0 {
@@ -138,7 +139,8 @@ func (gal *GalaxyStruct) Generate() {
 			}
 			ss.ConnectedSolarSystemsNameUint = make([]uint64, normalDistVal)
 			neighbors, err := gal.Rtree.NearestNeighbors(ss.NameUint, normalDistVal)
-			if log.CheckError(err, fName) {
+			if err != spatialindex.ErrNotEnoughNeighbors &&
+				log.CheckError(err, fName) {
 				log.SuddenExit()
 			}
 			for i, neighbor := range neighbors {

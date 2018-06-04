@@ -69,6 +69,7 @@ func NewNameGenerator(args *arguments.Args, log *logging.Logger) *NameGenerator 
 		}
 	}
 	nameGen := &NameGenerator{
+		mtx:         &sync.Mutex{},
 		loadedVerbs: verbs,
 		loadedNouns: nouns,
 		generated:   map[uint64]NameStruct{},

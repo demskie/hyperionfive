@@ -2,6 +2,7 @@ package backend
 
 import (
 	"crypto/tls"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/pprof"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/demskie/hyperionbot/actor"
 	"github.com/demskie/hyperionfive/arguments"
 	"github.com/demskie/hyperionfive/firewall"
 	"github.com/demskie/hyperionfive/gamestate"
@@ -69,6 +71,8 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		PlayerNameData:       stringdatastore.New(),
 		SystemAndPlanetNames: galaxy.SystemAndPlanetNames,
 		PendingPlayerSpawns:  make([]*playerInfo, 0),
+		Firewall:             nil,
+		Actors:               make([]*actor.Bot, 0),
 	}
 
 	// create or deserialize a protobuf galaxy
@@ -104,9 +108,10 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			universe.PendingPlayerSpawns = append(
 				universe.PendingPlayerSpawns,
 				&playerInfo{
-					uniqueID: "1234567890987654321",
+					uniqueID: 123456789,
 					strength: 1,
 				})
+
 			universe.Unlock()
 		}
 		// start monitoring backend atomic counters
@@ -115,12 +120,17 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		for {
 			galaxy.TimeMultiplier = galaxy.TickTime.Update()
 
+			if galaxy.TimeMultiplier >= 0.10 {
+				log.Error(fName, fmt.Sprintf("iteration took %v seconds", galaxy.TimeMultiplier))
+			}
+
 			universe.Lock()
-			galaxy.SpawnNewPlayers(universe)      // processing_playerspawn.go
-			galaxy.SpawnFighters()                // processing_population.go
+			galaxy.SpawnNewPlayers(universe) // processing_playerspawn.go
+			// galaxy.SpawnFighters()                // processing_population.go
 			galaxy.CalculatePopulation()          // processing_population.go
 			galaxy.IncreaseFoodOnNeutralPlanets() // processing_population.go
 			galaxy.ProcessOngoingBattles()        // processing_battle.go
+
 			universe.Unlock()
 
 			close(universe.ClientSignal)

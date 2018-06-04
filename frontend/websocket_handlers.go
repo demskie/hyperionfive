@@ -1,11 +1,12 @@
 package frontend
 
 import (
-	"hyperionfive/auth"
-	"hyperionfive/firewall"
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/demskie/hyperionfive/auth"
+	"github.com/demskie/hyperionfive/firewall"
 
 	"github.com/gorilla/websocket"
 )

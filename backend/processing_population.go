@@ -9,35 +9,35 @@ import (
 )
 
 // SpawnFighters ...
-func (galaxy *GalaxyStruct) SpawnFighters() {
-	const fName = "(spawnFighters)"
-	const imprecisionFactor = 10 * 10
-	if galaxy.TickTime.HasBeenOneTenthSecond == false {
-		return
-	}
-	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
-			coreNum, args.NumberOfCores, len(galaxy.AnyPlanetSlice))
-		if stopIndex <= startIndex {
-			return
-		}
-		rnum := galaxy.ProcessingRnumSlice[coreNum]
-		startIndex += rnum.Intn(imprecisionFactor)
-		var (
-			obj               *gamestate.SolarObject
-			availableFighters int32
-		)
-		for i := startIndex; i < stopIndex; i += imprecisionFactor {
-			obj = galaxy.AnyPlanetSlice[i]
-			availableFighters = int32(obj.Population/100000) - obj.DockedFighterCount
-			if availableFighters > 0 {
-				availableFighters = rnum.Int31n(1 + (availableFighters / 13))
-				obj.DockedFighterCount += availableFighters
-				backendCounters.IncrementFighterSpawnCount(availableFighters)
-			}
-		}
-	})
-}
+//	func (galaxy *GalaxyStruct) SpawnFighters() {
+//		const fName = "(spawnFighters)"
+//		const imprecisionFactor = 10 * 10
+//		if galaxy.TickTime.HasBeenOneTenthSecond == false {
+//			return
+//		}
+//		galaxy.ProcessingQueue.Execute(func(coreNum int) {
+//			startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+//				coreNum, args.NumberOfCores, len(galaxy.AnyPlanetSlice))
+//			if stopIndex <= startIndex {
+//				return
+//			}
+//			rnum := galaxy.ProcessingRnumSlice[coreNum]
+//			startIndex += rnum.Intn(imprecisionFactor)
+//			var (
+//				obj               *gamestate.SolarObject
+//				availableFighters int32
+//			)
+//			for i := startIndex; i < stopIndex; i += imprecisionFactor {
+//				obj = galaxy.AnyPlanetSlice[i]
+//				availableFighters = int32(obj.Population/100000) - obj.DockedFighterCount
+//				if availableFighters > 0 {
+//					availableFighters = rnum.Int31n(1 + (availableFighters / 13))
+//					obj.DockedFighterCount += availableFighters
+//					backendCounters.IncrementFighterSpawnCount(availableFighters)
+//				}
+//			}
+//		})
+//	}
 
 // CalculatePopulation ...
 func (galaxy *GalaxyStruct) CalculatePopulation() {
@@ -54,7 +54,6 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 		}
 		rnum := galaxy.ProcessingRnumSlice[coreNum]
 		startIndex += rnum.Intn(imprecisionFactor)
-
 		const (
 			referencePopulation = float64(10000)
 			maxPercentChange    = float64(.07)
@@ -111,19 +110,9 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 			obj.Population = int64(N + ((N * maxPercentChange) * logisticPercentChange))
 			if args.DebugModeBool {
 				if objIndex == 0 {
-					log.Debug(fmt.Sprint(objIndex/oneMillion, obj.Food), intutil.CommaFormatNum(obj.Population))
+					log.Debug(obj.GetObjectTypeString(), fmt.Sprint(objIndex/oneMillion, obj.Food),
+						intutil.CommaFormatNum(obj.Population))
 				}
-			}
-			if false {
-				log.Debug(
-					"\n\t\t\t", "timeMultiplier:", fmt.Sprint(galaxy.TimeMultiplier),
-					"\n\t\t\t", "N:", intutil.CommaFormatNum(uint64(N)),
-					"\n\t\t\t", "foodSupplyDbl:", fmt.Sprint(foodSupplyDbl),
-					"\n\t\t\t", "randomness:", fmt.Sprint(randomness),
-					"\n\t\t\t", "K:", fmt.Sprint(K),
-					"\n\t\t\t", "logisticPercentChange:", fmt.Sprint(logisticPercentChange),
-					"\n\t\t\t", "after:", intutil.CommaFormatNum(obj.Population),
-					"\n\t\t\t", fmt.Sprintf("%v is more than %v", obj.Population/100000, uint64(obj.DockedFighterCount)))
 			}
 		}
 	})

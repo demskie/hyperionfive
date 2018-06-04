@@ -2,16 +2,17 @@ package frontend
 
 import (
 	"crypto/tls"
-	"hyperionfive/arguments"
-	"hyperionfive/firewall"
-	"hyperionfive/logging"
-	"hyperionfive/netutil"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/hyperionfive/netutil"
+	"github.com/demskie/logging"
 )
 
 var (

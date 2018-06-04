@@ -3,6 +3,7 @@ package backend
 import (
 	"sync"
 
+	"github.com/demskie/hyperionbot/actor"
 	"github.com/demskie/hyperionfive/firewall"
 	"github.com/demskie/hyperionfive/gamestate"
 	"github.com/demskie/hyperionfive/names"
@@ -22,9 +23,10 @@ type UniverseStruct struct {
 	SystemAndPlanetNames *names.NameGenerator
 	PendingPlayerSpawns  []*playerInfo
 	Firewall             *firewall.Checker
+	Actors               []*actor.Bot
 }
 
 type playerInfo struct {
-	uniqueID string
+	uniqueID int32
 	strength int
 }

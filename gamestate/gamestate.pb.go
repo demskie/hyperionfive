@@ -40,17 +40,16 @@ const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type SolarObject struct {
 	NameUint             uint64 `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
-	InterX               int64  `protobuf:"varint,2,opt,name=interX,proto3" json:"interX,omitempty"`
-	InterY               int64  `protobuf:"varint,3,opt,name=interY,proto3" json:"interY,omitempty"`
-	Owner                int32  `protobuf:"varint,4,opt,name=owner,proto3" json:"owner,omitempty"`
-	Food                 int32  `protobuf:"varint,5,opt,name=food,proto3" json:"food,omitempty"`
-	Population           int64  `protobuf:"varint,6,opt,name=population,proto3" json:"population,omitempty"`
-	ObjectType           int32  `protobuf:"varint,7,opt,name=objectType,proto3" json:"objectType,omitempty"`
-	Health               int32  `protobuf:"varint,8,opt,name=health,proto3" json:"health,omitempty"`
-	Behavior             int32  `protobuf:"varint,9,opt,name=behavior,proto3" json:"behavior,omitempty"`
-	Count                int32  `protobuf:"varint,10,opt,name=count,proto3" json:"count,omitempty"`
-	ParentSystemNameUint uint64 `protobuf:"varint,11,opt,name=parentSystemNameUint,proto3" json:"parentSystemNameUint,omitempty"`
-	DockedFighterCount   int32  `protobuf:"varint,12,opt,name=dockedFighterCount,proto3" json:"dockedFighterCount,omitempty"`
+	ParentSystemNameUint uint64 `protobuf:"varint,2,opt,name=parentSystemNameUint,proto3" json:"parentSystemNameUint,omitempty"`
+	InterX               int64  `protobuf:"varint,3,opt,name=interX,proto3" json:"interX,omitempty"`
+	InterY               int64  `protobuf:"varint,4,opt,name=interY,proto3" json:"interY,omitempty"`
+	Owner                int32  `protobuf:"varint,5,opt,name=owner,proto3" json:"owner,omitempty"`
+	Food                 int32  `protobuf:"varint,6,opt,name=food,proto3" json:"food,omitempty"`
+	Population           int64  `protobuf:"varint,7,opt,name=population,proto3" json:"population,omitempty"`
+	ObjectType           int32  `protobuf:"varint,8,opt,name=objectType,proto3" json:"objectType,omitempty"`
+	Health               int32  `protobuf:"varint,9,opt,name=health,proto3" json:"health,omitempty"`
+	Focus                int32  `protobuf:"varint,10,opt,name=focus,proto3" json:"focus,omitempty"`
+	Progress             int32  `protobuf:"varint,11,opt,name=progress,proto3" json:"progress,omitempty"`
 }
 
 func (m *SolarObject) Reset()                    { *m = SolarObject{} }
@@ -60,6 +59,13 @@ func (*SolarObject) Descriptor() ([]byte, []int) { return fileDescriptorGamestat
 func (m *SolarObject) GetNameUint() uint64 {
 	if m != nil {
 		return m.NameUint
+	}
+	return 0
+}
+
+func (m *SolarObject) GetParentSystemNameUint() uint64 {
+	if m != nil {
+		return m.ParentSystemNameUint
 	}
 	return 0
 }
@@ -113,30 +119,16 @@ func (m *SolarObject) GetHealth() int32 {
 	return 0
 }
 
-func (m *SolarObject) GetBehavior() int32 {
+func (m *SolarObject) GetFocus() int32 {
 	if m != nil {
-		return m.Behavior
+		return m.Focus
 	}
 	return 0
 }
 
-func (m *SolarObject) GetCount() int32 {
+func (m *SolarObject) GetProgress() int32 {
 	if m != nil {
-		return m.Count
-	}
-	return 0
-}
-
-func (m *SolarObject) GetParentSystemNameUint() uint64 {
-	if m != nil {
-		return m.ParentSystemNameUint
-	}
-	return 0
-}
-
-func (m *SolarObject) GetDockedFighterCount() int32 {
-	if m != nil {
-		return m.DockedFighterCount
+		return m.Progress
 	}
 	return 0
 }
@@ -289,8 +281,12 @@ type GalacticFleet struct {
 	InterY                int64  `protobuf:"varint,3,opt,name=interY,proto3" json:"interY,omitempty"`
 	Owner                 int32  `protobuf:"varint,4,opt,name=owner,proto3" json:"owner,omitempty"`
 	ClosestSystemNameUint uint64 `protobuf:"varint,5,opt,name=closestSystemNameUint,proto3" json:"closestSystemNameUint,omitempty"`
-	CapitalCount          int32  `protobuf:"varint,32,opt,name=capitalCount,proto3" json:"capitalCount,omitempty"`
-	FighterCount          int32  `protobuf:"varint,33,opt,name=fighterCount,proto3" json:"fighterCount,omitempty"`
+	TitanCount            int32  `protobuf:"varint,32,opt,name=titanCount,proto3" json:"titanCount,omitempty"`
+	CapitalCount          int32  `protobuf:"varint,33,opt,name=capitalCount,proto3" json:"capitalCount,omitempty"`
+	FighterCount          int32  `protobuf:"varint,34,opt,name=fighterCount,proto3" json:"fighterCount,omitempty"`
+	FlakCorvetteCount     int32  `protobuf:"varint,35,opt,name=flakCorvetteCount,proto3" json:"flakCorvetteCount,omitempty"`
+	LargeTradeshipCount   int32  `protobuf:"varint,36,opt,name=largeTradeshipCount,proto3" json:"largeTradeshipCount,omitempty"`
+	ColonizerCount        int32  `protobuf:"varint,37,opt,name=colonizerCount,proto3" json:"colonizerCount,omitempty"`
 }
 
 func (m *GalacticFleet) Reset()                    { *m = GalacticFleet{} }
@@ -332,6 +328,13 @@ func (m *GalacticFleet) GetClosestSystemNameUint() uint64 {
 	return 0
 }
 
+func (m *GalacticFleet) GetTitanCount() int32 {
+	if m != nil {
+		return m.TitanCount
+	}
+	return 0
+}
+
 func (m *GalacticFleet) GetCapitalCount() int32 {
 	if m != nil {
 		return m.CapitalCount
@@ -342,6 +345,27 @@ func (m *GalacticFleet) GetCapitalCount() int32 {
 func (m *GalacticFleet) GetFighterCount() int32 {
 	if m != nil {
 		return m.FighterCount
+	}
+	return 0
+}
+
+func (m *GalacticFleet) GetFlakCorvetteCount() int32 {
+	if m != nil {
+		return m.FlakCorvetteCount
+	}
+	return 0
+}
+
+func (m *GalacticFleet) GetLargeTradeshipCount() int32 {
+	if m != nil {
+		return m.LargeTradeshipCount
+	}
+	return 0
+}
+
+func (m *GalacticFleet) GetColonizerCount() int32 {
+	if m != nil {
+		return m.ColonizerCount
 	}
 	return 0
 }
@@ -425,11 +449,12 @@ func (m *OngoingSiege) GetAggressorFleetIDs() []int32 {
 }
 
 type OutstandingAction struct {
-	ActionID     int32   `protobuf:"varint,1,opt,name=actionID,proto3" json:"actionID,omitempty"`
-	ActionType   int32   `protobuf:"varint,2,opt,name=actionType,proto3" json:"actionType,omitempty"`
-	TimeLeft     int64   `protobuf:"varint,3,opt,name=timeLeft,proto3" json:"timeLeft,omitempty"`
-	Owner        int32   `protobuf:"varint,4,opt,name=owner,proto3" json:"owner,omitempty"`
-	ActionValues []int64 `protobuf:"varint,128,rep,packed,name=actionValues" json:"actionValues,omitempty"`
+	ActionID     int32    `protobuf:"varint,1,opt,name=actionID,proto3" json:"actionID,omitempty"`
+	ActionType   int32    `protobuf:"varint,2,opt,name=actionType,proto3" json:"actionType,omitempty"`
+	TimeLeft     int64    `protobuf:"varint,3,opt,name=timeLeft,proto3" json:"timeLeft,omitempty"`
+	Owner        int32    `protobuf:"varint,4,opt,name=owner,proto3" json:"owner,omitempty"`
+	ActionValues []int64  `protobuf:"varint,128,rep,packed,name=actionValues" json:"actionValues,omitempty"`
+	ActionNames  []uint64 `protobuf:"varint,129,rep,packed,name=actionNames" json:"actionNames,omitempty"`
 }
 
 func (m *OutstandingAction) Reset()                    { *m = OutstandingAction{} }
@@ -471,6 +496,13 @@ func (m *OutstandingAction) GetActionValues() []int64 {
 	return nil
 }
 
+func (m *OutstandingAction) GetActionNames() []uint64 {
+	if m != nil {
+		return m.ActionNames
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*SolarObject)(nil), "gamestate.SolarObject")
 	proto.RegisterType((*SolarSystem)(nil), "gamestate.SolarSystem")
@@ -502,6 +534,9 @@ func (this *SolarObject) Equal(that interface{}) bool {
 	if this.NameUint != that1.NameUint {
 		return false
 	}
+	if this.ParentSystemNameUint != that1.ParentSystemNameUint {
+		return false
+	}
 	if this.InterX != that1.InterX {
 		return false
 	}
@@ -523,16 +558,10 @@ func (this *SolarObject) Equal(that interface{}) bool {
 	if this.Health != that1.Health {
 		return false
 	}
-	if this.Behavior != that1.Behavior {
+	if this.Focus != that1.Focus {
 		return false
 	}
-	if this.Count != that1.Count {
-		return false
-	}
-	if this.ParentSystemNameUint != that1.ParentSystemNameUint {
-		return false
-	}
-	if this.DockedFighterCount != that1.DockedFighterCount {
+	if this.Progress != that1.Progress {
 		return false
 	}
 	return true
@@ -696,10 +725,22 @@ func (this *GalacticFleet) Equal(that interface{}) bool {
 	if this.ClosestSystemNameUint != that1.ClosestSystemNameUint {
 		return false
 	}
+	if this.TitanCount != that1.TitanCount {
+		return false
+	}
 	if this.CapitalCount != that1.CapitalCount {
 		return false
 	}
 	if this.FighterCount != that1.FighterCount {
+		return false
+	}
+	if this.FlakCorvetteCount != that1.FlakCorvetteCount {
+		return false
+	}
+	if this.LargeTradeshipCount != that1.LargeTradeshipCount {
+		return false
+	}
+	if this.ColonizerCount != that1.ColonizerCount {
 		return false
 	}
 	return true
@@ -824,15 +865,24 @@ func (this *OutstandingAction) Equal(that interface{}) bool {
 			return false
 		}
 	}
+	if len(this.ActionNames) != len(that1.ActionNames) {
+		return false
+	}
+	for i := range this.ActionNames {
+		if this.ActionNames[i] != that1.ActionNames[i] {
+			return false
+		}
+	}
 	return true
 }
 func (this *SolarObject) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 16)
+	s := make([]string, 0, 15)
 	s = append(s, "&gamestate.SolarObject{")
 	s = append(s, "NameUint: "+fmt.Sprintf("%#v", this.NameUint)+",\n")
+	s = append(s, "ParentSystemNameUint: "+fmt.Sprintf("%#v", this.ParentSystemNameUint)+",\n")
 	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
 	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
 	s = append(s, "Owner: "+fmt.Sprintf("%#v", this.Owner)+",\n")
@@ -840,10 +890,8 @@ func (this *SolarObject) GoString() string {
 	s = append(s, "Population: "+fmt.Sprintf("%#v", this.Population)+",\n")
 	s = append(s, "ObjectType: "+fmt.Sprintf("%#v", this.ObjectType)+",\n")
 	s = append(s, "Health: "+fmt.Sprintf("%#v", this.Health)+",\n")
-	s = append(s, "Behavior: "+fmt.Sprintf("%#v", this.Behavior)+",\n")
-	s = append(s, "Count: "+fmt.Sprintf("%#v", this.Count)+",\n")
-	s = append(s, "ParentSystemNameUint: "+fmt.Sprintf("%#v", this.ParentSystemNameUint)+",\n")
-	s = append(s, "DockedFighterCount: "+fmt.Sprintf("%#v", this.DockedFighterCount)+",\n")
+	s = append(s, "Focus: "+fmt.Sprintf("%#v", this.Focus)+",\n")
+	s = append(s, "Progress: "+fmt.Sprintf("%#v", this.Progress)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -897,15 +945,19 @@ func (this *GalacticFleet) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 11)
+	s := make([]string, 0, 15)
 	s = append(s, "&gamestate.GalacticFleet{")
 	s = append(s, "FleetID: "+fmt.Sprintf("%#v", this.FleetID)+",\n")
 	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
 	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
 	s = append(s, "Owner: "+fmt.Sprintf("%#v", this.Owner)+",\n")
 	s = append(s, "ClosestSystemNameUint: "+fmt.Sprintf("%#v", this.ClosestSystemNameUint)+",\n")
+	s = append(s, "TitanCount: "+fmt.Sprintf("%#v", this.TitanCount)+",\n")
 	s = append(s, "CapitalCount: "+fmt.Sprintf("%#v", this.CapitalCount)+",\n")
 	s = append(s, "FighterCount: "+fmt.Sprintf("%#v", this.FighterCount)+",\n")
+	s = append(s, "FlakCorvetteCount: "+fmt.Sprintf("%#v", this.FlakCorvetteCount)+",\n")
+	s = append(s, "LargeTradeshipCount: "+fmt.Sprintf("%#v", this.LargeTradeshipCount)+",\n")
+	s = append(s, "ColonizerCount: "+fmt.Sprintf("%#v", this.ColonizerCount)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -939,13 +991,14 @@ func (this *OutstandingAction) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 10)
 	s = append(s, "&gamestate.OutstandingAction{")
 	s = append(s, "ActionID: "+fmt.Sprintf("%#v", this.ActionID)+",\n")
 	s = append(s, "ActionType: "+fmt.Sprintf("%#v", this.ActionType)+",\n")
 	s = append(s, "TimeLeft: "+fmt.Sprintf("%#v", this.TimeLeft)+",\n")
 	s = append(s, "Owner: "+fmt.Sprintf("%#v", this.Owner)+",\n")
 	s = append(s, "ActionValues: "+fmt.Sprintf("%#v", this.ActionValues)+",\n")
+	s = append(s, "ActionNames: "+fmt.Sprintf("%#v", this.ActionNames)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -977,60 +1030,55 @@ func (m *SolarObject) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.NameUint))
 	}
-	if m.InterX != 0 {
+	if m.ParentSystemNameUint != 0 {
 		dAtA[i] = 0x10
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.ParentSystemNameUint))
+	}
+	if m.InterX != 0 {
+		dAtA[i] = 0x18
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.InterX))
 	}
 	if m.InterY != 0 {
-		dAtA[i] = 0x18
+		dAtA[i] = 0x20
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.InterY))
 	}
 	if m.Owner != 0 {
-		dAtA[i] = 0x20
+		dAtA[i] = 0x28
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.Owner))
 	}
 	if m.Food != 0 {
-		dAtA[i] = 0x28
+		dAtA[i] = 0x30
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.Food))
 	}
 	if m.Population != 0 {
-		dAtA[i] = 0x30
+		dAtA[i] = 0x38
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.Population))
 	}
 	if m.ObjectType != 0 {
-		dAtA[i] = 0x38
+		dAtA[i] = 0x40
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.ObjectType))
 	}
 	if m.Health != 0 {
-		dAtA[i] = 0x40
+		dAtA[i] = 0x48
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.Health))
 	}
-	if m.Behavior != 0 {
-		dAtA[i] = 0x48
-		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(m.Behavior))
-	}
-	if m.Count != 0 {
+	if m.Focus != 0 {
 		dAtA[i] = 0x50
 		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(m.Count))
+		i = encodeVarintGamestate(dAtA, i, uint64(m.Focus))
 	}
-	if m.ParentSystemNameUint != 0 {
+	if m.Progress != 0 {
 		dAtA[i] = 0x58
 		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(m.ParentSystemNameUint))
-	}
-	if m.DockedFighterCount != 0 {
-		dAtA[i] = 0x60
-		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(m.DockedFighterCount))
+		i = encodeVarintGamestate(dAtA, i, uint64(m.Progress))
 	}
 	return i, nil
 }
@@ -1263,19 +1311,47 @@ func (m *GalacticFleet) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.ClosestSystemNameUint))
 	}
-	if m.CapitalCount != 0 {
+	if m.TitanCount != 0 {
 		dAtA[i] = 0x80
+		i++
+		dAtA[i] = 0x2
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.TitanCount))
+	}
+	if m.CapitalCount != 0 {
+		dAtA[i] = 0x88
 		i++
 		dAtA[i] = 0x2
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.CapitalCount))
 	}
 	if m.FighterCount != 0 {
-		dAtA[i] = 0x88
+		dAtA[i] = 0x90
 		i++
 		dAtA[i] = 0x2
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.FighterCount))
+	}
+	if m.FlakCorvetteCount != 0 {
+		dAtA[i] = 0x98
+		i++
+		dAtA[i] = 0x2
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.FlakCorvetteCount))
+	}
+	if m.LargeTradeshipCount != 0 {
+		dAtA[i] = 0xa0
+		i++
+		dAtA[i] = 0x2
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.LargeTradeshipCount))
+	}
+	if m.ColonizerCount != 0 {
+		dAtA[i] = 0xa8
+		i++
+		dAtA[i] = 0x2
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.ColonizerCount))
 	}
 	return i, nil
 }
@@ -1456,6 +1532,25 @@ func (m *OutstandingAction) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintGamestate(dAtA, i, uint64(j9))
 		i += copy(dAtA[i:], dAtA10[:j9])
 	}
+	if len(m.ActionNames) > 0 {
+		dAtA12 := make([]byte, len(m.ActionNames)*10)
+		var j11 int
+		for _, num := range m.ActionNames {
+			for num >= 1<<7 {
+				dAtA12[j11] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j11++
+			}
+			dAtA12[j11] = uint8(num)
+			j11++
+		}
+		dAtA[i] = 0x8a
+		i++
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(j11))
+		i += copy(dAtA[i:], dAtA12[:j11])
+	}
 	return i, nil
 }
 
@@ -1473,6 +1568,9 @@ func (m *SolarObject) Size() (n int) {
 	_ = l
 	if m.NameUint != 0 {
 		n += 1 + sovGamestate(uint64(m.NameUint))
+	}
+	if m.ParentSystemNameUint != 0 {
+		n += 1 + sovGamestate(uint64(m.ParentSystemNameUint))
 	}
 	if m.InterX != 0 {
 		n += 1 + sovGamestate(uint64(m.InterX))
@@ -1495,17 +1593,11 @@ func (m *SolarObject) Size() (n int) {
 	if m.Health != 0 {
 		n += 1 + sovGamestate(uint64(m.Health))
 	}
-	if m.Behavior != 0 {
-		n += 1 + sovGamestate(uint64(m.Behavior))
+	if m.Focus != 0 {
+		n += 1 + sovGamestate(uint64(m.Focus))
 	}
-	if m.Count != 0 {
-		n += 1 + sovGamestate(uint64(m.Count))
-	}
-	if m.ParentSystemNameUint != 0 {
-		n += 1 + sovGamestate(uint64(m.ParentSystemNameUint))
-	}
-	if m.DockedFighterCount != 0 {
-		n += 1 + sovGamestate(uint64(m.DockedFighterCount))
+	if m.Progress != 0 {
+		n += 1 + sovGamestate(uint64(m.Progress))
 	}
 	return n
 }
@@ -1610,11 +1702,23 @@ func (m *GalacticFleet) Size() (n int) {
 	if m.ClosestSystemNameUint != 0 {
 		n += 1 + sovGamestate(uint64(m.ClosestSystemNameUint))
 	}
+	if m.TitanCount != 0 {
+		n += 2 + sovGamestate(uint64(m.TitanCount))
+	}
 	if m.CapitalCount != 0 {
 		n += 2 + sovGamestate(uint64(m.CapitalCount))
 	}
 	if m.FighterCount != 0 {
 		n += 2 + sovGamestate(uint64(m.FighterCount))
+	}
+	if m.FlakCorvetteCount != 0 {
+		n += 2 + sovGamestate(uint64(m.FlakCorvetteCount))
+	}
+	if m.LargeTradeshipCount != 0 {
+		n += 2 + sovGamestate(uint64(m.LargeTradeshipCount))
+	}
+	if m.ColonizerCount != 0 {
+		n += 2 + sovGamestate(uint64(m.ColonizerCount))
 	}
 	return n
 }
@@ -1689,6 +1793,13 @@ func (m *OutstandingAction) Size() (n int) {
 		}
 		n += 2 + sovGamestate(uint64(l)) + l
 	}
+	if len(m.ActionNames) > 0 {
+		l = 0
+		for _, e := range m.ActionNames {
+			l += sovGamestate(uint64(e))
+		}
+		n += 2 + sovGamestate(uint64(l)) + l
+	}
 	return n
 }
 
@@ -1711,6 +1822,7 @@ func (this *SolarObject) String() string {
 	}
 	s := strings.Join([]string{`&SolarObject{`,
 		`NameUint:` + fmt.Sprintf("%v", this.NameUint) + `,`,
+		`ParentSystemNameUint:` + fmt.Sprintf("%v", this.ParentSystemNameUint) + `,`,
 		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
 		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
 		`Owner:` + fmt.Sprintf("%v", this.Owner) + `,`,
@@ -1718,10 +1830,8 @@ func (this *SolarObject) String() string {
 		`Population:` + fmt.Sprintf("%v", this.Population) + `,`,
 		`ObjectType:` + fmt.Sprintf("%v", this.ObjectType) + `,`,
 		`Health:` + fmt.Sprintf("%v", this.Health) + `,`,
-		`Behavior:` + fmt.Sprintf("%v", this.Behavior) + `,`,
-		`Count:` + fmt.Sprintf("%v", this.Count) + `,`,
-		`ParentSystemNameUint:` + fmt.Sprintf("%v", this.ParentSystemNameUint) + `,`,
-		`DockedFighterCount:` + fmt.Sprintf("%v", this.DockedFighterCount) + `,`,
+		`Focus:` + fmt.Sprintf("%v", this.Focus) + `,`,
+		`Progress:` + fmt.Sprintf("%v", this.Progress) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1770,8 +1880,12 @@ func (this *GalacticFleet) String() string {
 		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
 		`Owner:` + fmt.Sprintf("%v", this.Owner) + `,`,
 		`ClosestSystemNameUint:` + fmt.Sprintf("%v", this.ClosestSystemNameUint) + `,`,
+		`TitanCount:` + fmt.Sprintf("%v", this.TitanCount) + `,`,
 		`CapitalCount:` + fmt.Sprintf("%v", this.CapitalCount) + `,`,
 		`FighterCount:` + fmt.Sprintf("%v", this.FighterCount) + `,`,
+		`FlakCorvetteCount:` + fmt.Sprintf("%v", this.FlakCorvetteCount) + `,`,
+		`LargeTradeshipCount:` + fmt.Sprintf("%v", this.LargeTradeshipCount) + `,`,
+		`ColonizerCount:` + fmt.Sprintf("%v", this.ColonizerCount) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1812,6 +1926,7 @@ func (this *OutstandingAction) String() string {
 		`TimeLeft:` + fmt.Sprintf("%v", this.TimeLeft) + `,`,
 		`Owner:` + fmt.Sprintf("%v", this.Owner) + `,`,
 		`ActionValues:` + fmt.Sprintf("%v", this.ActionValues) + `,`,
+		`ActionNames:` + fmt.Sprintf("%v", this.ActionNames) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1874,6 +1989,25 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ParentSystemNameUint", wireType)
+			}
+			m.ParentSystemNameUint = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ParentSystemNameUint |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field InterX", wireType)
 			}
 			m.InterX = 0
@@ -1891,7 +2025,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field InterY", wireType)
 			}
@@ -1910,7 +2044,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
 			}
@@ -1929,7 +2063,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 5:
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Food", wireType)
 			}
@@ -1948,7 +2082,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 6:
+		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Population", wireType)
 			}
@@ -1967,7 +2101,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 7:
+		case 8:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ObjectType", wireType)
 			}
@@ -1986,7 +2120,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 8:
+		case 9:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Health", wireType)
 			}
@@ -2005,30 +2139,11 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 9:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Behavior", wireType)
-			}
-			m.Behavior = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowGamestate
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Behavior |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		case 10:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Count", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Focus", wireType)
 			}
-			m.Count = 0
+			m.Focus = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowGamestate
@@ -2038,16 +2153,16 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Count |= (int32(b) & 0x7F) << shift
+				m.Focus |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 11:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ParentSystemNameUint", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Progress", wireType)
 			}
-			m.ParentSystemNameUint = 0
+			m.Progress = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowGamestate
@@ -2057,26 +2172,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ParentSystemNameUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 12:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DockedFighterCount", wireType)
-			}
-			m.DockedFighterCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowGamestate
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.DockedFighterCount |= (int32(b) & 0x7F) << shift
+				m.Progress |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2747,6 +2843,25 @@ func (m *GalacticFleet) Unmarshal(dAtA []byte) error {
 			}
 		case 32:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TitanCount", wireType)
+			}
+			m.TitanCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TitanCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 33:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CapitalCount", wireType)
 			}
 			m.CapitalCount = 0
@@ -2764,7 +2879,7 @@ func (m *GalacticFleet) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 33:
+		case 34:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FighterCount", wireType)
 			}
@@ -2779,6 +2894,63 @@ func (m *GalacticFleet) Unmarshal(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.FighterCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 35:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FlakCorvetteCount", wireType)
+			}
+			m.FlakCorvetteCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FlakCorvetteCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 36:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LargeTradeshipCount", wireType)
+			}
+			m.LargeTradeshipCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LargeTradeshipCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 37:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ColonizerCount", wireType)
+			}
+			m.ColonizerCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ColonizerCount |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -3352,6 +3524,68 @@ func (m *OutstandingAction) Unmarshal(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field ActionValues", wireType)
 			}
+		case 129:
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.ActionNames = append(m.ActionNames, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLengthGamestate
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.ActionNames = append(m.ActionNames, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field ActionNames", wireType)
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGamestate(dAtA[iNdEx:])
@@ -3481,54 +3715,60 @@ var (
 func init() { proto.RegisterFile("gamestate.proto", fileDescriptorGamestate) }
 
 var fileDescriptorGamestate = []byte{
-	// 783 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x55, 0xcd, 0x6e, 0xd3, 0x4a,
-	0x14, 0xce, 0x34, 0x3f, 0x6d, 0xa7, 0xa9, 0x6e, 0x3b, 0xea, 0xed, 0xb5, 0xaa, 0x8b, 0x15, 0xcc,
-	0x26, 0x0b, 0xe8, 0xa2, 0xb0, 0x46, 0xa2, 0x85, 0x54, 0x95, 0x10, 0x91, 0x5c, 0x8a, 0xe8, 0x72,
-	0xe2, 0x4c, 0x9c, 0xa1, 0xce, 0x4c, 0x64, 0x4f, 0x0a, 0xd9, 0xb5, 0xc0, 0x03, 0xf0, 0x12, 0x20,
-	0x58, 0xf3, 0x12, 0x2c, 0xbb, 0x64, 0x49, 0xc3, 0x86, 0x0d, 0x52, 0xe1, 0x09, 0xd0, 0x9c, 0xb1,
-	0x1d, 0x27, 0x0e, 0x59, 0x75, 0xe7, 0xf3, 0x9d, 0xef, 0x7c, 0x39, 0xe7, 0x9b, 0x33, 0x13, 0xfc,
-	0x8f, 0x4f, 0x7b, 0x2c, 0x52, 0x54, 0xb1, 0xed, 0x7e, 0x28, 0x95, 0x24, 0xcb, 0x29, 0xe0, 0xfc,
-	0x5a, 0xc0, 0x2b, 0x87, 0x32, 0xa0, 0x61, 0xb3, 0xf5, 0x82, 0x79, 0x8a, 0x6c, 0xe1, 0x25, 0x41,
-	0x7b, 0xec, 0x88, 0x0b, 0x65, 0xa1, 0x1a, 0xaa, 0x97, 0xdc, 0x34, 0x26, 0x9b, 0xb8, 0xc2, 0x85,
-	0x62, 0xe1, 0x73, 0x6b, 0xa1, 0x86, 0xea, 0x45, 0x37, 0x8e, 0x52, 0xfc, 0xd8, 0x2a, 0x66, 0xf0,
-	0x63, 0xb2, 0x81, 0xcb, 0xf2, 0xa5, 0x60, 0xa1, 0x55, 0xaa, 0xa1, 0x7a, 0xd9, 0x35, 0x01, 0x21,
-	0xb8, 0xd4, 0x91, 0xb2, 0x6d, 0x95, 0x01, 0x84, 0x6f, 0x62, 0x63, 0xdc, 0x97, 0xfd, 0x41, 0x40,
-	0x15, 0x97, 0xc2, 0xaa, 0x80, 0x4a, 0x06, 0xd1, 0x79, 0x09, 0xfd, 0x3d, 0x1d, 0xf6, 0x99, 0xb5,
-	0x08, 0x95, 0x19, 0x44, 0x77, 0xd0, 0x65, 0x34, 0x50, 0x5d, 0x6b, 0x09, 0x72, 0x71, 0xa4, 0xa7,
-	0x69, 0xb1, 0x2e, 0x3d, 0xe5, 0x32, 0xb4, 0x96, 0x21, 0x93, 0xc6, 0xba, 0x3b, 0x4f, 0x0e, 0x84,
-	0xb2, 0xb0, 0xe9, 0x0e, 0x02, 0xb2, 0x83, 0x37, 0xfa, 0x34, 0x64, 0x42, 0x1d, 0x0e, 0x23, 0xc5,
-	0x7a, 0x4f, 0x12, 0x2f, 0x56, 0xc0, 0x8b, 0x99, 0x39, 0xb2, 0x8d, 0x49, 0x5b, 0x7a, 0x27, 0xac,
-	0xdd, 0xe0, 0x7e, 0x57, 0xb1, 0x70, 0x0f, 0x64, 0xab, 0x20, 0x3b, 0x23, 0xe3, 0x7c, 0x4a, 0x3c,
-	0x37, 0x3a, 0xd7, 0xea, 0xb9, 0x83, 0xab, 0xfd, 0x90, 0xf7, 0x68, 0x38, 0x6c, 0x66, 0xac, 0x9f,
-	0xc0, 0xb4, 0x9b, 0x11, 0xfc, 0x32, 0xb8, 0xb9, 0x66, 0xdc, 0x1c, 0x23, 0x64, 0x0f, 0xaf, 0x45,
-	0xba, 0x3d, 0x63, 0x70, 0x14, 0x70, 0x8f, 0x59, 0x67, 0xa8, 0x56, 0xac, 0xaf, 0xec, 0x6c, 0x6e,
-	0x8f, 0x77, 0x29, 0xb3, 0x36, 0x6e, 0xae, 0x80, 0x3c, 0xc2, 0x37, 0x3c, 0x29, 0x04, 0xf3, 0x14,
-	0x6b, 0x67, 0x86, 0x8d, 0x52, 0x47, 0xcf, 0xb5, 0x62, 0xc9, 0x9d, 0xcf, 0x72, 0x7e, 0x17, 0x71,
-	0x65, 0x9f, 0x06, 0xf4, 0xd5, 0x70, 0xae, 0x4d, 0x16, 0x5e, 0xf4, 0x03, 0xd9, 0xa2, 0x41, 0xe2,
-	0x53, 0x12, 0x8e, 0x33, 0x89, 0x53, 0x49, 0xa8, 0x6d, 0xf0, 0x41, 0x39, 0x6b, 0xc3, 0x18, 0x49,
-	0x6d, 0x30, 0xce, 0xcc, 0xb7, 0xc1, 0xb4, 0xed, 0xe6, 0x0a, 0xc8, 0x01, 0x26, 0x5a, 0xd2, 0x53,
-	0xdc, 0xeb, 0x04, 0x8c, 0xc5, 0x6e, 0x9e, 0x1b, 0x19, 0x2b, 0x23, 0xb3, 0x1f, 0xb3, 0x1a, 0x9a,
-	0xe5, 0xce, 0x28, 0xd2, 0x52, 0x52, 0xf8, 0x92, 0x0b, 0xbf, 0x45, 0x95, 0x0a, 0x98, 0x91, 0x7a,
-	0x9d, 0x97, 0x6a, 0x1a, 0xd6, 0x2e, 0xb0, 0xdc, 0x19, 0x45, 0xa4, 0x81, 0xd7, 0x63, 0x34, 0xe2,
-	0xcc, 0x8f, 0x95, 0xde, 0x18, 0xa5, 0xff, 0xf2, 0x4a, 0x87, 0x9a, 0xe4, 0xe6, 0x4b, 0xc8, 0x11,
-	0xde, 0x94, 0x03, 0x15, 0x29, 0x2a, 0xda, 0x5c, 0xf8, 0xba, 0x61, 0x29, 0x8c, 0xd8, 0x5b, 0x23,
-	0xf6, 0x7f, 0x56, 0x6c, 0xcc, 0x7c, 0x00, 0x4c, 0xf7, 0x2f, 0xc5, 0xce, 0x4f, 0x84, 0x57, 0x27,
-	0xfc, 0xd0, 0xa7, 0x08, 0x4e, 0x1c, 0x3c, 0x84, 0xa3, 0x2f, 0xbb, 0x49, 0x78, 0x4d, 0x8f, 0xd2,
-	0x3d, 0xfc, 0xaf, 0x17, 0xc8, 0x88, 0x45, 0xd3, 0xf7, 0xbe, 0x0c, 0x8b, 0x36, 0x3b, 0xa9, 0x2f,
-	0x9b, 0x47, 0xfb, 0x5c, 0xd1, 0xc0, 0x5c, 0xf9, 0x9a, 0xb9, 0x6c, 0x59, 0x4c, 0x73, 0x3a, 0xd9,
-	0x67, 0xe1, 0xa6, 0xe1, 0x64, 0x31, 0xe7, 0x3d, 0xc2, 0xab, 0x13, 0x87, 0x06, 0x0f, 0x17, 0x7c,
-	0xa5, 0x03, 0xa7, 0xb1, 0xce, 0x45, 0x2a, 0xa4, 0x8a, 0xf9, 0x43, 0x98, 0xb9, 0xec, 0xa6, 0x31,
-	0xb9, 0x83, 0xd7, 0xa9, 0x52, 0xd4, 0x3b, 0xe1, 0xc2, 0x6f, 0x18, 0x87, 0x22, 0xb3, 0xb4, 0x65,
-	0x37, 0x9f, 0xd1, 0xf4, 0x36, 0xeb, 0x30, 0x38, 0x80, 0x94, 0x7e, 0x1e, 0xd3, 0x73, 0x19, 0xe7,
-	0x33, 0xc2, 0xd5, 0xec, 0x4a, 0xe8, 0x63, 0x81, 0x6d, 0x18, 0x1f, 0x4b, 0x1c, 0xea, 0x26, 0x15,
-	0xef, 0xb1, 0xc7, 0xac, 0xa3, 0xe2, 0x83, 0x49, 0x63, 0x72, 0x1f, 0x6f, 0xc1, 0xf8, 0x5c, 0xf8,
-	0xcd, 0x53, 0x16, 0x4e, 0x39, 0x5e, 0x04, 0xc7, 0xe7, 0x30, 0x60, 0x48, 0xdf, 0x0f, 0x59, 0x14,
-	0xc9, 0x30, 0x3f, 0xe4, 0x74, 0xc6, 0xf9, 0x80, 0xf0, 0x7a, 0x6e, 0xf7, 0x74, 0x83, 0x66, 0xe5,
-	0xc6, 0x0e, 0x27, 0xb1, 0x7e, 0x19, 0xcc, 0x37, 0xbc, 0x0c, 0xc6, 0xe3, 0x0c, 0x32, 0x31, 0x5c,
-	0x71, 0x6a, 0xb8, 0xd9, 0xfb, 0x75, 0x0b, 0x57, 0x4d, 0xfd, 0x33, 0x1a, 0x0c, 0x58, 0xdc, 0x6d,
-	0xd1, 0x9d, 0x00, 0x77, 0x6f, 0x5f, 0x5c, 0xda, 0x85, 0xaf, 0x97, 0x76, 0xe1, 0xea, 0xd2, 0x46,
-	0x67, 0x23, 0x1b, 0x7d, 0x1c, 0xd9, 0xe8, 0xcb, 0xc8, 0x46, 0x17, 0x23, 0x1b, 0x7d, 0x1b, 0xd9,
-	0xe8, 0xc7, 0xc8, 0x2e, 0x5c, 0x8d, 0x6c, 0xf4, 0xee, 0xbb, 0x5d, 0x68, 0x55, 0xe0, 0xbf, 0xfc,
-	0xee, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x96, 0x48, 0x96, 0x34, 0xde, 0x07, 0x00, 0x00,
+	// 868 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0x4f, 0x6f, 0x23, 0x35,
+	0x14, 0xcf, 0x74, 0x92, 0xb4, 0x75, 0x5a, 0x68, 0x4c, 0x29, 0xa3, 0x0a, 0x46, 0xe9, 0x14, 0x50,
+	0x0e, 0xa5, 0x42, 0x85, 0x33, 0x12, 0x2d, 0xb4, 0xaa, 0x84, 0x88, 0x34, 0x6d, 0x11, 0x3d, 0x3a,
+	0x13, 0x67, 0x62, 0x3a, 0xb1, 0x47, 0xb6, 0x53, 0x08, 0xa7, 0x16, 0xf8, 0x00, 0x5c, 0xf8, 0x08,
+	0x48, 0x70, 0xde, 0x4f, 0xb0, 0xb7, 0xdd, 0x5b, 0x8f, 0x7b, 0xdc, 0x66, 0x2f, 0x7b, 0xac, 0xf6,
+	0x13, 0xac, 0x6c, 0xcf, 0xbf, 0x64, 0xd2, 0x48, 0x7b, 0xcb, 0xfb, 0xbd, 0x9f, 0xdf, 0xbc, 0xf7,
+	0xf3, 0xef, 0x59, 0x01, 0xef, 0x87, 0x68, 0x88, 0x85, 0x44, 0x12, 0xef, 0xc7, 0x9c, 0x49, 0x06,
+	0x57, 0x33, 0xc0, 0x7b, 0xba, 0x04, 0x1a, 0x67, 0x2c, 0x42, 0xbc, 0xd3, 0xfd, 0x05, 0x07, 0x12,
+	0x6e, 0x83, 0x15, 0x8a, 0x86, 0xf8, 0x82, 0x50, 0xe9, 0x58, 0x2d, 0xab, 0x5d, 0xf5, 0xb3, 0x18,
+	0x1e, 0x80, 0xcd, 0x18, 0x71, 0x4c, 0xe5, 0xd9, 0x58, 0x48, 0x3c, 0xfc, 0x31, 0xe5, 0x2d, 0x69,
+	0xde, 0xdc, 0x1c, 0xdc, 0x02, 0x75, 0x42, 0x25, 0xe6, 0x3f, 0x3b, 0x76, 0xcb, 0x6a, 0xdb, 0x7e,
+	0x12, 0x65, 0xf8, 0xa5, 0x53, 0x2d, 0xe0, 0x97, 0x70, 0x13, 0xd4, 0xd8, 0xaf, 0x14, 0x73, 0xa7,
+	0xd6, 0xb2, 0xda, 0x35, 0xdf, 0x04, 0x10, 0x82, 0x6a, 0x9f, 0xb1, 0x9e, 0x53, 0xd7, 0xa0, 0xfe,
+	0x0d, 0x5d, 0x00, 0x62, 0x16, 0x8f, 0x22, 0x24, 0x09, 0xa3, 0xce, 0xb2, 0xae, 0x52, 0x40, 0x54,
+	0x9e, 0xe9, 0x99, 0xce, 0xc7, 0x31, 0x76, 0x56, 0xf4, 0xc9, 0x02, 0xa2, 0x3a, 0x18, 0x60, 0x14,
+	0xc9, 0x81, 0xb3, 0xaa, 0x73, 0x49, 0xa4, 0x3a, 0xe8, 0xb3, 0x60, 0x24, 0x1c, 0x60, 0x3a, 0xd0,
+	0x81, 0xd2, 0x25, 0xe6, 0x2c, 0xe4, 0x58, 0x08, 0xa7, 0xa1, 0x13, 0x59, 0xec, 0xfd, 0x9f, 0x6a,
+	0x68, 0x66, 0x5f, 0xa8, 0x61, 0xae, 0xc7, 0xd2, 0x23, 0x7a, 0xd8, 0x53, 0x7a, 0x78, 0x60, 0x2d,
+	0xe6, 0x64, 0x88, 0xf8, 0xb8, 0xa3, 0x65, 0xa9, 0xea, 0x6f, 0x4f, 0x61, 0x6a, 0x52, 0xa1, 0xbf,
+	0xac, 0x27, 0xdd, 0x30, 0x93, 0xe6, 0x08, 0x3c, 0x02, 0x1b, 0x42, 0xb5, 0x67, 0x86, 0x17, 0x11,
+	0x09, 0xb0, 0x73, 0x63, 0xb5, 0xec, 0x76, 0xe3, 0x60, 0x6b, 0x3f, 0xf7, 0x46, 0xc1, 0x06, 0x7e,
+	0xe9, 0x00, 0xfc, 0x1e, 0x7c, 0x12, 0x30, 0x4a, 0x71, 0x20, 0x71, 0xaf, 0x30, 0xac, 0xc8, 0x5c,
+	0x70, 0xab, 0x2a, 0x56, 0xfd, 0xc5, 0x2c, 0xef, 0x8d, 0x0d, 0xea, 0x27, 0x28, 0x42, 0xbf, 0x8d,
+	0x17, 0xca, 0xe4, 0x80, 0xe5, 0x30, 0x62, 0x5d, 0x14, 0xa5, 0x3a, 0xa5, 0x61, 0x9e, 0x49, 0x95,
+	0x4a, 0x43, 0x25, 0x43, 0xa8, 0x2b, 0x17, 0x65, 0xc8, 0x91, 0x4c, 0x06, 0xa3, 0xcc, 0x62, 0x19,
+	0x4c, 0xdb, 0x7e, 0xe9, 0x00, 0x3c, 0x05, 0x50, 0x95, 0x0c, 0x24, 0x09, 0xfa, 0x11, 0xc6, 0x89,
+	0x9a, 0xb7, 0xa6, 0x8c, 0x53, 0x28, 0x73, 0x92, 0xb0, 0x8e, 0x15, 0xcb, 0x9f, 0x73, 0x48, 0x95,
+	0x62, 0x34, 0x64, 0x84, 0x86, 0x5d, 0x24, 0x65, 0x84, 0x4d, 0xa9, 0x3f, 0xca, 0xa5, 0x3a, 0x86,
+	0x75, 0xa8, 0x59, 0xfe, 0x9c, 0x43, 0xf0, 0x18, 0x34, 0x13, 0x54, 0x10, 0x1c, 0x26, 0x95, 0xfe,
+	0x34, 0x95, 0x3e, 0x2a, 0x57, 0x3a, 0x53, 0x24, 0xbf, 0x7c, 0x04, 0x5e, 0x80, 0x2d, 0x36, 0x92,
+	0x42, 0x22, 0xda, 0x23, 0x34, 0x54, 0x0d, 0x33, 0x6a, 0x8a, 0xfd, 0x65, 0x8a, 0x7d, 0x5c, 0x2c,
+	0x96, 0x33, 0xbf, 0xd5, 0x4c, 0xff, 0x91, 0xc3, 0xde, 0x3f, 0x36, 0x58, 0x9f, 0xd2, 0x43, 0xdd,
+	0xa2, 0x56, 0xe2, 0xf4, 0x3b, 0x7d, 0xf5, 0x35, 0x3f, 0x0d, 0xdf, 0x79, 0x41, 0xb2, 0x07, 0xa3,
+	0x5a, 0x7c, 0x30, 0xbe, 0x06, 0x1f, 0x06, 0x11, 0x13, 0x58, 0xcc, 0xbe, 0x55, 0x35, 0x6d, 0xb4,
+	0xf9, 0x49, 0xe5, 0x20, 0x49, 0x24, 0xa2, 0x47, 0x6c, 0x44, 0xa5, 0xd3, 0x32, 0x0e, 0xca, 0x11,
+	0xb5, 0x8c, 0x01, 0x8a, 0x89, 0x44, 0x91, 0x61, 0xec, 0x98, 0x65, 0x2c, 0x62, 0x8a, 0xd3, 0x27,
+	0xe1, 0x40, 0x62, 0x6e, 0x38, 0x9e, 0xe1, 0x14, 0x31, 0xb8, 0x07, 0x9a, 0xfd, 0x08, 0x5d, 0x1d,
+	0x31, 0x7e, 0x8d, 0xa5, 0xc4, 0x86, 0xb8, 0xab, 0x89, 0xe5, 0x04, 0xfc, 0x12, 0x7c, 0x10, 0x21,
+	0x1e, 0xe2, 0x73, 0x8e, 0x7a, 0x58, 0x0c, 0x48, 0x6c, 0xf8, 0x9f, 0x6a, 0xfe, 0xbc, 0x14, 0xfc,
+	0x1c, 0xbc, 0x17, 0xb0, 0x88, 0x51, 0xf2, 0x7b, 0xda, 0xc5, 0x67, 0x9a, 0x3c, 0x83, 0x7a, 0xff,
+	0x5a, 0x60, 0x7d, 0xca, 0x5c, 0x6a, 0x27, 0x8d, 0xaf, 0xb2, 0x8b, 0xc9, 0x62, 0x95, 0x13, 0x92,
+	0x23, 0x89, 0xc3, 0xb1, 0xbe, 0x9b, 0x9a, 0x9f, 0xc5, 0xf0, 0x0b, 0xd0, 0x44, 0x52, 0xa2, 0xe0,
+	0x8a, 0xd0, 0xf0, 0xd8, 0xdc, 0xa4, 0x30, 0xcb, 0x55, 0xf3, 0xcb, 0x19, 0x45, 0xef, 0xe1, 0x3e,
+	0xd6, 0x46, 0xc9, 0xe8, 0xb7, 0x09, 0xbd, 0x94, 0xf1, 0x9e, 0x58, 0x60, 0xad, 0x68, 0x5d, 0x65,
+	0x1f, 0xed, 0xda, 0xdc, 0x3e, 0x49, 0xa8, 0x9a, 0x94, 0x64, 0x88, 0x7f, 0xc0, 0x7d, 0x99, 0x18,
+	0x28, 0x8b, 0xe1, 0x37, 0x60, 0x5b, 0x5f, 0x03, 0xa1, 0x61, 0xe7, 0x1a, 0xf3, 0x19, 0x67, 0xd8,
+	0xda, 0x19, 0x0b, 0x18, 0x7a, 0xc8, 0x50, 0x3f, 0xf9, 0x8c, 0x97, 0x87, 0x9c, 0xcd, 0x78, 0xcf,
+	0x2d, 0xd0, 0x2c, 0xed, 0x88, 0x6a, 0xd0, 0xac, 0x46, 0xae, 0x70, 0x1a, 0x2b, 0xff, 0x99, 0xdf,
+	0xfa, 0x05, 0x33, 0x1a, 0x17, 0x90, 0xa9, 0xe1, 0xec, 0x99, 0xe1, 0xe6, 0xef, 0xc1, 0x2e, 0x58,
+	0x33, 0xe7, 0x7f, 0x42, 0xd1, 0x08, 0x27, 0xdd, 0xda, 0xfe, 0x14, 0x08, 0x77, 0x40, 0xc3, 0xc4,
+	0x6a, 0x52, 0x91, 0x3e, 0xe4, 0x45, 0xec, 0x70, 0xef, 0xee, 0xde, 0xad, 0xbc, 0xb8, 0x77, 0x2b,
+	0x0f, 0xf7, 0xae, 0x75, 0x33, 0x71, 0xad, 0xff, 0x26, 0xae, 0xf5, 0x6c, 0xe2, 0x5a, 0x77, 0x13,
+	0xd7, 0x7a, 0x39, 0x71, 0xad, 0xd7, 0x13, 0xb7, 0xf2, 0x30, 0x71, 0xad, 0xbf, 0x5f, 0xb9, 0x95,
+	0x6e, 0x5d, 0xff, 0xcd, 0xf8, 0xea, 0x6d, 0x00, 0x00, 0x00, 0xff, 0xff, 0x32, 0x05, 0xac, 0x6a,
+	0x79, 0x08, 0x00, 0x00,
 }

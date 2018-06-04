@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 
+	"github.com/demskie/hyperionbot/actor"
 	"github.com/demskie/hyperionfive/gamestate"
 )
 
@@ -33,7 +34,7 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers(universe *UniverseStruct) {
 		obj = galaxy.NeutralTerranPlanetSlice[randIndex]
 		obj.Food = int32(1 + playerData.strength)
 		obj.Population = int64(10000 * playerData.strength * 10)
-		obj.DockedFighterCount = int32(1 + (playerData.strength * 10))
+		universe.Actors = append(universe.Actors, actor.New(playerData.uniqueID))
 		// BUG // not implemented
 		// obj.ChangeOwner(playerData.uniqueID, galaxy)
 	}
