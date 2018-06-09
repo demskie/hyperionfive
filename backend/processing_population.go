@@ -42,8 +42,8 @@ import (
 // CalculatePopulation ...
 func (galaxy *GalaxyStruct) CalculatePopulation() {
 	const fName = "(calculatePopulation)"
-	const imprecisionFactor = 10 * 1
-	if galaxy.TickTime.HasBeenOneTenthSecond == false {
+	const imprecisionFactor = 10
+	if galaxy.TickTime.HasBeenOneSecond == false {
 		return
 	}
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
@@ -64,19 +64,19 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 			randomness            float64
 			K                     float64
 			logisticPercentChange float64
-			obj                   *gamestate.SolarObject
+			planet                *gamestate.Planet
 		)
-		for objIndex := startIndex; objIndex < stopIndex; objIndex += imprecisionFactor {
-			obj = galaxy.AnyPlanetSlice[objIndex]
+		for planetIndex := startIndex; planetIndex < stopIndex; planetIndex += imprecisionFactor {
+			planet = galaxy.AnyPlanetSlice[planetIndex]
 			// https://play.golang.org/p/gWizLY0X2A
-			N = float64(obj.Population)
+			N = float64(planet.Population)
 			if N < referencePopulation {
 				N = referencePopulation
 			}
-			foodSupplyDbl = float64(1 + obj.Food)
+			foodSupplyDbl = float64(1 + planet.Food)
 			randomness = (referencePopulation + 123) * (1 + rnum.NormFloat64()*.1)
 			K = randomness * math.Pow(foodSupplyDbl, 3.4)
-			switch obj.ObjectType {
+			switch planet.ObjectType {
 			case gamestate.TERRAN:
 				K *= 1
 			case gamestate.DESERT:
@@ -107,11 +107,11 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 			case logisticPercentChange == 0:
 				logisticPercentChange = .000001 // can't divide by zero!
 			}
-			obj.Population = int64(N + ((N * maxPercentChange) * logisticPercentChange))
+			planet.Population = int64(N + ((N * maxPercentChange) * logisticPercentChange))
 			if args.DebugModeBool {
-				if objIndex == 0 {
-					log.Debug(obj.GetObjectTypeString(), fmt.Sprint(objIndex/oneMillion, obj.Food),
-						intutil.CommaFormatNum(obj.Population))
+				if planetIndex == 0 {
+					log.Debug(planet.GetPlanetTypeString(), fmt.Sprint(planet.Food),
+						intutil.CommaFormatNum(planet.Population))
 				}
 			}
 		}
@@ -121,8 +121,8 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 // IncreaseFoodOnNeutralPlanets ...
 func (galaxy *GalaxyStruct) IncreaseFoodOnNeutralPlanets() {
 	const fName = "(increaseFoodOnNeutralPlanets)"
-	const imprecisionFactor = 10 * 30
-	if galaxy.TickTime.HasBeenOneTenthSecond == false {
+	const imprecisionFactor = 10
+	if galaxy.TickTime.HasBeenOneSecond == false {
 		return
 	}
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
@@ -134,16 +134,16 @@ func (galaxy *GalaxyStruct) IncreaseFoodOnNeutralPlanets() {
 		rnum := galaxy.ProcessingRnumSlice[coreNum]
 		startIndex += rnum.Intn(imprecisionFactor)
 		var (
-			obj           *gamestate.SolarObject
+			planet        *gamestate.Planet
 			normalDistVal int32
 		)
 		for i := startIndex; i < stopIndex; i += imprecisionFactor {
-			obj = galaxy.NeutralAnyPlanetSlice[i]
+			planet = galaxy.NeutralAnyPlanetSlice[i]
 			// https://homepage.divms.uiowa.edu/~mbognar/applets/normal.html
 			const stdDeviation = 21
 			normalDistVal = int32(rnum.NormFloat64() * stdDeviation)
-			if intutil.AbsInt32(normalDistVal) >= obj.Food {
-				obj.Food++
+			if intutil.AbsInt32(normalDistVal) >= planet.Food {
+				planet.Food++
 			}
 		}
 	})

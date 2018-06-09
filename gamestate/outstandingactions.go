@@ -6,4 +6,5 @@ const (
 	MoveFleetToAttackSystem
 	MoveFleetToDefendSystem
 	MoveFleetToOngoingBattle
+	UndockFleetFromPlanet
 )

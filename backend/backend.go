@@ -51,15 +51,16 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		ProcessingQueue:          simplesync.NewWorkerPool(args.NumberOfCores),
 		ProcessingRnumSlice:      randutil.CreateMultipleUniqueMathRnum(args.NumberOfCores),
 		AnyPlanetMutex:           &sync.Mutex{},
-		AnyPlanetSlice:           make([]*gamestate.SolarObject, 0),
+		AnyPlanetSlice:           make([]*gamestate.Planet, 0),
 		NeutralAnyPlanetMutex:    &sync.Mutex{},
-		NeutralAnyPlanetSlice:    make([]*gamestate.SolarObject, 0),
+		NeutralAnyPlanetSlice:    make([]*gamestate.Planet, 0),
 		NeutralTerranPlanetMutex: &sync.Mutex{},
-		NeutralTerranPlanetSlice: make([]*gamestate.SolarObject, 0),
+		NeutralTerranPlanetSlice: make([]*gamestate.Planet, 0),
 		PointerMappings:          NewPointerMappings(),
 		PlayerFogOfWarMutex:      &sync.Mutex{},
-		PlayerFogOfWar:           make(map[int32]map[uint64]*gamestate.SolarSystem, maxNumberOfPlayers),
+		PlayerFogOfWar:           make(map[int32]map[uint64]*gamestate.System, maxNumberOfPlayers),
 		SystemAndPlanetNames:     names.NewNameGenerator(args, log),
+		SystemNameLookup:         make(map[uint64]*gamestate.System),
 	}
 
 	universe := &UniverseStruct{
@@ -67,7 +68,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		GlobalX:              int64(0),
 		GlobalY:              int64(0),
 		ClientSignal:         make(chan struct{}),
-		PlayerPtrs:           make(map[int32][]*gamestate.SolarSystem),
+		PlayerPtrs:           make(map[int32][]*gamestate.System),
 		PlayerNameData:       stringdatastore.New(),
 		SystemAndPlanetNames: galaxy.SystemAndPlanetNames,
 		PendingPlayerSpawns:  make([]*playerInfo, 0),
@@ -86,6 +87,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	galaxy.PreprocessPointerMappings()
 	galaxy.PreprocessPopulationObjects()
 	galaxy.PreprocessPlayerFogOfWar()
+	galaxy.PreprocessAllocations()
 
 	// connect to a frontend server
 	if false {
@@ -120,16 +122,17 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		for {
 			galaxy.TimeMultiplier = galaxy.TickTime.Update()
 
-			if galaxy.TimeMultiplier >= 0.10 {
+			if galaxy.TimeMultiplier >= 1 {
 				log.Error(fName, fmt.Sprintf("iteration took %v seconds", galaxy.TimeMultiplier))
 			}
 
 			universe.Lock()
-			galaxy.SpawnNewPlayers(universe) // processing_playerspawn.go
-			// galaxy.SpawnFighters()                // processing_population.go
+			galaxy.SpawnNewPlayers(universe)      // processing_playerspawn.go
 			galaxy.CalculatePopulation()          // processing_population.go
 			galaxy.IncreaseFoodOnNeutralPlanets() // processing_population.go
+			galaxy.AdvanceProduction()            // processing_production.go
 			galaxy.ProcessOngoingBattles()        // processing_battle.go
+			galaxy.MoveFleets()                   // processing_movefleets.go
 
 			universe.Unlock()
 

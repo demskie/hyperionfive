@@ -10,8 +10,8 @@ import (
 // ProcessOngoingBattles ...
 func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 	const fName = "(processBattles)"
-	const imprecisionFactor = 1000
-	if galaxy.TickTime.HasBeenOneTenthSecond == false {
+	const imprecisionFactor = 10
+	if galaxy.TickTime.HasBeenOneSecond == false {
 		return
 	}
 	deleteBattle := make([][]*gamestate.OngoingBattle, args.NumberOfCores)
@@ -30,7 +30,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 			aggressorStrength, defenderStrength  int64
 			totalStrength, idx, failedIterations int64
 			fleetID                              int32
-			fleet                                *gamestate.GalacticFleet
+			fleet                                *gamestate.Fleet
 		)
 
 		deleteBattle[coreNum] = []*gamestate.OngoingBattle{}
@@ -47,16 +47,16 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 			aggressorStrength = 0
 			for _, fleetID = range battle.AttackingFleetIDs {
 				aggressorStrength += int64(atomic.LoadInt32(
-					&galaxy.Protobuf.Galacticfleetslice[fleetID].FighterCount))
+					&galaxy.Protobuf.Fleetslice[fleetID].FighterCount))
 				aggressorStrength += int64(atomic.LoadInt32(
-					&galaxy.Protobuf.Galacticfleetslice[fleetID].CapitalCount) * 100)
+					&galaxy.Protobuf.Fleetslice[fleetID].CapitalCount) * 100)
 			}
 			defenderStrength = 0
 			for _, fleetID = range battle.DefendingFleetIDs {
 				defenderStrength += int64(atomic.LoadInt32(
-					&galaxy.Protobuf.Galacticfleetslice[fleetID].FighterCount))
+					&galaxy.Protobuf.Fleetslice[fleetID].FighterCount))
 				defenderStrength += int64(atomic.LoadInt32(
-					&galaxy.Protobuf.Galacticfleetslice[fleetID].CapitalCount) * 100)
+					&galaxy.Protobuf.Fleetslice[fleetID].CapitalCount) * 100)
 			}
 
 			// BUG // with this implementation it's possible to have a negative number

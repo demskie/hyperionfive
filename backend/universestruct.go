@@ -18,7 +18,7 @@ type UniverseStruct struct {
 	GlobalX              int64
 	GlobalY              int64
 	ClientSignal         chan struct{}
-	PlayerPtrs           map[int32][]*gamestate.SolarSystem
+	PlayerPtrs           map[int32][]*gamestate.System
 	PlayerNameData       *stringdatastore.References
 	SystemAndPlanetNames *names.NameGenerator
 	PendingPlayerSpawns  []*playerInfo

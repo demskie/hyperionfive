@@ -24,7 +24,7 @@ func (gal *GalaxyStruct) UnmarshalFile() (rt *spatialindex.Tree) {
 	const fName = "(galaxy.UnmarshalFile)"
 	// after deserialization we need to call the following function
 	createTree := func() {
-		for _, ss := range gal.Protobuf.Solarsystemslice {
+		for _, ss := range gal.Protobuf.Systemslice {
 			x := float64(ss.InterX)
 			y := float64(ss.InterY)
 			gal.Rtree.Add(ss.NameUint, x, y)
@@ -75,24 +75,24 @@ func (gal *GalaxyStruct) UnmarshalFile() (rt *spatialindex.Tree) {
 // Generate ...
 func (gal *GalaxyStruct) Generate() {
 	const fName = "(createGalaxy)"
-	gal.Protobuf.Solarsystemslice = make([]*gamestate.SolarSystem, totalNumSystems)
-	for i := range gal.Protobuf.Solarsystemslice {
-		gal.Protobuf.Solarsystemslice[i] = &gamestate.SolarSystem{}
+	gal.Protobuf.Systemslice = make([]*gamestate.System, totalNumSystems)
+	for i := range gal.Protobuf.Systemslice {
+		gal.Protobuf.Systemslice[i] = &gamestate.System{}
 	}
 	badSystems := int32(0)
 	log.Info(fName, fmt.Sprintf("generating %v systems",
-		intutil.CommaFormatNum(len(gal.Protobuf.Solarsystemslice))))
+		intutil.CommaFormatNum(len(gal.Protobuf.Systemslice))))
 	gal.ProcessingQueue.Execute(func(coreNum int) {
 		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
-			coreNum, args.NumberOfCores, len(gal.Protobuf.Solarsystemslice))
+			coreNum, args.NumberOfCores, len(gal.Protobuf.Systemslice))
 		if stopIndex <= startIndex {
 			return
 		}
-		var ss *gamestate.SolarSystem
+		var ss *gamestate.System
 		var x1, y1, x2, y2 float64
 		rnum := gal.ProcessingRnumSlice[coreNum]
 		for i := startIndex; i < stopIndex; i++ {
-			ss = gal.Protobuf.Solarsystemslice[i]
+			ss = gal.Protobuf.Systemslice[i]
 			generateSystem(ss, rnum, gal.SystemAndPlanetNames)
 			for {
 				generateEllipticalCoordinates(ss, rnum)
@@ -121,15 +121,15 @@ func (gal *GalaxyStruct) Generate() {
 	log.Info(fName, "generating system links")
 	gal.ProcessingQueue.Execute(func(coreNum int) {
 		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
-			coreNum, args.NumberOfCores, len(gal.Protobuf.Solarsystemslice))
+			coreNum, args.NumberOfCores, len(gal.Protobuf.Systemslice))
 		if stopIndex <= startIndex {
 			return
 		}
-		var ss *gamestate.SolarSystem
+		var ss *gamestate.System
 		var normalDistVal int
 		rnum := gal.ProcessingRnumSlice[coreNum]
 		for i := startIndex; i < stopIndex; i++ {
-			ss = gal.Protobuf.Solarsystemslice[i]
+			ss = gal.Protobuf.Systemslice[i]
 			// https://homepage.divms.uiowa.edu/~mbognar/applets/normal.html
 			normalDistVal = 4 + int(rnum.NormFloat64()*1.2)
 			if normalDistVal < 1 {
@@ -137,20 +137,20 @@ func (gal *GalaxyStruct) Generate() {
 			} else if normalDistVal > 9 {
 				normalDistVal = 9
 			}
-			ss.ConnectedSolarSystemsNameUint = make([]uint64, normalDistVal)
+			ss.ConnectedSystemsNameUint = make([]uint64, normalDistVal)
 			neighbors, err := gal.Rtree.NearestNeighbors(ss.NameUint, normalDistVal)
 			if err != spatialindex.ErrNotEnoughNeighbors &&
 				log.CheckError(err, fName) {
 				log.SuddenExit()
 			}
 			for i, neighbor := range neighbors {
-				ss.ConnectedSolarSystemsNameUint[i] = neighbor.ID
+				ss.ConnectedSystemsNameUint[i] = neighbor.ID
 			}
 		}
 	})
 }
 
-func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.NameGenerator) {
+func generateSystem(ss *gamestate.System, rnum *rand.Rand, nameGen *names.NameGenerator) {
 	const fName = "(generateSystem)"
 
 	// define weight for systemTypes
@@ -174,31 +174,31 @@ func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.N
 	ss.NameUint = rawName.GetNameUint()
 	nameGen.AddToIndex(rawName)
 
-	// generate number of objects
-	var numObj int64
+	// generate number of planets
+	var numPlanets int64
 	if ss.SystemType == gamestate.YELLOWGIANT {
-		numObj = int64(math.Abs(rnum.NormFloat64()*7) + 20)
+		numPlanets = int64(math.Abs(rnum.NormFloat64()*7) + 20)
 	} else if ss.SystemType == gamestate.REDGIANT {
-		numObj = int64(math.Abs(rnum.NormFloat64()*3) + 25)
+		numPlanets = int64(math.Abs(rnum.NormFloat64()*3) + 25)
 	} else if ss.SystemType == gamestate.BLUEGIANT {
-		numObj = int64(math.Abs(rnum.NormFloat64()*7) + 20)
+		numPlanets = int64(math.Abs(rnum.NormFloat64()*7) + 20)
 	} else if ss.SystemType == gamestate.NEUTRONSTAR {
-		numObj = int64(math.Abs(rnum.NormFloat64()*7) + 10)
+		numPlanets = int64(math.Abs(rnum.NormFloat64()*7) + 10)
 	} else if ss.SystemType == gamestate.WHITEDWARF {
-		numObj = int64(0)
+		numPlanets = int64(0)
 	} else if ss.SystemType == gamestate.BLACKHOLE {
-		numObj = int64(rnum.NormFloat64()*10 + 30)
-		if numObj < int64(11) {
-			numObj = int64(11)
-		} else if numObj > int64(72) {
-			numObj = int64(52)
+		numPlanets = int64(rnum.NormFloat64()*10 + 30)
+		if numPlanets < int64(11) {
+			numPlanets = int64(11)
+		} else if numPlanets > int64(72) {
+			numPlanets = int64(52)
 		}
 	} else {
 		log.Error(fName, fmt.Sprintf("invalid system.Type: %v", ss.SystemType))
 		log.SuddenExit()
 	}
-	if numObj > int64(72) {
-		numObj = int64(53)
+	if numPlanets > int64(72) {
+		numPlanets = int64(53)
 	}
 
 	// define weight for this object based on SolarSystemType
@@ -215,8 +215,6 @@ func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.N
 			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
 	} else if ss.SystemType == gamestate.REDGIANT {
 		weightedObjTypes = []randutil.WeightedObj{
@@ -230,8 +228,6 @@ func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.N
 			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
 	} else if ss.SystemType == gamestate.BLUEGIANT {
 		weightedObjTypes = []randutil.WeightedObj{
@@ -245,8 +241,6 @@ func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.N
 			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
 	} else if ss.SystemType == gamestate.NEUTRONSTAR {
 		weightedObjTypes = []randutil.WeightedObj{
@@ -260,8 +254,6 @@ func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.N
 			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
 	} else if ss.SystemType == gamestate.WHITEDWARF {
 		weightedObjTypes = []randutil.WeightedObj{
@@ -275,8 +267,6 @@ func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.N
 			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
 	} else if ss.SystemType == gamestate.BLACKHOLE {
 		weightedObjTypes = []randutil.WeightedObj{
@@ -290,32 +280,31 @@ func generateSystem(ss *gamestate.SolarSystem, rnum *rand.Rand, nameGen *names.N
 			randutil.WeightedObj{Weight: 5, Object: gamestate.OCEANIC},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.LARGEASTEROID},
 			randutil.WeightedObj{Weight: 5, Object: gamestate.DWARF},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.ASTEROIDBELT},
-			randutil.WeightedObj{Weight: 5, Object: gamestate.PLASMASTORM},
 		}
 	}
 
-	// start building objects
-	ss.Solarobjectslice = []*gamestate.SolarObject{}
-	for i := 0; i < int(numObj); i++ {
-		newObj := &gamestate.SolarObject{}
+	// start building planets
+	ss.Planetslice = []*gamestate.Planet{}
+	for i := 0; i < int(numPlanets); i++ {
+		newPlanet := &gamestate.Planet{}
 		// generate type
 		result, err := randutil.WeightedChoice(weightedObjTypes, rnum)
 		log.CheckError(err, fName)
-		newObj.ObjectType = result.Object.(int32)
+		newPlanet.ObjectType = result.Object.(int32)
 		// generate name
 		rawName = nameGen.GenerateName(rnum)
-		newObj.NameUint = rawName.GetNameUint()
+		newPlanet.NameUint = rawName.GetNameUint()
 		nameGen.AddToIndex(rawName)
 		// insert parentSystemName
-		newObj.ParentSystemNameUint = ss.NameUint
+		newPlanet.ParentSystemNameUint = ss.NameUint
 		// append result
-		ss.Solarobjectslice = append(ss.Solarobjectslice, newObj)
+		ss.Planetslice = append(ss.Planetslice, newPlanet)
 	}
 
+	// TODO // build objects
 }
 
-func generateSpiralCoordinates(ss *gamestate.SolarSystem, numArms int, rnum *rand.Rand) {
+func generateSpiralCoordinates(ss *gamestate.System, numArms int, rnum *rand.Rand) {
 	roundFloat := func(val float64) float64 {
 		if val < 0 {
 			return float64(int64(val - 0.5))
@@ -337,7 +326,7 @@ func generateSpiralCoordinates(ss *gamestate.SolarSystem, numArms int, rnum *ran
 	ss.InterY = int64(fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ)))
 }
 
-func generateEllipticalCoordinates(ss *gamestate.SolarSystem, rnum *rand.Rand) {
+func generateEllipticalCoordinates(ss *gamestate.System, rnum *rand.Rand) {
 	var X, Y float64
 	for {
 		ss.InterX = rnum.Int63() * int64(randutil.GetPosOrNegOne(rnum))

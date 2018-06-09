@@ -8,10 +8,11 @@
 		gamestate.proto
 
 	It has these top-level messages:
-		SolarObject
-		SolarSystem
+		Planet
+		Object
+		System
 		Galaxy
-		GalacticFleet
+		Fleet
 		OngoingBattle
 		OngoingSiege
 		OutstandingAction
@@ -38,7 +39,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
-type SolarObject struct {
+type Planet struct {
 	NameUint             uint64 `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
 	ParentSystemNameUint uint64 `protobuf:"varint,2,opt,name=parentSystemNameUint,proto3" json:"parentSystemNameUint,omitempty"`
 	InterX               int64  `protobuf:"varint,3,opt,name=interX,proto3" json:"interX,omitempty"`
@@ -50,148 +51,243 @@ type SolarObject struct {
 	Health               int32  `protobuf:"varint,9,opt,name=health,proto3" json:"health,omitempty"`
 	Focus                int32  `protobuf:"varint,10,opt,name=focus,proto3" json:"focus,omitempty"`
 	Progress             int32  `protobuf:"varint,11,opt,name=progress,proto3" json:"progress,omitempty"`
+	DockedTitanCount     int32  `protobuf:"varint,12,opt,name=dockedTitanCount,proto3" json:"dockedTitanCount,omitempty"`
+	DockedCapitalCount   int32  `protobuf:"varint,13,opt,name=dockedCapitalCount,proto3" json:"dockedCapitalCount,omitempty"`
+	DockedFighterCount   int32  `protobuf:"varint,14,opt,name=dockedFighterCount,proto3" json:"dockedFighterCount,omitempty"`
 }
 
-func (m *SolarObject) Reset()                    { *m = SolarObject{} }
-func (*SolarObject) ProtoMessage()               {}
-func (*SolarObject) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{0} }
+func (m *Planet) Reset()                    { *m = Planet{} }
+func (*Planet) ProtoMessage()               {}
+func (*Planet) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{0} }
 
-func (m *SolarObject) GetNameUint() uint64 {
+func (m *Planet) GetNameUint() uint64 {
 	if m != nil {
 		return m.NameUint
 	}
 	return 0
 }
 
-func (m *SolarObject) GetParentSystemNameUint() uint64 {
+func (m *Planet) GetParentSystemNameUint() uint64 {
 	if m != nil {
 		return m.ParentSystemNameUint
 	}
 	return 0
 }
 
-func (m *SolarObject) GetInterX() int64 {
+func (m *Planet) GetInterX() int64 {
 	if m != nil {
 		return m.InterX
 	}
 	return 0
 }
 
-func (m *SolarObject) GetInterY() int64 {
+func (m *Planet) GetInterY() int64 {
 	if m != nil {
 		return m.InterY
 	}
 	return 0
 }
 
-func (m *SolarObject) GetOwner() int32 {
+func (m *Planet) GetOwner() int32 {
 	if m != nil {
 		return m.Owner
 	}
 	return 0
 }
 
-func (m *SolarObject) GetFood() int32 {
+func (m *Planet) GetFood() int32 {
 	if m != nil {
 		return m.Food
 	}
 	return 0
 }
 
-func (m *SolarObject) GetPopulation() int64 {
+func (m *Planet) GetPopulation() int64 {
 	if m != nil {
 		return m.Population
 	}
 	return 0
 }
 
-func (m *SolarObject) GetObjectType() int32 {
+func (m *Planet) GetObjectType() int32 {
 	if m != nil {
 		return m.ObjectType
 	}
 	return 0
 }
 
-func (m *SolarObject) GetHealth() int32 {
+func (m *Planet) GetHealth() int32 {
 	if m != nil {
 		return m.Health
 	}
 	return 0
 }
 
-func (m *SolarObject) GetFocus() int32 {
+func (m *Planet) GetFocus() int32 {
 	if m != nil {
 		return m.Focus
 	}
 	return 0
 }
 
-func (m *SolarObject) GetProgress() int32 {
+func (m *Planet) GetProgress() int32 {
 	if m != nil {
 		return m.Progress
 	}
 	return 0
 }
 
-type SolarSystem struct {
-	NameUint                      uint64         `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
-	InterX                        int64          `protobuf:"varint,2,opt,name=interX,proto3" json:"interX,omitempty"`
-	InterY                        int64          `protobuf:"varint,3,opt,name=interY,proto3" json:"interY,omitempty"`
-	PrimaryOwner                  int32          `protobuf:"varint,4,opt,name=primaryOwner,proto3" json:"primaryOwner,omitempty"`
-	SystemType                    int32          `protobuf:"varint,16,opt,name=systemType,proto3" json:"systemType,omitempty"`
-	Solarobjectslice              []*SolarObject `protobuf:"bytes,128,rep,name=solarobjectslice" json:"solarobjectslice,omitempty"`
-	ConnectedSolarSystemsNameUint []uint64       `protobuf:"varint,129,rep,packed,name=connectedSolarSystemsNameUint" json:"connectedSolarSystemsNameUint,omitempty"`
+func (m *Planet) GetDockedTitanCount() int32 {
+	if m != nil {
+		return m.DockedTitanCount
+	}
+	return 0
 }
 
-func (m *SolarSystem) Reset()                    { *m = SolarSystem{} }
-func (*SolarSystem) ProtoMessage()               {}
-func (*SolarSystem) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{1} }
+func (m *Planet) GetDockedCapitalCount() int32 {
+	if m != nil {
+		return m.DockedCapitalCount
+	}
+	return 0
+}
 
-func (m *SolarSystem) GetNameUint() uint64 {
+func (m *Planet) GetDockedFighterCount() int32 {
+	if m != nil {
+		return m.DockedFighterCount
+	}
+	return 0
+}
+
+type Object struct {
+	NameUint             uint64 `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
+	ParentSystemNameUint uint64 `protobuf:"varint,2,opt,name=parentSystemNameUint,proto3" json:"parentSystemNameUint,omitempty"`
+	InterX               int64  `protobuf:"varint,3,opt,name=interX,proto3" json:"interX,omitempty"`
+	InterY               int64  `protobuf:"varint,4,opt,name=interY,proto3" json:"interY,omitempty"`
+	Owner                int32  `protobuf:"varint,5,opt,name=owner,proto3" json:"owner,omitempty"`
+	ObjectType           int32  `protobuf:"varint,6,opt,name=objectType,proto3" json:"objectType,omitempty"`
+	Health               int32  `protobuf:"varint,7,opt,name=health,proto3" json:"health,omitempty"`
+}
+
+func (m *Object) Reset()                    { *m = Object{} }
+func (*Object) ProtoMessage()               {}
+func (*Object) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{1} }
+
+func (m *Object) GetNameUint() uint64 {
 	if m != nil {
 		return m.NameUint
 	}
 	return 0
 }
 
-func (m *SolarSystem) GetInterX() int64 {
+func (m *Object) GetParentSystemNameUint() uint64 {
+	if m != nil {
+		return m.ParentSystemNameUint
+	}
+	return 0
+}
+
+func (m *Object) GetInterX() int64 {
 	if m != nil {
 		return m.InterX
 	}
 	return 0
 }
 
-func (m *SolarSystem) GetInterY() int64 {
+func (m *Object) GetInterY() int64 {
 	if m != nil {
 		return m.InterY
 	}
 	return 0
 }
 
-func (m *SolarSystem) GetPrimaryOwner() int32 {
+func (m *Object) GetOwner() int32 {
+	if m != nil {
+		return m.Owner
+	}
+	return 0
+}
+
+func (m *Object) GetObjectType() int32 {
+	if m != nil {
+		return m.ObjectType
+	}
+	return 0
+}
+
+func (m *Object) GetHealth() int32 {
+	if m != nil {
+		return m.Health
+	}
+	return 0
+}
+
+type System struct {
+	NameUint                 uint64    `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
+	InterX                   int64     `protobuf:"varint,2,opt,name=interX,proto3" json:"interX,omitempty"`
+	InterY                   int64     `protobuf:"varint,3,opt,name=interY,proto3" json:"interY,omitempty"`
+	PrimaryOwner             int32     `protobuf:"varint,4,opt,name=primaryOwner,proto3" json:"primaryOwner,omitempty"`
+	SystemType               int32     `protobuf:"varint,16,opt,name=systemType,proto3" json:"systemType,omitempty"`
+	ConnectedSystemsNameUint []uint64  `protobuf:"varint,64,rep,packed,name=connectedSystemsNameUint" json:"connectedSystemsNameUint,omitempty"`
+	Planetslice              []*Planet `protobuf:"bytes,128,rep,name=planetslice" json:"planetslice,omitempty"`
+	Objectslice              []*Object `protobuf:"bytes,129,rep,name=objectslice" json:"objectslice,omitempty"`
+}
+
+func (m *System) Reset()                    { *m = System{} }
+func (*System) ProtoMessage()               {}
+func (*System) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{2} }
+
+func (m *System) GetNameUint() uint64 {
+	if m != nil {
+		return m.NameUint
+	}
+	return 0
+}
+
+func (m *System) GetInterX() int64 {
+	if m != nil {
+		return m.InterX
+	}
+	return 0
+}
+
+func (m *System) GetInterY() int64 {
+	if m != nil {
+		return m.InterY
+	}
+	return 0
+}
+
+func (m *System) GetPrimaryOwner() int32 {
 	if m != nil {
 		return m.PrimaryOwner
 	}
 	return 0
 }
 
-func (m *SolarSystem) GetSystemType() int32 {
+func (m *System) GetSystemType() int32 {
 	if m != nil {
 		return m.SystemType
 	}
 	return 0
 }
 
-func (m *SolarSystem) GetSolarobjectslice() []*SolarObject {
+func (m *System) GetConnectedSystemsNameUint() []uint64 {
 	if m != nil {
-		return m.Solarobjectslice
+		return m.ConnectedSystemsNameUint
 	}
 	return nil
 }
 
-func (m *SolarSystem) GetConnectedSolarSystemsNameUint() []uint64 {
+func (m *System) GetPlanetslice() []*Planet {
 	if m != nil {
-		return m.ConnectedSolarSystemsNameUint
+		return m.Planetslice
+	}
+	return nil
+}
+
+func (m *System) GetObjectslice() []*Object {
+	if m != nil {
+		return m.Objectslice
 	}
 	return nil
 }
@@ -201,8 +297,8 @@ type Galaxy struct {
 	GlobalX                int64                `protobuf:"varint,2,opt,name=globalX,proto3" json:"globalX,omitempty"`
 	GlobalY                int64                `protobuf:"varint,3,opt,name=globalY,proto3" json:"globalY,omitempty"`
 	GalaxyType             int32                `protobuf:"varint,16,opt,name=galaxyType,proto3" json:"galaxyType,omitempty"`
-	Solarsystemslice       []*SolarSystem       `protobuf:"bytes,128,rep,name=solarsystemslice" json:"solarsystemslice,omitempty"`
-	Galacticfleetslice     []*GalacticFleet     `protobuf:"bytes,129,rep,name=galacticfleetslice" json:"galacticfleetslice,omitempty"`
+	Systemslice            []*System            `protobuf:"bytes,128,rep,name=systemslice" json:"systemslice,omitempty"`
+	Fleetslice             []*Fleet             `protobuf:"bytes,129,rep,name=fleetslice" json:"fleetslice,omitempty"`
 	Ongoingbattleslice     []*OngoingBattle     `protobuf:"bytes,130,rep,name=ongoingbattleslice" json:"ongoingbattleslice,omitempty"`
 	Ongoingsiegeslice      []*OngoingSiege      `protobuf:"bytes,131,rep,name=ongoingsiegeslice" json:"ongoingsiegeslice,omitempty"`
 	Outstandingactionslice []*OutstandingAction `protobuf:"bytes,132,rep,name=outstandingactionslice" json:"outstandingactionslice,omitempty"`
@@ -210,7 +306,7 @@ type Galaxy struct {
 
 func (m *Galaxy) Reset()                    { *m = Galaxy{} }
 func (*Galaxy) ProtoMessage()               {}
-func (*Galaxy) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{2} }
+func (*Galaxy) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{3} }
 
 func (m *Galaxy) GetNameUint() uint64 {
 	if m != nil {
@@ -240,16 +336,16 @@ func (m *Galaxy) GetGalaxyType() int32 {
 	return 0
 }
 
-func (m *Galaxy) GetSolarsystemslice() []*SolarSystem {
+func (m *Galaxy) GetSystemslice() []*System {
 	if m != nil {
-		return m.Solarsystemslice
+		return m.Systemslice
 	}
 	return nil
 }
 
-func (m *Galaxy) GetGalacticfleetslice() []*GalacticFleet {
+func (m *Galaxy) GetFleetslice() []*Fleet {
 	if m != nil {
-		return m.Galacticfleetslice
+		return m.Fleetslice
 	}
 	return nil
 }
@@ -275,7 +371,7 @@ func (m *Galaxy) GetOutstandingactionslice() []*OutstandingAction {
 	return nil
 }
 
-type GalacticFleet struct {
+type Fleet struct {
 	FleetID               int32  `protobuf:"varint,1,opt,name=fleetID,proto3" json:"fleetID,omitempty"`
 	InterX                int64  `protobuf:"varint,2,opt,name=interX,proto3" json:"interX,omitempty"`
 	InterY                int64  `protobuf:"varint,3,opt,name=interY,proto3" json:"interY,omitempty"`
@@ -284,88 +380,64 @@ type GalacticFleet struct {
 	TitanCount            int32  `protobuf:"varint,32,opt,name=titanCount,proto3" json:"titanCount,omitempty"`
 	CapitalCount          int32  `protobuf:"varint,33,opt,name=capitalCount,proto3" json:"capitalCount,omitempty"`
 	FighterCount          int32  `protobuf:"varint,34,opt,name=fighterCount,proto3" json:"fighterCount,omitempty"`
-	FlakCorvetteCount     int32  `protobuf:"varint,35,opt,name=flakCorvetteCount,proto3" json:"flakCorvetteCount,omitempty"`
-	LargeTradeshipCount   int32  `protobuf:"varint,36,opt,name=largeTradeshipCount,proto3" json:"largeTradeshipCount,omitempty"`
-	ColonizerCount        int32  `protobuf:"varint,37,opt,name=colonizerCount,proto3" json:"colonizerCount,omitempty"`
 }
 
-func (m *GalacticFleet) Reset()                    { *m = GalacticFleet{} }
-func (*GalacticFleet) ProtoMessage()               {}
-func (*GalacticFleet) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{3} }
+func (m *Fleet) Reset()                    { *m = Fleet{} }
+func (*Fleet) ProtoMessage()               {}
+func (*Fleet) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{4} }
 
-func (m *GalacticFleet) GetFleetID() int32 {
+func (m *Fleet) GetFleetID() int32 {
 	if m != nil {
 		return m.FleetID
 	}
 	return 0
 }
 
-func (m *GalacticFleet) GetInterX() int64 {
+func (m *Fleet) GetInterX() int64 {
 	if m != nil {
 		return m.InterX
 	}
 	return 0
 }
 
-func (m *GalacticFleet) GetInterY() int64 {
+func (m *Fleet) GetInterY() int64 {
 	if m != nil {
 		return m.InterY
 	}
 	return 0
 }
 
-func (m *GalacticFleet) GetOwner() int32 {
+func (m *Fleet) GetOwner() int32 {
 	if m != nil {
 		return m.Owner
 	}
 	return 0
 }
 
-func (m *GalacticFleet) GetClosestSystemNameUint() uint64 {
+func (m *Fleet) GetClosestSystemNameUint() uint64 {
 	if m != nil {
 		return m.ClosestSystemNameUint
 	}
 	return 0
 }
 
-func (m *GalacticFleet) GetTitanCount() int32 {
+func (m *Fleet) GetTitanCount() int32 {
 	if m != nil {
 		return m.TitanCount
 	}
 	return 0
 }
 
-func (m *GalacticFleet) GetCapitalCount() int32 {
+func (m *Fleet) GetCapitalCount() int32 {
 	if m != nil {
 		return m.CapitalCount
 	}
 	return 0
 }
 
-func (m *GalacticFleet) GetFighterCount() int32 {
+func (m *Fleet) GetFighterCount() int32 {
 	if m != nil {
 		return m.FighterCount
-	}
-	return 0
-}
-
-func (m *GalacticFleet) GetFlakCorvetteCount() int32 {
-	if m != nil {
-		return m.FlakCorvetteCount
-	}
-	return 0
-}
-
-func (m *GalacticFleet) GetLargeTradeshipCount() int32 {
-	if m != nil {
-		return m.LargeTradeshipCount
-	}
-	return 0
-}
-
-func (m *GalacticFleet) GetColonizerCount() int32 {
-	if m != nil {
-		return m.ColonizerCount
 	}
 	return 0
 }
@@ -373,13 +445,13 @@ func (m *GalacticFleet) GetColonizerCount() int32 {
 type OngoingBattle struct {
 	BattleID          int32   `protobuf:"varint,1,opt,name=battleID,proto3" json:"battleID,omitempty"`
 	Strategy          int32   `protobuf:"varint,2,opt,name=strategy,proto3" json:"strategy,omitempty"`
-	AttackingFleetIDs []int32 `protobuf:"varint,128,rep,packed,name=attackingFleetIDs" json:"attackingFleetIDs,omitempty"`
-	DefendingFleetIDs []int32 `protobuf:"varint,129,rep,packed,name=defendingFleetIDs" json:"defendingFleetIDs,omitempty"`
+	AttackingFleetIDs []int32 `protobuf:"varint,64,rep,packed,name=attackingFleetIDs" json:"attackingFleetIDs,omitempty"`
+	DefendingFleetIDs []int32 `protobuf:"varint,65,rep,packed,name=defendingFleetIDs" json:"defendingFleetIDs,omitempty"`
 }
 
 func (m *OngoingBattle) Reset()                    { *m = OngoingBattle{} }
 func (*OngoingBattle) ProtoMessage()               {}
-func (*OngoingBattle) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{4} }
+func (*OngoingBattle) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{5} }
 
 func (m *OngoingBattle) GetBattleID() int32 {
 	if m != nil {
@@ -413,12 +485,12 @@ type OngoingSiege struct {
 	SiegeID                    int32   `protobuf:"varint,1,opt,name=siegeID,proto3" json:"siegeID,omitempty"`
 	TimeLeft                   int64   `protobuf:"varint,2,opt,name=timeLeft,proto3" json:"timeLeft,omitempty"`
 	FightingOverSystemNameUint uint64  `protobuf:"varint,3,opt,name=fightingOverSystemNameUint,proto3" json:"fightingOverSystemNameUint,omitempty"`
-	AggressorFleetIDs          []int32 `protobuf:"varint,128,rep,packed,name=aggressorFleetIDs" json:"aggressorFleetIDs,omitempty"`
+	AggressorFleetIDs          []int32 `protobuf:"varint,64,rep,packed,name=aggressorFleetIDs" json:"aggressorFleetIDs,omitempty"`
 }
 
 func (m *OngoingSiege) Reset()                    { *m = OngoingSiege{} }
 func (*OngoingSiege) ProtoMessage()               {}
-func (*OngoingSiege) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{5} }
+func (*OngoingSiege) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{6} }
 
 func (m *OngoingSiege) GetSiegeID() int32 {
 	if m != nil {
@@ -453,13 +525,13 @@ type OutstandingAction struct {
 	ActionType   int32    `protobuf:"varint,2,opt,name=actionType,proto3" json:"actionType,omitempty"`
 	TimeLeft     int64    `protobuf:"varint,3,opt,name=timeLeft,proto3" json:"timeLeft,omitempty"`
 	Owner        int32    `protobuf:"varint,4,opt,name=owner,proto3" json:"owner,omitempty"`
-	ActionValues []int64  `protobuf:"varint,128,rep,packed,name=actionValues" json:"actionValues,omitempty"`
-	ActionNames  []uint64 `protobuf:"varint,129,rep,packed,name=actionNames" json:"actionNames,omitempty"`
+	ActionValues []int64  `protobuf:"varint,64,rep,packed,name=actionValues" json:"actionValues,omitempty"`
+	ActionNames  []uint64 `protobuf:"varint,65,rep,packed,name=actionNames" json:"actionNames,omitempty"`
 }
 
 func (m *OutstandingAction) Reset()                    { *m = OutstandingAction{} }
 func (*OutstandingAction) ProtoMessage()               {}
-func (*OutstandingAction) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{6} }
+func (*OutstandingAction) Descriptor() ([]byte, []int) { return fileDescriptorGamestate, []int{7} }
 
 func (m *OutstandingAction) GetActionID() int32 {
 	if m != nil {
@@ -504,22 +576,23 @@ func (m *OutstandingAction) GetActionNames() []uint64 {
 }
 
 func init() {
-	proto.RegisterType((*SolarObject)(nil), "gamestate.SolarObject")
-	proto.RegisterType((*SolarSystem)(nil), "gamestate.SolarSystem")
+	proto.RegisterType((*Planet)(nil), "gamestate.Planet")
+	proto.RegisterType((*Object)(nil), "gamestate.Object")
+	proto.RegisterType((*System)(nil), "gamestate.System")
 	proto.RegisterType((*Galaxy)(nil), "gamestate.Galaxy")
-	proto.RegisterType((*GalacticFleet)(nil), "gamestate.GalacticFleet")
+	proto.RegisterType((*Fleet)(nil), "gamestate.Fleet")
 	proto.RegisterType((*OngoingBattle)(nil), "gamestate.OngoingBattle")
 	proto.RegisterType((*OngoingSiege)(nil), "gamestate.OngoingSiege")
 	proto.RegisterType((*OutstandingAction)(nil), "gamestate.OutstandingAction")
 }
-func (this *SolarObject) Equal(that interface{}) bool {
+func (this *Planet) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
 	}
 
-	that1, ok := that.(*SolarObject)
+	that1, ok := that.(*Planet)
 	if !ok {
-		that2, ok := that.(SolarObject)
+		that2, ok := that.(Planet)
 		if ok {
 			that1 = &that2
 		} else {
@@ -564,16 +637,67 @@ func (this *SolarObject) Equal(that interface{}) bool {
 	if this.Progress != that1.Progress {
 		return false
 	}
+	if this.DockedTitanCount != that1.DockedTitanCount {
+		return false
+	}
+	if this.DockedCapitalCount != that1.DockedCapitalCount {
+		return false
+	}
+	if this.DockedFighterCount != that1.DockedFighterCount {
+		return false
+	}
 	return true
 }
-func (this *SolarSystem) Equal(that interface{}) bool {
+func (this *Object) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
 	}
 
-	that1, ok := that.(*SolarSystem)
+	that1, ok := that.(*Object)
 	if !ok {
-		that2, ok := that.(SolarSystem)
+		that2, ok := that.(Object)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.NameUint != that1.NameUint {
+		return false
+	}
+	if this.ParentSystemNameUint != that1.ParentSystemNameUint {
+		return false
+	}
+	if this.InterX != that1.InterX {
+		return false
+	}
+	if this.InterY != that1.InterY {
+		return false
+	}
+	if this.Owner != that1.Owner {
+		return false
+	}
+	if this.ObjectType != that1.ObjectType {
+		return false
+	}
+	if this.Health != that1.Health {
+		return false
+	}
+	return true
+}
+func (this *System) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*System)
+	if !ok {
+		that2, ok := that.(System)
 		if ok {
 			that1 = &that2
 		} else {
@@ -600,19 +724,27 @@ func (this *SolarSystem) Equal(that interface{}) bool {
 	if this.SystemType != that1.SystemType {
 		return false
 	}
-	if len(this.Solarobjectslice) != len(that1.Solarobjectslice) {
+	if len(this.ConnectedSystemsNameUint) != len(that1.ConnectedSystemsNameUint) {
 		return false
 	}
-	for i := range this.Solarobjectslice {
-		if !this.Solarobjectslice[i].Equal(that1.Solarobjectslice[i]) {
+	for i := range this.ConnectedSystemsNameUint {
+		if this.ConnectedSystemsNameUint[i] != that1.ConnectedSystemsNameUint[i] {
 			return false
 		}
 	}
-	if len(this.ConnectedSolarSystemsNameUint) != len(that1.ConnectedSolarSystemsNameUint) {
+	if len(this.Planetslice) != len(that1.Planetslice) {
 		return false
 	}
-	for i := range this.ConnectedSolarSystemsNameUint {
-		if this.ConnectedSolarSystemsNameUint[i] != that1.ConnectedSolarSystemsNameUint[i] {
+	for i := range this.Planetslice {
+		if !this.Planetslice[i].Equal(that1.Planetslice[i]) {
+			return false
+		}
+	}
+	if len(this.Objectslice) != len(that1.Objectslice) {
+		return false
+	}
+	for i := range this.Objectslice {
+		if !this.Objectslice[i].Equal(that1.Objectslice[i]) {
 			return false
 		}
 	}
@@ -649,19 +781,19 @@ func (this *Galaxy) Equal(that interface{}) bool {
 	if this.GalaxyType != that1.GalaxyType {
 		return false
 	}
-	if len(this.Solarsystemslice) != len(that1.Solarsystemslice) {
+	if len(this.Systemslice) != len(that1.Systemslice) {
 		return false
 	}
-	for i := range this.Solarsystemslice {
-		if !this.Solarsystemslice[i].Equal(that1.Solarsystemslice[i]) {
+	for i := range this.Systemslice {
+		if !this.Systemslice[i].Equal(that1.Systemslice[i]) {
 			return false
 		}
 	}
-	if len(this.Galacticfleetslice) != len(that1.Galacticfleetslice) {
+	if len(this.Fleetslice) != len(that1.Fleetslice) {
 		return false
 	}
-	for i := range this.Galacticfleetslice {
-		if !this.Galacticfleetslice[i].Equal(that1.Galacticfleetslice[i]) {
+	for i := range this.Fleetslice {
+		if !this.Fleetslice[i].Equal(that1.Fleetslice[i]) {
 			return false
 		}
 	}
@@ -691,14 +823,14 @@ func (this *Galaxy) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *GalacticFleet) Equal(that interface{}) bool {
+func (this *Fleet) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
 	}
 
-	that1, ok := that.(*GalacticFleet)
+	that1, ok := that.(*Fleet)
 	if !ok {
-		that2, ok := that.(GalacticFleet)
+		that2, ok := that.(Fleet)
 		if ok {
 			that1 = &that2
 		} else {
@@ -732,15 +864,6 @@ func (this *GalacticFleet) Equal(that interface{}) bool {
 		return false
 	}
 	if this.FighterCount != that1.FighterCount {
-		return false
-	}
-	if this.FlakCorvetteCount != that1.FlakCorvetteCount {
-		return false
-	}
-	if this.LargeTradeshipCount != that1.LargeTradeshipCount {
-		return false
-	}
-	if this.ColonizerCount != that1.ColonizerCount {
 		return false
 	}
 	return true
@@ -875,12 +998,12 @@ func (this *OutstandingAction) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *SolarObject) GoString() string {
+func (this *Planet) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 15)
-	s = append(s, "&gamestate.SolarObject{")
+	s := make([]string, 0, 18)
+	s = append(s, "&gamestate.Planet{")
 	s = append(s, "NameUint: "+fmt.Sprintf("%#v", this.NameUint)+",\n")
 	s = append(s, "ParentSystemNameUint: "+fmt.Sprintf("%#v", this.ParentSystemNameUint)+",\n")
 	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
@@ -892,24 +1015,46 @@ func (this *SolarObject) GoString() string {
 	s = append(s, "Health: "+fmt.Sprintf("%#v", this.Health)+",\n")
 	s = append(s, "Focus: "+fmt.Sprintf("%#v", this.Focus)+",\n")
 	s = append(s, "Progress: "+fmt.Sprintf("%#v", this.Progress)+",\n")
+	s = append(s, "DockedTitanCount: "+fmt.Sprintf("%#v", this.DockedTitanCount)+",\n")
+	s = append(s, "DockedCapitalCount: "+fmt.Sprintf("%#v", this.DockedCapitalCount)+",\n")
+	s = append(s, "DockedFighterCount: "+fmt.Sprintf("%#v", this.DockedFighterCount)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *SolarSystem) GoString() string {
+func (this *Object) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 11)
-	s = append(s, "&gamestate.SolarSystem{")
+	s = append(s, "&gamestate.Object{")
+	s = append(s, "NameUint: "+fmt.Sprintf("%#v", this.NameUint)+",\n")
+	s = append(s, "ParentSystemNameUint: "+fmt.Sprintf("%#v", this.ParentSystemNameUint)+",\n")
+	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
+	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
+	s = append(s, "Owner: "+fmt.Sprintf("%#v", this.Owner)+",\n")
+	s = append(s, "ObjectType: "+fmt.Sprintf("%#v", this.ObjectType)+",\n")
+	s = append(s, "Health: "+fmt.Sprintf("%#v", this.Health)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *System) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 12)
+	s = append(s, "&gamestate.System{")
 	s = append(s, "NameUint: "+fmt.Sprintf("%#v", this.NameUint)+",\n")
 	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
 	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
 	s = append(s, "PrimaryOwner: "+fmt.Sprintf("%#v", this.PrimaryOwner)+",\n")
 	s = append(s, "SystemType: "+fmt.Sprintf("%#v", this.SystemType)+",\n")
-	if this.Solarobjectslice != nil {
-		s = append(s, "Solarobjectslice: "+fmt.Sprintf("%#v", this.Solarobjectslice)+",\n")
+	s = append(s, "ConnectedSystemsNameUint: "+fmt.Sprintf("%#v", this.ConnectedSystemsNameUint)+",\n")
+	if this.Planetslice != nil {
+		s = append(s, "Planetslice: "+fmt.Sprintf("%#v", this.Planetslice)+",\n")
 	}
-	s = append(s, "ConnectedSolarSystemsNameUint: "+fmt.Sprintf("%#v", this.ConnectedSolarSystemsNameUint)+",\n")
+	if this.Objectslice != nil {
+		s = append(s, "Objectslice: "+fmt.Sprintf("%#v", this.Objectslice)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -923,11 +1068,11 @@ func (this *Galaxy) GoString() string {
 	s = append(s, "GlobalX: "+fmt.Sprintf("%#v", this.GlobalX)+",\n")
 	s = append(s, "GlobalY: "+fmt.Sprintf("%#v", this.GlobalY)+",\n")
 	s = append(s, "GalaxyType: "+fmt.Sprintf("%#v", this.GalaxyType)+",\n")
-	if this.Solarsystemslice != nil {
-		s = append(s, "Solarsystemslice: "+fmt.Sprintf("%#v", this.Solarsystemslice)+",\n")
+	if this.Systemslice != nil {
+		s = append(s, "Systemslice: "+fmt.Sprintf("%#v", this.Systemslice)+",\n")
 	}
-	if this.Galacticfleetslice != nil {
-		s = append(s, "Galacticfleetslice: "+fmt.Sprintf("%#v", this.Galacticfleetslice)+",\n")
+	if this.Fleetslice != nil {
+		s = append(s, "Fleetslice: "+fmt.Sprintf("%#v", this.Fleetslice)+",\n")
 	}
 	if this.Ongoingbattleslice != nil {
 		s = append(s, "Ongoingbattleslice: "+fmt.Sprintf("%#v", this.Ongoingbattleslice)+",\n")
@@ -941,12 +1086,12 @@ func (this *Galaxy) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *GalacticFleet) GoString() string {
+func (this *Fleet) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 15)
-	s = append(s, "&gamestate.GalacticFleet{")
+	s := make([]string, 0, 12)
+	s = append(s, "&gamestate.Fleet{")
 	s = append(s, "FleetID: "+fmt.Sprintf("%#v", this.FleetID)+",\n")
 	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
 	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
@@ -955,9 +1100,6 @@ func (this *GalacticFleet) GoString() string {
 	s = append(s, "TitanCount: "+fmt.Sprintf("%#v", this.TitanCount)+",\n")
 	s = append(s, "CapitalCount: "+fmt.Sprintf("%#v", this.CapitalCount)+",\n")
 	s = append(s, "FighterCount: "+fmt.Sprintf("%#v", this.FighterCount)+",\n")
-	s = append(s, "FlakCorvetteCount: "+fmt.Sprintf("%#v", this.FlakCorvetteCount)+",\n")
-	s = append(s, "LargeTradeshipCount: "+fmt.Sprintf("%#v", this.LargeTradeshipCount)+",\n")
-	s = append(s, "ColonizerCount: "+fmt.Sprintf("%#v", this.ColonizerCount)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1010,7 +1152,7 @@ func valueToGoStringGamestate(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func (m *SolarObject) Marshal() (dAtA []byte, err error) {
+func (m *Planet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1020,7 +1162,7 @@ func (m *SolarObject) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *SolarObject) MarshalTo(dAtA []byte) (int, error) {
+func (m *Planet) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1080,10 +1222,25 @@ func (m *SolarObject) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.Progress))
 	}
+	if m.DockedTitanCount != 0 {
+		dAtA[i] = 0x60
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.DockedTitanCount))
+	}
+	if m.DockedCapitalCount != 0 {
+		dAtA[i] = 0x68
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.DockedCapitalCount))
+	}
+	if m.DockedFighterCount != 0 {
+		dAtA[i] = 0x70
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.DockedFighterCount))
+	}
 	return i, nil
 }
 
-func (m *SolarSystem) Marshal() (dAtA []byte, err error) {
+func (m *Object) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1093,7 +1250,60 @@ func (m *SolarSystem) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *SolarSystem) MarshalTo(dAtA []byte) (int, error) {
+func (m *Object) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.NameUint != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.NameUint))
+	}
+	if m.ParentSystemNameUint != 0 {
+		dAtA[i] = 0x10
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.ParentSystemNameUint))
+	}
+	if m.InterX != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.InterX))
+	}
+	if m.InterY != 0 {
+		dAtA[i] = 0x20
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.InterY))
+	}
+	if m.Owner != 0 {
+		dAtA[i] = 0x28
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.Owner))
+	}
+	if m.ObjectType != 0 {
+		dAtA[i] = 0x30
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.ObjectType))
+	}
+	if m.Health != 0 {
+		dAtA[i] = 0x38
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(m.Health))
+	}
+	return i, nil
+}
+
+func (m *System) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *System) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1125,8 +1335,27 @@ func (m *SolarSystem) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.SystemType))
 	}
-	if len(m.Solarobjectslice) > 0 {
-		for _, msg := range m.Solarobjectslice {
+	if len(m.ConnectedSystemsNameUint) > 0 {
+		dAtA2 := make([]byte, len(m.ConnectedSystemsNameUint)*10)
+		var j1 int
+		for _, num := range m.ConnectedSystemsNameUint {
+			for num >= 1<<7 {
+				dAtA2[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA2[j1] = uint8(num)
+			j1++
+		}
+		dAtA[i] = 0x82
+		i++
+		dAtA[i] = 0x4
+		i++
+		i = encodeVarintGamestate(dAtA, i, uint64(j1))
+		i += copy(dAtA[i:], dAtA2[:j1])
+	}
+	if len(m.Planetslice) > 0 {
+		for _, msg := range m.Planetslice {
 			dAtA[i] = 0x82
 			i++
 			dAtA[i] = 0x8
@@ -1139,24 +1368,19 @@ func (m *SolarSystem) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
-	if len(m.ConnectedSolarSystemsNameUint) > 0 {
-		dAtA2 := make([]byte, len(m.ConnectedSolarSystemsNameUint)*10)
-		var j1 int
-		for _, num := range m.ConnectedSolarSystemsNameUint {
-			for num >= 1<<7 {
-				dAtA2[j1] = uint8(uint64(num)&0x7f | 0x80)
-				num >>= 7
-				j1++
+	if len(m.Objectslice) > 0 {
+		for _, msg := range m.Objectslice {
+			dAtA[i] = 0x8a
+			i++
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
 			}
-			dAtA2[j1] = uint8(num)
-			j1++
+			i += n
 		}
-		dAtA[i] = 0x8a
-		i++
-		dAtA[i] = 0x8
-		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(j1))
-		i += copy(dAtA[i:], dAtA2[:j1])
 	}
 	return i, nil
 }
@@ -1198,8 +1422,8 @@ func (m *Galaxy) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.GalaxyType))
 	}
-	if len(m.Solarsystemslice) > 0 {
-		for _, msg := range m.Solarsystemslice {
+	if len(m.Systemslice) > 0 {
+		for _, msg := range m.Systemslice {
 			dAtA[i] = 0x82
 			i++
 			dAtA[i] = 0x8
@@ -1212,8 +1436,8 @@ func (m *Galaxy) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
-	if len(m.Galacticfleetslice) > 0 {
-		for _, msg := range m.Galacticfleetslice {
+	if len(m.Fleetslice) > 0 {
+		for _, msg := range m.Fleetslice {
 			dAtA[i] = 0x8a
 			i++
 			dAtA[i] = 0x8
@@ -1271,7 +1495,7 @@ func (m *Galaxy) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *GalacticFleet) Marshal() (dAtA []byte, err error) {
+func (m *Fleet) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1281,7 +1505,7 @@ func (m *GalacticFleet) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *GalacticFleet) MarshalTo(dAtA []byte) (int, error) {
+func (m *Fleet) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1332,27 +1556,6 @@ func (m *GalacticFleet) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(m.FighterCount))
 	}
-	if m.FlakCorvetteCount != 0 {
-		dAtA[i] = 0x98
-		i++
-		dAtA[i] = 0x2
-		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(m.FlakCorvetteCount))
-	}
-	if m.LargeTradeshipCount != 0 {
-		dAtA[i] = 0xa0
-		i++
-		dAtA[i] = 0x2
-		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(m.LargeTradeshipCount))
-	}
-	if m.ColonizerCount != 0 {
-		dAtA[i] = 0xa8
-		i++
-		dAtA[i] = 0x2
-		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(m.ColonizerCount))
-	}
 	return i, nil
 }
 
@@ -1396,7 +1599,7 @@ func (m *OngoingBattle) MarshalTo(dAtA []byte) (int, error) {
 		}
 		dAtA[i] = 0x82
 		i++
-		dAtA[i] = 0x8
+		dAtA[i] = 0x4
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(j3))
 		i += copy(dAtA[i:], dAtA4[:j3])
@@ -1416,7 +1619,7 @@ func (m *OngoingBattle) MarshalTo(dAtA []byte) (int, error) {
 		}
 		dAtA[i] = 0x8a
 		i++
-		dAtA[i] = 0x8
+		dAtA[i] = 0x4
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(j5))
 		i += copy(dAtA[i:], dAtA6[:j5])
@@ -1469,7 +1672,7 @@ func (m *OngoingSiege) MarshalTo(dAtA []byte) (int, error) {
 		}
 		dAtA[i] = 0x82
 		i++
-		dAtA[i] = 0x8
+		dAtA[i] = 0x4
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(j7))
 		i += copy(dAtA[i:], dAtA8[:j7])
@@ -1527,7 +1730,7 @@ func (m *OutstandingAction) MarshalTo(dAtA []byte) (int, error) {
 		}
 		dAtA[i] = 0x82
 		i++
-		dAtA[i] = 0x8
+		dAtA[i] = 0x4
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(j9))
 		i += copy(dAtA[i:], dAtA10[:j9])
@@ -1546,7 +1749,7 @@ func (m *OutstandingAction) MarshalTo(dAtA []byte) (int, error) {
 		}
 		dAtA[i] = 0x8a
 		i++
-		dAtA[i] = 0x8
+		dAtA[i] = 0x4
 		i++
 		i = encodeVarintGamestate(dAtA, i, uint64(j11))
 		i += copy(dAtA[i:], dAtA12[:j11])
@@ -1563,7 +1766,7 @@ func encodeVarintGamestate(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return offset + 1
 }
-func (m *SolarObject) Size() (n int) {
+func (m *Planet) Size() (n int) {
 	var l int
 	_ = l
 	if m.NameUint != 0 {
@@ -1599,10 +1802,46 @@ func (m *SolarObject) Size() (n int) {
 	if m.Progress != 0 {
 		n += 1 + sovGamestate(uint64(m.Progress))
 	}
+	if m.DockedTitanCount != 0 {
+		n += 1 + sovGamestate(uint64(m.DockedTitanCount))
+	}
+	if m.DockedCapitalCount != 0 {
+		n += 1 + sovGamestate(uint64(m.DockedCapitalCount))
+	}
+	if m.DockedFighterCount != 0 {
+		n += 1 + sovGamestate(uint64(m.DockedFighterCount))
+	}
 	return n
 }
 
-func (m *SolarSystem) Size() (n int) {
+func (m *Object) Size() (n int) {
+	var l int
+	_ = l
+	if m.NameUint != 0 {
+		n += 1 + sovGamestate(uint64(m.NameUint))
+	}
+	if m.ParentSystemNameUint != 0 {
+		n += 1 + sovGamestate(uint64(m.ParentSystemNameUint))
+	}
+	if m.InterX != 0 {
+		n += 1 + sovGamestate(uint64(m.InterX))
+	}
+	if m.InterY != 0 {
+		n += 1 + sovGamestate(uint64(m.InterY))
+	}
+	if m.Owner != 0 {
+		n += 1 + sovGamestate(uint64(m.Owner))
+	}
+	if m.ObjectType != 0 {
+		n += 1 + sovGamestate(uint64(m.ObjectType))
+	}
+	if m.Health != 0 {
+		n += 1 + sovGamestate(uint64(m.Health))
+	}
+	return n
+}
+
+func (m *System) Size() (n int) {
 	var l int
 	_ = l
 	if m.NameUint != 0 {
@@ -1620,18 +1859,24 @@ func (m *SolarSystem) Size() (n int) {
 	if m.SystemType != 0 {
 		n += 2 + sovGamestate(uint64(m.SystemType))
 	}
-	if len(m.Solarobjectslice) > 0 {
-		for _, e := range m.Solarobjectslice {
+	if len(m.ConnectedSystemsNameUint) > 0 {
+		l = 0
+		for _, e := range m.ConnectedSystemsNameUint {
+			l += sovGamestate(uint64(e))
+		}
+		n += 2 + sovGamestate(uint64(l)) + l
+	}
+	if len(m.Planetslice) > 0 {
+		for _, e := range m.Planetslice {
 			l = e.Size()
 			n += 2 + l + sovGamestate(uint64(l))
 		}
 	}
-	if len(m.ConnectedSolarSystemsNameUint) > 0 {
-		l = 0
-		for _, e := range m.ConnectedSolarSystemsNameUint {
-			l += sovGamestate(uint64(e))
+	if len(m.Objectslice) > 0 {
+		for _, e := range m.Objectslice {
+			l = e.Size()
+			n += 2 + l + sovGamestate(uint64(l))
 		}
-		n += 2 + sovGamestate(uint64(l)) + l
 	}
 	return n
 }
@@ -1651,14 +1896,14 @@ func (m *Galaxy) Size() (n int) {
 	if m.GalaxyType != 0 {
 		n += 2 + sovGamestate(uint64(m.GalaxyType))
 	}
-	if len(m.Solarsystemslice) > 0 {
-		for _, e := range m.Solarsystemslice {
+	if len(m.Systemslice) > 0 {
+		for _, e := range m.Systemslice {
 			l = e.Size()
 			n += 2 + l + sovGamestate(uint64(l))
 		}
 	}
-	if len(m.Galacticfleetslice) > 0 {
-		for _, e := range m.Galacticfleetslice {
+	if len(m.Fleetslice) > 0 {
+		for _, e := range m.Fleetslice {
 			l = e.Size()
 			n += 2 + l + sovGamestate(uint64(l))
 		}
@@ -1684,7 +1929,7 @@ func (m *Galaxy) Size() (n int) {
 	return n
 }
 
-func (m *GalacticFleet) Size() (n int) {
+func (m *Fleet) Size() (n int) {
 	var l int
 	_ = l
 	if m.FleetID != 0 {
@@ -1710,15 +1955,6 @@ func (m *GalacticFleet) Size() (n int) {
 	}
 	if m.FighterCount != 0 {
 		n += 2 + sovGamestate(uint64(m.FighterCount))
-	}
-	if m.FlakCorvetteCount != 0 {
-		n += 2 + sovGamestate(uint64(m.FlakCorvetteCount))
-	}
-	if m.LargeTradeshipCount != 0 {
-		n += 2 + sovGamestate(uint64(m.LargeTradeshipCount))
-	}
-	if m.ColonizerCount != 0 {
-		n += 2 + sovGamestate(uint64(m.ColonizerCount))
 	}
 	return n
 }
@@ -1816,11 +2052,11 @@ func sovGamestate(x uint64) (n int) {
 func sozGamestate(x uint64) (n int) {
 	return sovGamestate(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (this *SolarObject) String() string {
+func (this *Planet) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&SolarObject{`,
+	s := strings.Join([]string{`&Planet{`,
 		`NameUint:` + fmt.Sprintf("%v", this.NameUint) + `,`,
 		`ParentSystemNameUint:` + fmt.Sprintf("%v", this.ParentSystemNameUint) + `,`,
 		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
@@ -1832,22 +2068,42 @@ func (this *SolarObject) String() string {
 		`Health:` + fmt.Sprintf("%v", this.Health) + `,`,
 		`Focus:` + fmt.Sprintf("%v", this.Focus) + `,`,
 		`Progress:` + fmt.Sprintf("%v", this.Progress) + `,`,
+		`DockedTitanCount:` + fmt.Sprintf("%v", this.DockedTitanCount) + `,`,
+		`DockedCapitalCount:` + fmt.Sprintf("%v", this.DockedCapitalCount) + `,`,
+		`DockedFighterCount:` + fmt.Sprintf("%v", this.DockedFighterCount) + `,`,
 		`}`,
 	}, "")
 	return s
 }
-func (this *SolarSystem) String() string {
+func (this *Object) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&SolarSystem{`,
+	s := strings.Join([]string{`&Object{`,
+		`NameUint:` + fmt.Sprintf("%v", this.NameUint) + `,`,
+		`ParentSystemNameUint:` + fmt.Sprintf("%v", this.ParentSystemNameUint) + `,`,
+		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
+		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
+		`Owner:` + fmt.Sprintf("%v", this.Owner) + `,`,
+		`ObjectType:` + fmt.Sprintf("%v", this.ObjectType) + `,`,
+		`Health:` + fmt.Sprintf("%v", this.Health) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *System) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&System{`,
 		`NameUint:` + fmt.Sprintf("%v", this.NameUint) + `,`,
 		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
 		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
 		`PrimaryOwner:` + fmt.Sprintf("%v", this.PrimaryOwner) + `,`,
 		`SystemType:` + fmt.Sprintf("%v", this.SystemType) + `,`,
-		`Solarobjectslice:` + strings.Replace(fmt.Sprintf("%v", this.Solarobjectslice), "SolarObject", "SolarObject", 1) + `,`,
-		`ConnectedSolarSystemsNameUint:` + fmt.Sprintf("%v", this.ConnectedSolarSystemsNameUint) + `,`,
+		`ConnectedSystemsNameUint:` + fmt.Sprintf("%v", this.ConnectedSystemsNameUint) + `,`,
+		`Planetslice:` + strings.Replace(fmt.Sprintf("%v", this.Planetslice), "Planet", "Planet", 1) + `,`,
+		`Objectslice:` + strings.Replace(fmt.Sprintf("%v", this.Objectslice), "Object", "Object", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1861,8 +2117,8 @@ func (this *Galaxy) String() string {
 		`GlobalX:` + fmt.Sprintf("%v", this.GlobalX) + `,`,
 		`GlobalY:` + fmt.Sprintf("%v", this.GlobalY) + `,`,
 		`GalaxyType:` + fmt.Sprintf("%v", this.GalaxyType) + `,`,
-		`Solarsystemslice:` + strings.Replace(fmt.Sprintf("%v", this.Solarsystemslice), "SolarSystem", "SolarSystem", 1) + `,`,
-		`Galacticfleetslice:` + strings.Replace(fmt.Sprintf("%v", this.Galacticfleetslice), "GalacticFleet", "GalacticFleet", 1) + `,`,
+		`Systemslice:` + strings.Replace(fmt.Sprintf("%v", this.Systemslice), "System", "System", 1) + `,`,
+		`Fleetslice:` + strings.Replace(fmt.Sprintf("%v", this.Fleetslice), "Fleet", "Fleet", 1) + `,`,
 		`Ongoingbattleslice:` + strings.Replace(fmt.Sprintf("%v", this.Ongoingbattleslice), "OngoingBattle", "OngoingBattle", 1) + `,`,
 		`Ongoingsiegeslice:` + strings.Replace(fmt.Sprintf("%v", this.Ongoingsiegeslice), "OngoingSiege", "OngoingSiege", 1) + `,`,
 		`Outstandingactionslice:` + strings.Replace(fmt.Sprintf("%v", this.Outstandingactionslice), "OutstandingAction", "OutstandingAction", 1) + `,`,
@@ -1870,11 +2126,11 @@ func (this *Galaxy) String() string {
 	}, "")
 	return s
 }
-func (this *GalacticFleet) String() string {
+func (this *Fleet) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&GalacticFleet{`,
+	s := strings.Join([]string{`&Fleet{`,
 		`FleetID:` + fmt.Sprintf("%v", this.FleetID) + `,`,
 		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
 		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
@@ -1883,9 +2139,6 @@ func (this *GalacticFleet) String() string {
 		`TitanCount:` + fmt.Sprintf("%v", this.TitanCount) + `,`,
 		`CapitalCount:` + fmt.Sprintf("%v", this.CapitalCount) + `,`,
 		`FighterCount:` + fmt.Sprintf("%v", this.FighterCount) + `,`,
-		`FlakCorvetteCount:` + fmt.Sprintf("%v", this.FlakCorvetteCount) + `,`,
-		`LargeTradeshipCount:` + fmt.Sprintf("%v", this.LargeTradeshipCount) + `,`,
-		`ColonizerCount:` + fmt.Sprintf("%v", this.ColonizerCount) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1939,7 +2192,7 @@ func valueToStringGamestate(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *SolarObject) Unmarshal(dAtA []byte) error {
+func (m *Planet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1962,10 +2215,10 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: SolarObject: wiretype end group for non-group")
+			return fmt.Errorf("proto: Planet: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SolarObject: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Planet: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2177,6 +2430,63 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DockedTitanCount", wireType)
+			}
+			m.DockedTitanCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DockedTitanCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DockedCapitalCount", wireType)
+			}
+			m.DockedCapitalCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DockedCapitalCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 14:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DockedFighterCount", wireType)
+			}
+			m.DockedFighterCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DockedFighterCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGamestate(dAtA[iNdEx:])
@@ -2198,7 +2508,7 @@ func (m *SolarObject) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *SolarSystem) Unmarshal(dAtA []byte) error {
+func (m *Object) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2221,10 +2531,193 @@ func (m *SolarSystem) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: SolarSystem: wiretype end group for non-group")
+			return fmt.Errorf("proto: Object: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SolarSystem: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Object: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NameUint", wireType)
+			}
+			m.NameUint = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.NameUint |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ParentSystemNameUint", wireType)
+			}
+			m.ParentSystemNameUint = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ParentSystemNameUint |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InterX", wireType)
+			}
+			m.InterX = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.InterX |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InterY", wireType)
+			}
+			m.InterY = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.InterY |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
+			}
+			m.Owner = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Owner |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectType", wireType)
+			}
+			m.ObjectType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ObjectType |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Health", wireType)
+			}
+			m.Health = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Health |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipGamestate(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *System) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowGamestate
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: System: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: System: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2322,38 +2815,7 @@ func (m *SolarSystem) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 128:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Solarobjectslice", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowGamestate
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthGamestate
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Solarobjectslice = append(m.Solarobjectslice, &SolarObject{})
-			if err := m.Solarobjectslice[len(m.Solarobjectslice)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 129:
+		case 64:
 			if wireType == 0 {
 				var v uint64
 				for shift := uint(0); ; shift += 7 {
@@ -2370,7 +2832,7 @@ func (m *SolarSystem) Unmarshal(dAtA []byte) error {
 						break
 					}
 				}
-				m.ConnectedSolarSystemsNameUint = append(m.ConnectedSolarSystemsNameUint, v)
+				m.ConnectedSystemsNameUint = append(m.ConnectedSystemsNameUint, v)
 			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
@@ -2410,11 +2872,73 @@ func (m *SolarSystem) Unmarshal(dAtA []byte) error {
 							break
 						}
 					}
-					m.ConnectedSolarSystemsNameUint = append(m.ConnectedSolarSystemsNameUint, v)
+					m.ConnectedSystemsNameUint = append(m.ConnectedSystemsNameUint, v)
 				}
 			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field ConnectedSolarSystemsNameUint", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ConnectedSystemsNameUint", wireType)
 			}
+		case 128:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Planetslice", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Planetslice = append(m.Planetslice, &Planet{})
+			if err := m.Planetslice[len(m.Planetslice)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 129:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Objectslice", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Objectslice = append(m.Objectslice, &Object{})
+			if err := m.Objectslice[len(m.Objectslice)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGamestate(dAtA[iNdEx:])
@@ -2543,7 +3067,7 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 			}
 		case 128:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Solarsystemslice", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Systemslice", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2567,14 +3091,14 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Solarsystemslice = append(m.Solarsystemslice, &SolarSystem{})
-			if err := m.Solarsystemslice[len(m.Solarsystemslice)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.Systemslice = append(m.Systemslice, &System{})
+			if err := m.Systemslice[len(m.Systemslice)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 129:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Galacticfleetslice", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Fleetslice", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2598,8 +3122,8 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Galacticfleetslice = append(m.Galacticfleetslice, &GalacticFleet{})
-			if err := m.Galacticfleetslice[len(m.Galacticfleetslice)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.Fleetslice = append(m.Fleetslice, &Fleet{})
+			if err := m.Fleetslice[len(m.Fleetslice)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2717,7 +3241,7 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *GalacticFleet) Unmarshal(dAtA []byte) error {
+func (m *Fleet) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2740,10 +3264,10 @@ func (m *GalacticFleet) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GalacticFleet: wiretype end group for non-group")
+			return fmt.Errorf("proto: Fleet: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GalacticFleet: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Fleet: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -2898,63 +3422,6 @@ func (m *GalacticFleet) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 35:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FlakCorvetteCount", wireType)
-			}
-			m.FlakCorvetteCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowGamestate
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.FlakCorvetteCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 36:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LargeTradeshipCount", wireType)
-			}
-			m.LargeTradeshipCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowGamestate
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.LargeTradeshipCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 37:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ColonizerCount", wireType)
-			}
-			m.ColonizerCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowGamestate
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ColonizerCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGamestate(dAtA[iNdEx:])
@@ -3043,7 +3510,7 @@ func (m *OngoingBattle) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 128:
+		case 64:
 			if wireType == 0 {
 				var v int32
 				for shift := uint(0); ; shift += 7 {
@@ -3105,7 +3572,7 @@ func (m *OngoingBattle) Unmarshal(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field AttackingFleetIDs", wireType)
 			}
-		case 129:
+		case 65:
 			if wireType == 0 {
 				var v int32
 				for shift := uint(0); ; shift += 7 {
@@ -3274,7 +3741,7 @@ func (m *OngoingSiege) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 128:
+		case 64:
 			if wireType == 0 {
 				var v int32
 				for shift := uint(0); ; shift += 7 {
@@ -3462,7 +3929,7 @@ func (m *OutstandingAction) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 128:
+		case 64:
 			if wireType == 0 {
 				var v int64
 				for shift := uint(0); ; shift += 7 {
@@ -3524,7 +3991,7 @@ func (m *OutstandingAction) Unmarshal(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field ActionValues", wireType)
 			}
-		case 129:
+		case 65:
 			if wireType == 0 {
 				var v uint64
 				for shift := uint(0); ; shift += 7 {
@@ -3715,60 +4182,60 @@ var (
 func init() { proto.RegisterFile("gamestate.proto", fileDescriptorGamestate) }
 
 var fileDescriptorGamestate = []byte{
-	// 868 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0x4f, 0x6f, 0x23, 0x35,
-	0x14, 0xcf, 0x74, 0x92, 0xb4, 0x75, 0x5a, 0x68, 0x4c, 0x29, 0xa3, 0x0a, 0x46, 0xe9, 0x14, 0x50,
-	0x0e, 0xa5, 0x42, 0x85, 0x33, 0x12, 0x2d, 0xb4, 0xaa, 0x84, 0x88, 0x34, 0x6d, 0x11, 0x3d, 0x3a,
-	0x13, 0x67, 0x62, 0x3a, 0xb1, 0x47, 0xb6, 0x53, 0x08, 0xa7, 0x16, 0xf8, 0x00, 0x5c, 0xf8, 0x08,
-	0x48, 0x70, 0xde, 0x4f, 0xb0, 0xb7, 0xdd, 0x5b, 0x8f, 0x7b, 0xdc, 0x66, 0x2f, 0x7b, 0xac, 0xf6,
-	0x13, 0xac, 0x6c, 0xcf, 0xbf, 0x64, 0xd2, 0x48, 0x7b, 0xcb, 0xfb, 0xbd, 0x9f, 0xdf, 0xbc, 0xf7,
-	0xf3, 0xef, 0x59, 0x01, 0xef, 0x87, 0x68, 0x88, 0x85, 0x44, 0x12, 0xef, 0xc7, 0x9c, 0x49, 0x06,
-	0x57, 0x33, 0xc0, 0x7b, 0xba, 0x04, 0x1a, 0x67, 0x2c, 0x42, 0xbc, 0xd3, 0xfd, 0x05, 0x07, 0x12,
-	0x6e, 0x83, 0x15, 0x8a, 0x86, 0xf8, 0x82, 0x50, 0xe9, 0x58, 0x2d, 0xab, 0x5d, 0xf5, 0xb3, 0x18,
-	0x1e, 0x80, 0xcd, 0x18, 0x71, 0x4c, 0xe5, 0xd9, 0x58, 0x48, 0x3c, 0xfc, 0x31, 0xe5, 0x2d, 0x69,
-	0xde, 0xdc, 0x1c, 0xdc, 0x02, 0x75, 0x42, 0x25, 0xe6, 0x3f, 0x3b, 0x76, 0xcb, 0x6a, 0xdb, 0x7e,
-	0x12, 0x65, 0xf8, 0xa5, 0x53, 0x2d, 0xe0, 0x97, 0x70, 0x13, 0xd4, 0xd8, 0xaf, 0x14, 0x73, 0xa7,
-	0xd6, 0xb2, 0xda, 0x35, 0xdf, 0x04, 0x10, 0x82, 0x6a, 0x9f, 0xb1, 0x9e, 0x53, 0xd7, 0xa0, 0xfe,
-	0x0d, 0x5d, 0x00, 0x62, 0x16, 0x8f, 0x22, 0x24, 0x09, 0xa3, 0xce, 0xb2, 0xae, 0x52, 0x40, 0x54,
-	0x9e, 0xe9, 0x99, 0xce, 0xc7, 0x31, 0x76, 0x56, 0xf4, 0xc9, 0x02, 0xa2, 0x3a, 0x18, 0x60, 0x14,
-	0xc9, 0x81, 0xb3, 0xaa, 0x73, 0x49, 0xa4, 0x3a, 0xe8, 0xb3, 0x60, 0x24, 0x1c, 0x60, 0x3a, 0xd0,
-	0x81, 0xd2, 0x25, 0xe6, 0x2c, 0xe4, 0x58, 0x08, 0xa7, 0xa1, 0x13, 0x59, 0xec, 0xfd, 0x9f, 0x6a,
-	0x68, 0x66, 0x5f, 0xa8, 0x61, 0xae, 0xc7, 0xd2, 0x23, 0x7a, 0xd8, 0x53, 0x7a, 0x78, 0x60, 0x2d,
-	0xe6, 0x64, 0x88, 0xf8, 0xb8, 0xa3, 0x65, 0xa9, 0xea, 0x6f, 0x4f, 0x61, 0x6a, 0x52, 0xa1, 0xbf,
-	0xac, 0x27, 0xdd, 0x30, 0x93, 0xe6, 0x08, 0x3c, 0x02, 0x1b, 0x42, 0xb5, 0x67, 0x86, 0x17, 0x11,
-	0x09, 0xb0, 0x73, 0x63, 0xb5, 0xec, 0x76, 0xe3, 0x60, 0x6b, 0x3f, 0xf7, 0x46, 0xc1, 0x06, 0x7e,
-	0xe9, 0x00, 0xfc, 0x1e, 0x7c, 0x12, 0x30, 0x4a, 0x71, 0x20, 0x71, 0xaf, 0x30, 0xac, 0xc8, 0x5c,
-	0x70, 0xab, 0x2a, 0x56, 0xfd, 0xc5, 0x2c, 0xef, 0x8d, 0x0d, 0xea, 0x27, 0x28, 0x42, 0xbf, 0x8d,
-	0x17, 0xca, 0xe4, 0x80, 0xe5, 0x30, 0x62, 0x5d, 0x14, 0xa5, 0x3a, 0xa5, 0x61, 0x9e, 0x49, 0x95,
-	0x4a, 0x43, 0x25, 0x43, 0xa8, 0x2b, 0x17, 0x65, 0xc8, 0x91, 0x4c, 0x06, 0xa3, 0xcc, 0x62, 0x19,
-	0x4c, 0xdb, 0x7e, 0xe9, 0x00, 0x3c, 0x05, 0x50, 0x95, 0x0c, 0x24, 0x09, 0xfa, 0x11, 0xc6, 0x89,
-	0x9a, 0xb7, 0xa6, 0x8c, 0x53, 0x28, 0x73, 0x92, 0xb0, 0x8e, 0x15, 0xcb, 0x9f, 0x73, 0x48, 0x95,
-	0x62, 0x34, 0x64, 0x84, 0x86, 0x5d, 0x24, 0x65, 0x84, 0x4d, 0xa9, 0x3f, 0xca, 0xa5, 0x3a, 0x86,
-	0x75, 0xa8, 0x59, 0xfe, 0x9c, 0x43, 0xf0, 0x18, 0x34, 0x13, 0x54, 0x10, 0x1c, 0x26, 0x95, 0xfe,
-	0x34, 0x95, 0x3e, 0x2a, 0x57, 0x3a, 0x53, 0x24, 0xbf, 0x7c, 0x04, 0x5e, 0x80, 0x2d, 0x36, 0x92,
-	0x42, 0x22, 0xda, 0x23, 0x34, 0x54, 0x0d, 0x33, 0x6a, 0x8a, 0xfd, 0x65, 0x8a, 0x7d, 0x5c, 0x2c,
-	0x96, 0x33, 0xbf, 0xd5, 0x4c, 0xff, 0x91, 0xc3, 0xde, 0x3f, 0x36, 0x58, 0x9f, 0xd2, 0x43, 0xdd,
-	0xa2, 0x56, 0xe2, 0xf4, 0x3b, 0x7d, 0xf5, 0x35, 0x3f, 0x0d, 0xdf, 0x79, 0x41, 0xb2, 0x07, 0xa3,
-	0x5a, 0x7c, 0x30, 0xbe, 0x06, 0x1f, 0x06, 0x11, 0x13, 0x58, 0xcc, 0xbe, 0x55, 0x35, 0x6d, 0xb4,
-	0xf9, 0x49, 0xe5, 0x20, 0x49, 0x24, 0xa2, 0x47, 0x6c, 0x44, 0xa5, 0xd3, 0x32, 0x0e, 0xca, 0x11,
-	0xb5, 0x8c, 0x01, 0x8a, 0x89, 0x44, 0x91, 0x61, 0xec, 0x98, 0x65, 0x2c, 0x62, 0x8a, 0xd3, 0x27,
-	0xe1, 0x40, 0x62, 0x6e, 0x38, 0x9e, 0xe1, 0x14, 0x31, 0xb8, 0x07, 0x9a, 0xfd, 0x08, 0x5d, 0x1d,
-	0x31, 0x7e, 0x8d, 0xa5, 0xc4, 0x86, 0xb8, 0xab, 0x89, 0xe5, 0x04, 0xfc, 0x12, 0x7c, 0x10, 0x21,
-	0x1e, 0xe2, 0x73, 0x8e, 0x7a, 0x58, 0x0c, 0x48, 0x6c, 0xf8, 0x9f, 0x6a, 0xfe, 0xbc, 0x14, 0xfc,
-	0x1c, 0xbc, 0x17, 0xb0, 0x88, 0x51, 0xf2, 0x7b, 0xda, 0xc5, 0x67, 0x9a, 0x3c, 0x83, 0x7a, 0xff,
-	0x5a, 0x60, 0x7d, 0xca, 0x5c, 0x6a, 0x27, 0x8d, 0xaf, 0xb2, 0x8b, 0xc9, 0x62, 0x95, 0x13, 0x92,
-	0x23, 0x89, 0xc3, 0xb1, 0xbe, 0x9b, 0x9a, 0x9f, 0xc5, 0xf0, 0x0b, 0xd0, 0x44, 0x52, 0xa2, 0xe0,
-	0x8a, 0xd0, 0xf0, 0xd8, 0xdc, 0xa4, 0x30, 0xcb, 0x55, 0xf3, 0xcb, 0x19, 0x45, 0xef, 0xe1, 0x3e,
-	0xd6, 0x46, 0xc9, 0xe8, 0xb7, 0x09, 0xbd, 0x94, 0xf1, 0x9e, 0x58, 0x60, 0xad, 0x68, 0x5d, 0x65,
-	0x1f, 0xed, 0xda, 0xdc, 0x3e, 0x49, 0xa8, 0x9a, 0x94, 0x64, 0x88, 0x7f, 0xc0, 0x7d, 0x99, 0x18,
-	0x28, 0x8b, 0xe1, 0x37, 0x60, 0x5b, 0x5f, 0x03, 0xa1, 0x61, 0xe7, 0x1a, 0xf3, 0x19, 0x67, 0xd8,
-	0xda, 0x19, 0x0b, 0x18, 0x7a, 0xc8, 0x50, 0x3f, 0xf9, 0x8c, 0x97, 0x87, 0x9c, 0xcd, 0x78, 0xcf,
-	0x2d, 0xd0, 0x2c, 0xed, 0x88, 0x6a, 0xd0, 0xac, 0x46, 0xae, 0x70, 0x1a, 0x2b, 0xff, 0x99, 0xdf,
-	0xfa, 0x05, 0x33, 0x1a, 0x17, 0x90, 0xa9, 0xe1, 0xec, 0x99, 0xe1, 0xe6, 0xef, 0xc1, 0x2e, 0x58,
-	0x33, 0xe7, 0x7f, 0x42, 0xd1, 0x08, 0x27, 0xdd, 0xda, 0xfe, 0x14, 0x08, 0x77, 0x40, 0xc3, 0xc4,
-	0x6a, 0x52, 0x91, 0x3e, 0xe4, 0x45, 0xec, 0x70, 0xef, 0xee, 0xde, 0xad, 0xbc, 0xb8, 0x77, 0x2b,
-	0x0f, 0xf7, 0xae, 0x75, 0x33, 0x71, 0xad, 0xff, 0x26, 0xae, 0xf5, 0x6c, 0xe2, 0x5a, 0x77, 0x13,
-	0xd7, 0x7a, 0x39, 0x71, 0xad, 0xd7, 0x13, 0xb7, 0xf2, 0x30, 0x71, 0xad, 0xbf, 0x5f, 0xb9, 0x95,
-	0x6e, 0x5d, 0xff, 0xcd, 0xf8, 0xea, 0x6d, 0x00, 0x00, 0x00, 0xff, 0xff, 0x32, 0x05, 0xac, 0x6a,
-	0x79, 0x08, 0x00, 0x00,
+	// 869 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x56, 0xcd, 0x6e, 0x1c, 0x45,
+	0x10, 0x76, 0x7b, 0x76, 0xc6, 0x49, 0xd9, 0x01, 0xbb, 0x15, 0xc2, 0x28, 0x42, 0xa3, 0x65, 0x4e,
+	0x2b, 0x14, 0x59, 0x22, 0xe4, 0xc4, 0x01, 0x91, 0x04, 0x19, 0x45, 0x42, 0x18, 0x75, 0x12, 0x44,
+	0x8e, 0xed, 0xd9, 0xde, 0xf1, 0x90, 0xd9, 0xee, 0xd1, 0x4c, 0x2f, 0xb0, 0xb7, 0xf0, 0x77, 0xe7,
+	0x1d, 0xb8, 0x70, 0xe6, 0x09, 0xb8, 0x11, 0x89, 0x4b, 0x4e, 0x88, 0x23, 0x5e, 0x2e, 0x1c, 0xf3,
+	0x08, 0xa8, 0xab, 0x76, 0x67, 0x7a, 0x3d, 0x6b, 0x4b, 0xdc, 0x72, 0xdb, 0xfa, 0xea, 0xab, 0x9a,
+	0xaa, 0xaf, 0xaa, 0xda, 0x86, 0xd7, 0x73, 0x39, 0x55, 0x8d, 0x95, 0x56, 0x1d, 0x56, 0xb5, 0xb1,
+	0x86, 0x5f, 0x6d, 0x81, 0xf4, 0x79, 0x00, 0xd1, 0x67, 0xa5, 0xd4, 0xca, 0xf2, 0x9b, 0x70, 0x45,
+	0xcb, 0xa9, 0x7a, 0x5c, 0x68, 0x1b, 0xb3, 0x21, 0x1b, 0x0d, 0x44, 0x6b, 0xf3, 0xdb, 0x70, 0xbd,
+	0x92, 0xb5, 0xd2, 0xf6, 0xe1, 0xbc, 0xb1, 0x6a, 0xfa, 0xe9, 0x8a, 0xb7, 0x8d, 0xbc, 0x8d, 0x3e,
+	0x7e, 0x03, 0xa2, 0x42, 0x5b, 0x55, 0x7f, 0x11, 0x07, 0x43, 0x36, 0x0a, 0xc4, 0xd2, 0x6a, 0xf1,
+	0x27, 0xf1, 0xc0, 0xc3, 0x9f, 0xf0, 0xeb, 0x10, 0x9a, 0xaf, 0xb5, 0xaa, 0xe3, 0x70, 0xc8, 0x46,
+	0xa1, 0x20, 0x83, 0x73, 0x18, 0x4c, 0x8c, 0x19, 0xc7, 0x11, 0x82, 0xf8, 0x9b, 0x27, 0x00, 0x95,
+	0xa9, 0x66, 0xa5, 0xb4, 0x85, 0xd1, 0xf1, 0x0e, 0x66, 0xf1, 0x10, 0xe7, 0x37, 0x27, 0x5f, 0xaa,
+	0xcc, 0x3e, 0x9a, 0x57, 0x2a, 0xbe, 0x82, 0x91, 0x1e, 0xe2, 0x2a, 0x38, 0x55, 0xb2, 0xb4, 0xa7,
+	0xf1, 0x55, 0xf4, 0x2d, 0x2d, 0x57, 0xc1, 0xc4, 0x64, 0xb3, 0x26, 0x06, 0xaa, 0x00, 0x0d, 0xa7,
+	0x4b, 0x55, 0x9b, 0xbc, 0x56, 0x4d, 0x13, 0xef, 0xa2, 0xa3, 0xb5, 0xf9, 0x3b, 0xb0, 0x3f, 0x36,
+	0xd9, 0x53, 0x35, 0x7e, 0x54, 0x58, 0xa9, 0xef, 0x9b, 0x99, 0xb6, 0xf1, 0x1e, 0x72, 0x7a, 0x38,
+	0x3f, 0x04, 0x4e, 0xd8, 0x7d, 0x59, 0x15, 0x56, 0x96, 0xc4, 0xbe, 0x86, 0xec, 0x0d, 0x9e, 0x8e,
+	0x7f, 0x54, 0xe4, 0xa7, 0x56, 0xd5, 0xc4, 0x7f, 0xcd, 0xe7, 0xfb, 0x9e, 0xf4, 0x4f, 0x06, 0xd1,
+	0x31, 0x36, 0xf9, 0x8a, 0x8e, 0x72, 0x7d, 0x2c, 0xd1, 0x25, 0x63, 0xd9, 0xf1, 0xc7, 0x92, 0xfe,
+	0xb6, 0x0d, 0x11, 0x15, 0x74, 0x69, 0x63, 0x5d, 0x91, 0xdb, 0x17, 0x14, 0x19, 0xac, 0x15, 0x99,
+	0xc2, 0x5e, 0x55, 0x17, 0x53, 0x59, 0xcf, 0x8f, 0xb1, 0xd6, 0x01, 0x7e, 0x74, 0x0d, 0x73, 0x25,
+	0x37, 0xf8, 0x65, 0x2c, 0x79, 0x9f, 0x4a, 0xee, 0x10, 0xfe, 0x3e, 0xc4, 0x99, 0xd1, 0x5a, 0x65,
+	0x56, 0x8d, 0xa9, 0xc4, 0xa6, 0x15, 0xf4, 0xc3, 0x61, 0x30, 0x1a, 0x88, 0x0b, 0xfd, 0xfc, 0x0e,
+	0xec, 0x56, 0x78, 0x79, 0x4d, 0x59, 0x64, 0x2a, 0x7e, 0xc6, 0x86, 0xc1, 0x68, 0xf7, 0xf6, 0xc1,
+	0x61, 0x77, 0xad, 0x74, 0x98, 0xc2, 0xa7, 0xb9, 0x28, 0x92, 0x8c, 0xa2, 0xbe, 0xed, 0x47, 0xd1,
+	0x0e, 0x08, 0x9f, 0x96, 0xfe, 0x11, 0x40, 0xf4, 0xb1, 0x2c, 0xe5, 0x37, 0xf3, 0x4b, 0x25, 0x8c,
+	0x61, 0x27, 0x2f, 0xcd, 0x89, 0x2c, 0x57, 0x1a, 0xae, 0xcc, 0xce, 0xb3, 0x52, 0x71, 0x65, 0x3a,
+	0x89, 0x72, 0xcc, 0xec, 0x4b, 0xd4, 0x21, 0xae, 0x60, 0x12, 0xec, 0xc2, 0x36, 0x49, 0x18, 0xe1,
+	0xd3, 0xf8, 0xbb, 0x00, 0x93, 0x52, 0xa9, 0xf5, 0x2e, 0xf7, 0xbd, 0xa0, 0x23, 0xe7, 0x15, 0x1e,
+	0x89, 0x3f, 0x00, 0x6e, 0x74, 0x6e, 0x0a, 0x9d, 0x9f, 0x48, 0x6b, 0x4b, 0x45, 0xa1, 0xdf, 0x51,
+	0x68, 0xec, 0x0b, 0x44, 0xac, 0x7b, 0xc8, 0x12, 0x1b, 0x82, 0xf8, 0x11, 0x1c, 0x2c, 0xd1, 0xa6,
+	0x50, 0xf9, 0x32, 0xd3, 0xf7, 0x94, 0xe9, 0xcd, 0x7e, 0xa6, 0x87, 0x8e, 0x24, 0xfa, 0x21, 0xfc,
+	0x31, 0xdc, 0x30, 0x33, 0xdb, 0x58, 0xa9, 0xc7, 0x85, 0xce, 0x65, 0xe6, 0x5e, 0x27, 0x4a, 0xf6,
+	0x03, 0x25, 0x7b, 0xcb, 0x4f, 0xd6, 0x31, 0xef, 0x22, 0x53, 0x5c, 0x10, 0x9c, 0xfe, 0xb8, 0x0d,
+	0x21, 0xf6, 0xef, 0xc6, 0x82, 0x0a, 0x3c, 0xf8, 0x08, 0x67, 0x19, 0x8a, 0x95, 0xf9, 0xbf, 0xaf,
+	0xa1, 0x3d, 0xd9, 0x81, 0x7f, 0xb2, 0x77, 0xe0, 0x8d, 0xac, 0x34, 0x8d, 0x6a, 0xce, 0xbf, 0x16,
+	0x21, 0x6e, 0xce, 0x66, 0xa7, 0x5b, 0x09, 0xdb, 0xbd, 0x87, 0x43, 0x5a, 0x89, 0x0e, 0x71, 0x97,
+	0x97, 0xf9, 0x6f, 0xe0, 0xdb, 0x74, 0x79, 0x3e, 0xe6, 0x38, 0x13, 0xff, 0xdd, 0x4b, 0x89, 0xe3,
+	0x63, 0xe9, 0xcf, 0x0c, 0xae, 0xad, 0x0d, 0xd3, 0x2d, 0x37, 0xcd, 0xb1, 0x15, 0xa4, 0xb5, 0x9d,
+	0xaf, 0xb1, 0xb5, 0xb4, 0x2a, 0x9f, 0xa3, 0x26, 0xa1, 0x68, 0x6d, 0x7e, 0x0b, 0x0e, 0xa4, 0xb5,
+	0x32, 0x7b, 0x5a, 0xe8, 0xfc, 0x88, 0x14, 0x6c, 0xf0, 0x80, 0x43, 0xd1, 0x77, 0x38, 0xf6, 0x58,
+	0x4d, 0x14, 0xce, 0xa5, 0x65, 0xdf, 0x25, 0x76, 0xcf, 0x91, 0xfe, 0xca, 0x60, 0xcf, 0x5f, 0x14,
+	0x37, 0x34, 0xdc, 0x91, 0x6e, 0x68, 0x4b, 0xd3, 0x95, 0x68, 0x8b, 0xa9, 0xfa, 0x44, 0x4d, 0xec,
+	0x72, 0x6c, 0xad, 0xcd, 0x3f, 0x80, 0x9b, 0xd8, 0x7c, 0xa1, 0xf3, 0xe3, 0xaf, 0x54, 0x7d, 0x6e,
+	0x1e, 0x01, 0xce, 0xe3, 0x12, 0x06, 0xb6, 0x98, 0xe3, 0x5f, 0x2d, 0x53, 0xf7, 0x5a, 0x3c, 0xef,
+	0x48, 0x7f, 0x67, 0x70, 0xd0, 0x5b, 0x48, 0x57, 0x1f, 0xed, 0x61, 0x27, 0xef, 0xca, 0x76, 0x43,
+	0xa7, 0xdf, 0xf8, 0x0e, 0x90, 0xc0, 0x1e, 0xb2, 0xd6, 0x5b, 0x70, 0xae, 0xb7, 0xcd, 0xcb, 0x97,
+	0xc2, 0x1e, 0xc5, 0x7f, 0x2e, 0xcb, 0x99, 0xa2, 0x62, 0x03, 0xb1, 0x86, 0xf1, 0x21, 0xec, 0x92,
+	0xed, 0xfa, 0xa4, 0x21, 0x0c, 0x84, 0x0f, 0xdd, 0xbb, 0xf5, 0xe2, 0x2c, 0xd9, 0xfa, 0xeb, 0x2c,
+	0xd9, 0x7a, 0x79, 0x96, 0xb0, 0x67, 0x8b, 0x84, 0xfd, 0xb2, 0x48, 0xd8, 0xf3, 0x45, 0xc2, 0x5e,
+	0x2c, 0x12, 0xf6, 0xf7, 0x22, 0x61, 0xff, 0x2e, 0x92, 0xad, 0x97, 0x8b, 0x84, 0xfd, 0xf4, 0x4f,
+	0xb2, 0x75, 0x12, 0xe1, 0x7f, 0x48, 0xef, 0xfd, 0x17, 0x00, 0x00, 0xff, 0xff, 0xa5, 0x42, 0x2e,
+	0x7c, 0x34, 0x09, 0x00, 0x00,
 }

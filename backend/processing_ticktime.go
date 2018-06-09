@@ -5,30 +5,25 @@ import "time"
 type tickCounterData struct {
 	lastTick time.Time
 
-	twentyFiveSecondCounter  time.Duration
-	HasBeenTwentyFiveSeconds bool
+	oneMinuteCounter time.Duration
+	HasBeenOneMinute bool
+
+	thirtySecondCounter  time.Duration
+	HasBeenThirtySeconds bool
 
 	fiveSecondCounter  time.Duration
 	HasBeenFiveSeconds bool
 
 	oneSecondCounter time.Duration
 	HasBeenOneSecond bool
-
-	halfSecondCounter    time.Duration
-	HasBeenOneHalfSecond bool
-
-	deciSecondCounter     time.Duration
-	HasBeenOneTenthSecond bool
 }
 
 const (
-	oneminute         = time.Second * 60
-	twentyfiveseconds = time.Second * 25
-	fiveseconds       = time.Second * 5
-	onesecond         = time.Second
-	halfsecond        = time.Second / 2
-	decisecond        = time.Second / 10
-	waitTime          = time.Second / 1000
+	oneminute     = time.Second * 60
+	thirtyseconds = time.Second * 30
+	fiveseconds   = time.Second * 5
+	onesecond     = time.Second
+	waitTime      = time.Second / 1000
 )
 
 func (data *tickCounterData) Update() float64 {
@@ -36,17 +31,16 @@ func (data *tickCounterData) Update() float64 {
 	timeSince := time.Since(data.lastTick)
 	data.lastTick = data.lastTick.Add(timeSince)
 
-	data.twentyFiveSecondCounter += timeSince
+	data.oneMinuteCounter += timeSince
+	data.thirtySecondCounter += timeSince
 	data.fiveSecondCounter += timeSince
 	data.oneSecondCounter += timeSince
-	data.halfSecondCounter += timeSince
-	data.deciSecondCounter += timeSince
 
-	if data.twentyFiveSecondCounter >= twentyfiveseconds {
-		data.twentyFiveSecondCounter = 0
-		data.HasBeenTwentyFiveSeconds = true
+	if data.thirtySecondCounter >= thirtyseconds {
+		data.thirtySecondCounter = 0
+		data.HasBeenThirtySeconds = true
 	} else {
-		data.HasBeenTwentyFiveSeconds = false
+		data.HasBeenThirtySeconds = false
 	}
 
 	if data.fiveSecondCounter >= fiveseconds {
@@ -61,20 +55,6 @@ func (data *tickCounterData) Update() float64 {
 		data.HasBeenOneSecond = true
 	} else {
 		data.HasBeenOneSecond = false
-	}
-
-	if data.halfSecondCounter >= halfsecond {
-		data.halfSecondCounter = 0
-		data.HasBeenOneHalfSecond = true
-	} else {
-		data.HasBeenOneHalfSecond = false
-	}
-
-	if data.deciSecondCounter >= decisecond {
-		data.deciSecondCounter = 0
-		data.HasBeenOneTenthSecond = true
-	} else {
-		data.HasBeenOneTenthSecond = false
 	}
 
 	time.Sleep(waitTime)

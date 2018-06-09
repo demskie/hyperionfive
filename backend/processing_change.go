@@ -6,30 +6,30 @@ import (
 	"github.com/demskie/hyperionfive/gamestate"
 )
 
-// ChangeOwner ...
-func (galaxy *GalaxyStruct) ChangeOwner(obj *gamestate.SolarObject, newOwner int32) {
+// ChangePlanetOwner ...
+func (galaxy *GalaxyStruct) ChangePlanetOwner(planet *gamestate.Planet, newOwner int32) {
 	galaxy.PlayerFogOfWarMutex.Lock()
 	defer galaxy.PlayerFogOfWarMutex.Unlock()
-	if obj.Owner == newOwner {
-		log.Error(fmt.Sprintf("obj.ChangeOwner called unnecessarily on '%v'", obj.Owner))
+	if planet.Owner == newOwner {
+		log.Error(fmt.Sprintf("galaxy.ChangePlanetOwner called unnecessarily on '%v'", planet.Owner))
 		return
 	}
-	oldOwner := obj.Owner
-	obj.Owner = newOwner
+	oldOwner := planet.Owner
+	planet.Owner = newOwner
 
 	if oldOwner != 0 {
 		_, playerExists := galaxy.PlayerFogOfWar[oldOwner]
 		if playerExists {
 			removeEntireSystem := true
-			systemInQuestion := galaxy.GetSolarSystemFromName(obj.ParentSystemNameUint)
-			for _, solarObject := range systemInQuestion.Solarobjectslice {
-				if solarObject.Owner == oldOwner {
+			systemInQuestion := galaxy.GetSystemFromName(planet.ParentSystemNameUint)
+			for _, pl := range systemInQuestion.Planetslice {
+				if pl.Owner == oldOwner {
 					removeEntireSystem = false
 					break
 				}
 			}
 			if removeEntireSystem {
-				delete(galaxy.PlayerFogOfWar[oldOwner], obj.ParentSystemNameUint)
+				delete(galaxy.PlayerFogOfWar[oldOwner], planet.ParentSystemNameUint)
 			}
 			if len(galaxy.PlayerFogOfWar[oldOwner]) == 0 {
 				delete(galaxy.PlayerFogOfWar, oldOwner)
@@ -37,11 +37,11 @@ func (galaxy *GalaxyStruct) ChangeOwner(obj *gamestate.SolarObject, newOwner int
 		}
 	}
 
-	if oldOwner == 0 && obj.IsPlanet() {
+	if oldOwner == 0 {
 		galaxy.NeutralTerranPlanetMutex.Lock()
 		slc := galaxy.NeutralTerranPlanetSlice
-		for idx, anObj := range galaxy.NeutralTerranPlanetSlice {
-			if anObj == obj {
+		for idx, aPlanet := range galaxy.NeutralTerranPlanetSlice {
+			if aPlanet == planet {
 				slc[idx] = slc[len(slc)-1]
 				slc[len(slc)-1] = nil
 				galaxy.NeutralTerranPlanetSlice = slc[:len(slc)-1]
@@ -52,18 +52,16 @@ func (galaxy *GalaxyStruct) ChangeOwner(obj *gamestate.SolarObject, newOwner int
 	}
 
 	if newOwner != 0 {
-		ss := galaxy.GetSolarSystemFromName(obj.ParentSystemNameUint)
+		ss := galaxy.GetSystemFromName(planet.ParentSystemNameUint)
 		_, playerExists := galaxy.PlayerFogOfWar[newOwner]
 		if playerExists {
-			galaxy.PlayerFogOfWar[newOwner][obj.ParentSystemNameUint] = ss
+			galaxy.PlayerFogOfWar[newOwner][planet.ParentSystemNameUint] = ss
 		} else {
-			galaxy.PlayerFogOfWar[newOwner] = map[uint64]*gamestate.SolarSystem{obj.ParentSystemNameUint: ss}
+			galaxy.PlayerFogOfWar[newOwner] = map[uint64]*gamestate.System{planet.ParentSystemNameUint: ss}
 		}
-	}
-
-	if newOwner == 0 && obj.IsPlanet() {
+	} else {
 		galaxy.NeutralTerranPlanetMutex.Lock()
-		galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, obj)
+		galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, planet)
 		galaxy.NeutralTerranPlanetMutex.Unlock()
 	}
 

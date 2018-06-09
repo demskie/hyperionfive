@@ -33,23 +33,26 @@ type GalaxyStruct struct {
 
 	// all objects that have a population
 	AnyPlanetMutex *sync.Mutex
-	AnyPlanetSlice []*gamestate.SolarObject
+	AnyPlanetSlice []*gamestate.Planet
 
 	// neutral planets
 	NeutralAnyPlanetMutex *sync.Mutex
-	NeutralAnyPlanetSlice []*gamestate.SolarObject
+	NeutralAnyPlanetSlice []*gamestate.Planet
 
 	// used when spawning new players
 	NeutralTerranPlanetMutex *sync.Mutex
-	NeutralTerranPlanetSlice []*gamestate.SolarObject
+	NeutralTerranPlanetSlice []*gamestate.Planet
 
 	// used to get pointers based on ID or Name
 	PointerMappings *PointerMappings
 
 	// used when serializing data for players
 	PlayerFogOfWarMutex *sync.Mutex
-	PlayerFogOfWar      map[int32]map[uint64]*gamestate.SolarSystem // playerName // sysName // sysPtr
+	PlayerFogOfWar      map[int32]map[uint64]*gamestate.System // playerName // sysName // sysPtr
 
 	// system and planet names
 	SystemAndPlanetNames *names.NameGenerator
+
+	// used to lookup system by name
+	SystemNameLookup map[uint64]*gamestate.System
 }

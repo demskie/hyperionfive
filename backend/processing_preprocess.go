@@ -7,22 +7,26 @@ func (galaxy *GalaxyStruct) PreprocessPointerMappings() {
 	const fName = "(preprocessPointerMappings)"
 	log.Debug(fName, "starting")
 	var (
-		ss     *gamestate.SolarSystem
-		obj    *gamestate.SolarObject
-		fleet  *gamestate.GalacticFleet
+		ss     *gamestate.System
+		planet *gamestate.Planet
+		object *gamestate.Object
+		fleet  *gamestate.Fleet
 		battle *gamestate.OngoingBattle
 		siege  *gamestate.OngoingSiege
 		action *gamestate.OutstandingAction
 	)
-	for _, ss = range galaxy.Protobuf.Solarsystemslice {
-		for _, obj = range ss.Solarobjectslice {
-			galaxy.PointerMappings.solarObjectMappings[obj.NameUint] = obj
+	for _, ss = range galaxy.Protobuf.Systemslice {
+		for _, planet = range ss.Planetslice {
+			galaxy.PointerMappings.planetMappings[planet.NameUint] = planet
 		}
-		galaxy.PointerMappings.solarSystemMappings[ss.NameUint] = ss
+		for _, object = range ss.Objectslice {
+			galaxy.PointerMappings.objectMappings[object.NameUint] = object
+		}
+		galaxy.PointerMappings.systemMappings[ss.NameUint] = ss
 	}
-	for _, fleet = range galaxy.Protobuf.Galacticfleetslice {
-		galaxy.PointerMappings.galacticFleetMappings[fleet.FleetID] = fleet
-		galaxy.PointerMappings.galacticFleetSlice[int(fleet.FleetID)] = fleet
+	for _, fleet = range galaxy.Protobuf.Fleetslice {
+		galaxy.PointerMappings.fleetMappings[fleet.FleetID] = fleet
+		galaxy.PointerMappings.fleetSlice[int(fleet.FleetID)] = fleet
 	}
 	for _, battle = range galaxy.Protobuf.Ongoingbattleslice {
 		galaxy.PointerMappings.ongoingBattleMappings[battle.BattleID] = battle
@@ -43,19 +47,17 @@ func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
 	const fName = "(preprocessPopulationObjects)"
 	log.Debug(fName, "starting")
 	var (
-		ss  *gamestate.SolarSystem
-		obj *gamestate.SolarObject
+		ss     *gamestate.System
+		planet *gamestate.Planet
 	)
-	for _, ss = range galaxy.Protobuf.Solarsystemslice {
-		for _, obj = range ss.Solarobjectslice {
-			if obj.IsPlanet() {
-				galaxy.AnyPlanetSlice = append(galaxy.AnyPlanetSlice, obj)
-				if obj.Owner == 0 {
-					galaxy.NeutralAnyPlanetSlice = append(galaxy.NeutralAnyPlanetSlice, obj)
-				}
-				if obj.Owner == 0 && obj.ObjectType == gamestate.TERRAN {
-					galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, obj)
-				}
+	for _, ss = range galaxy.Protobuf.Systemslice {
+		for _, planet = range ss.Planetslice {
+			galaxy.AnyPlanetSlice = append(galaxy.AnyPlanetSlice, planet)
+			if planet.Owner == 0 {
+				galaxy.NeutralAnyPlanetSlice = append(galaxy.NeutralAnyPlanetSlice, planet)
+			}
+			if planet.Owner == 0 && planet.ObjectType == gamestate.TERRAN {
+				galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, planet)
 			}
 		}
 	}
@@ -66,22 +68,31 @@ func (galaxy *GalaxyStruct) PreprocessPlayerFogOfWar() {
 	const fName = "(preprocessPlayerFogOfWar)"
 	log.Debug(fName, "starting")
 	var (
-		ss     *gamestate.SolarSystem
-		obj    *gamestate.SolarObject
+		ss     *gamestate.System
+		planet *gamestate.Planet
 		exists bool
 	)
-	for _, ss = range galaxy.Protobuf.Solarsystemslice {
-		for _, obj = range ss.Solarobjectslice {
-			if obj.Owner == 0 {
+	for _, ss = range galaxy.Protobuf.Systemslice {
+		for _, planet = range ss.Planetslice {
+			if planet.Owner == 0 {
 				continue
 			}
-			_, exists = galaxy.PlayerFogOfWar[obj.Owner]
+			_, exists = galaxy.PlayerFogOfWar[planet.Owner]
 			if !exists {
-				galaxy.PlayerFogOfWar[obj.Owner] = map[uint64]*gamestate.SolarSystem{}
-				galaxy.PlayerFogOfWar[obj.Owner][ss.NameUint] = ss
-			} else if galaxy.PlayerFogOfWar[obj.Owner][ss.NameUint] != ss {
-				galaxy.PlayerFogOfWar[obj.Owner][ss.NameUint] = ss
+				galaxy.PlayerFogOfWar[planet.Owner] = map[uint64]*gamestate.System{}
+				galaxy.PlayerFogOfWar[planet.Owner][ss.NameUint] = ss
+			} else if galaxy.PlayerFogOfWar[planet.Owner][ss.NameUint] != ss {
+				galaxy.PlayerFogOfWar[planet.Owner][ss.NameUint] = ss
 			}
 		}
+	}
+}
+
+// PreprocessAllocations ...
+func (galaxy *GalaxyStruct) PreprocessAllocations() {
+	const fName = "(preprocessAllocations)"
+	log.Debug(fName, "starting")
+	for _, ss := range galaxy.Protobuf.Systemslice {
+		galaxy.SystemNameLookup[ss.NameUint] = ss
 	}
 }

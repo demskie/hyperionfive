@@ -81,10 +81,10 @@ func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Con
 
 			// prepare data
 			partialGalaxy := &gamestate.Galaxy{
-				NameUint:         universe.GalaxyNameUint, // TODO // fix this
-				GlobalX:          universe.GlobalX,
-				GlobalY:          universe.GlobalY,
-				Solarsystemslice: universe.PlayerPtrs[authenticatedUserID],
+				NameUint:    universe.GalaxyNameUint, // TODO // fix this
+				GlobalX:     universe.GlobalX,
+				GlobalY:     universe.GlobalY,
+				Systemslice: universe.PlayerPtrs[authenticatedUserID],
 			}
 
 			// serialize this information

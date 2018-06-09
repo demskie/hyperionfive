@@ -2,7 +2,7 @@ syntax = "proto3";
 package gamestate;
 
 
-message SolarObject {
+message Planet {
 	uint64 nameUint = 1;
 	uint64 parentSystemNameUint = 2;
 	int64 interX = 3;
@@ -14,17 +14,31 @@ message SolarObject {
 	int32 health = 9;
 	int32 focus = 10;
 	int32 progress = 11;
+	int32 dockedTitanCount = 12;
+	int32 dockedCapitalCount = 13;
+	int32 dockedFighterCount = 14;
+}
+
+message Object {
+	uint64 nameUint = 1;
+	uint64 parentSystemNameUint = 2;
+	int64 interX = 3;
+	int64 interY = 4;
+	int32 owner = 5;
+	int32 objectType = 6;
+	int32 health = 7;
 }
 
 
-message SolarSystem {
+message System {
     uint64 nameUint = 1;
     int64 interX = 2;
     int64 interY = 3;
 	int32 primaryOwner = 4;
     int32 systemType = 16;
-	repeated SolarObject solarobjectslice = 128;
-	repeated uint64 connectedSolarSystemsNameUint = 129;
+	repeated uint64 connectedSystemsNameUint = 64;
+	repeated Planet planetslice = 128;
+	repeated Object objectslice = 129;
 }
 
 
@@ -33,15 +47,15 @@ message Galaxy {
     int64 globalX = 2;
     int64 globalY = 3;
     int32 galaxyType = 16;
-	repeated SolarSystem solarsystemslice = 128;
-	repeated GalacticFleet galacticfleetslice = 129;
+	repeated System systemslice = 128;
+	repeated Fleet fleetslice = 129;
 	repeated OngoingBattle ongoingbattleslice = 130;
 	repeated OngoingSiege ongoingsiegeslice = 131;
 	repeated OutstandingAction outstandingactionslice = 132;
 }
 
 
-message GalacticFleet {
+message Fleet {
 	int32 fleetID = 1;
 	int64 interX = 2;
 	int64 interY = 3;
@@ -50,17 +64,14 @@ message GalacticFleet {
 	int32 titanCount = 32;
 	int32 capitalCount = 33;
 	int32 fighterCount = 34;
-	int32 flakCorvetteCount = 35;
-	int32 largeTradeshipCount = 36;
-	int32 colonizerCount = 37;
 }
 
 
 message OngoingBattle {
 	int32 battleID = 1;
 	int32 strategy = 2;
-	repeated int32 attackingFleetIDs = 128;
-	repeated int32 defendingFleetIDs = 129;
+	repeated int32 attackingFleetIDs = 64;
+	repeated int32 defendingFleetIDs = 65;
 }
 
 
@@ -68,7 +79,7 @@ message OngoingSiege {
 	int32 siegeID = 1;
 	int64 timeLeft = 2;
 	uint64 fightingOverSystemNameUint = 3;
-	repeated int32 aggressorFleetIDs = 128;
+	repeated int32 aggressorFleetIDs = 64;
 }
 
 
@@ -77,8 +88,8 @@ message OutstandingAction {
 	int32 actionType = 2;
 	int64 timeLeft = 3;
 	int32 owner = 4;
-	repeated int64 actionValues = 128;
-	repeated uint64 actionNames = 129;
+	repeated int64 actionValues = 64;
+	repeated uint64 actionNames = 65;
 }
 
 

@@ -2,12 +2,12 @@ package backend
 
 import "github.com/demskie/hyperionfive/gamestate"
 
-// CreateGalacticFleet ...
-func (galaxy *GalaxyStruct) CreateGalacticFleet(fleet *gamestate.GalacticFleet) {
-	galaxy.PointerMappings.galacticFleetMutex.Lock()
-	defer galaxy.PointerMappings.galacticFleetMutex.Unlock()
-	fleet.FleetID = int32(len(galaxy.Protobuf.Galacticfleetslice))
-	galaxy.Protobuf.Galacticfleetslice = append(galaxy.Protobuf.Galacticfleetslice, fleet)
+// CreateFleet ...
+func (galaxy *GalaxyStruct) CreateFleet(fleet *gamestate.Fleet) {
+	galaxy.PointerMappings.fleetMutex.Lock()
+	defer galaxy.PointerMappings.fleetMutex.Unlock()
+	fleet.FleetID = int32(len(galaxy.Protobuf.Fleetslice))
+	galaxy.Protobuf.Fleetslice = append(galaxy.Protobuf.Fleetslice, fleet)
 }
 
 // CreateOngoingBattle ...
