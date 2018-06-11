@@ -28,7 +28,7 @@ const (
 
 // GetPlanetTypeString ...
 func (pl *Planet) GetPlanetTypeString() string {
-	switch pl.ObjectType {
+	switch pl.PlanetType {
 	case TERRAN:
 		return "TERRAN"
 	case DESERT:

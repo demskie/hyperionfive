@@ -52,7 +52,7 @@ func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
 			if planet.OwnerUint == 0 {
 				galaxy.NeutralAnyPlanetSlice = append(galaxy.NeutralAnyPlanetSlice, planet)
 			}
-			if planet.OwnerUint == 0 && planet.ObjectType == gamestate.TERRAN {
+			if planet.OwnerUint == 0 && planet.PlanetType == gamestate.TERRAN {
 				galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, planet)
 			}
 		}

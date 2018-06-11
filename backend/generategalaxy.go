@@ -290,7 +290,7 @@ func generateSystem(ss *gamestate.System, rnum *rand.Rand, nameGen *names.NameGe
 		// generate type
 		result, err := randutil.WeightedChoice(weightedObjTypes, rnum)
 		log.CheckError(err, fName)
-		newPlanet.ObjectType = result.Object.(int32)
+		newPlanet.PlanetType = result.Object.(int32)
 		// generate name
 		rawName = nameGen.GenerateName(rnum)
 		newPlanet.NameUint = rawName.GetNameUint()

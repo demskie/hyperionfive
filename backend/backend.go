@@ -78,7 +78,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		PlayerNameData:       stringdatastore.New(),
 		SystemAndPlanetNames: galaxy.SystemAndPlanetNames,
 		PendingPlayerSpawns:  make([]*playerInfo, 0),
-		Firewall:             nil,
+		Firewall:             nil, // BUG // why is this here?
 		Actors:               make([]*actor.Bot, 0),
 	}
 
@@ -118,8 +118,8 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 				&playerInfo{
 					nameUint: 123456789,
 					strength: 1,
-				})
-
+				},
+			)
 			universe.Unlock()
 		}
 		// start monitoring backend atomic counters
@@ -138,7 +138,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			galaxy.AdvanceProduction()       // processing_production.go
 			galaxy.ProcessOngoingBattles()   // processing_battle.go
 			galaxy.MoveFleets()              // processing_movefleets.go
-
+			galaxy.AdvanceActors(universe)   // processing_actors.go
 			universe.Unlock()
 
 			close(universe.ClientSignal)
@@ -153,7 +153,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	muxSecure := http.NewServeMux()
 
 	// setup the websocket handlers
-	muxSecure.HandleFunc("/clienttobackend", universe.HandleClientToBackend)
+	muxSecure.HandleFunc("/clienttobackend", universe.HandleClientToBackend) // websocket_handlers.go
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{

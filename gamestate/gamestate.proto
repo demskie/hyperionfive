@@ -10,7 +10,7 @@ message Planet {
 	uint64 ownerUint = 5;
 	int32 food = 6;
 	int64 population = 7;
-	int32 objectType = 8;
+	int32 planetType = 8;
 	int32 health = 9;
 	int32 focus = 10;
 	int32 progress = 11;

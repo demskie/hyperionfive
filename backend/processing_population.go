@@ -71,7 +71,7 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 				planet.Population = 100 + rnum.Int63n(2302)
 			}
 			N = float64(planet.Population)
-			K = getCapacity(planet.ObjectType, planet.Food)
+			K = getCapacity(planet.PlanetType, planet.Food)
 			K -= float64(rnum.Int63n(1 + int64(K*.05)))
 			logisticPercentChange = (K - N) / K
 			switch {
