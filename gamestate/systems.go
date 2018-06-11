@@ -9,3 +9,6 @@ const (
 	WHITEDWARF               // just asteroids
 	BLACKHOLE                // random, dangerous and AI spawn here
 )
+
+// GRAVITYWELLSIZE boundary of system
+const GRAVITYWELLSIZE = 100000

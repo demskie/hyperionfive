@@ -137,14 +137,14 @@ func (gal *GalaxyStruct) Generate() {
 			} else if normalDistVal > 9 {
 				normalDistVal = 9
 			}
-			ss.ConnectedSystemsNameUint = make([]uint64, normalDistVal)
+			ss.ConnectedSystemsUint = make([]uint64, normalDistVal)
 			neighbors, err := gal.Rtree.NearestNeighbors(ss.NameUint, normalDistVal)
 			if err != spatialindex.ErrNotEnoughNeighbors &&
 				log.CheckError(err, fName) {
 				log.SuddenExit()
 			}
 			for i, neighbor := range neighbors {
-				ss.ConnectedSystemsNameUint[i] = neighbor.ID
+				ss.ConnectedSystemsUint[i] = neighbor.ID
 			}
 		}
 	})
@@ -296,7 +296,7 @@ func generateSystem(ss *gamestate.System, rnum *rand.Rand, nameGen *names.NameGe
 		newPlanet.NameUint = rawName.GetNameUint()
 		nameGen.AddToIndex(rawName)
 		// insert parentSystemName
-		newPlanet.ParentSystemNameUint = ss.NameUint
+		newPlanet.ParentSystemUint = ss.NameUint
 		// append result
 		ss.Planetslice = append(ss.Planetslice, newPlanet)
 	}

@@ -46,8 +46,9 @@ func (universe *UniverseStruct) HandleClientToBackend(w http.ResponseWriter, r *
 
 	userid := auth.HandleGoogleAuth(fName, conn, fwall, args, log)
 	if userid != "" {
-		id := universe.PlayerNameData.GetReferenceInt(userid)
-		universe.ClientToBackendCommunication(conn, id)
+		// TODO // actually implement using uint64
+		//id := universe.PlayerNameData.GetReferenceInt(userid)
+		universe.ClientToBackendCommunication(conn, 123456789)
 	}
 }
 

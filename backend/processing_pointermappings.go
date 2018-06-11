@@ -17,19 +17,15 @@ type PointerMappings struct {
 
 	fleetMutex    *sync.RWMutex
 	fleetMappings map[int32]*gamestate.Fleet
-	fleetSlice    []*gamestate.Fleet
 
-	ongoingBattleMutex    *sync.RWMutex
-	ongoingBattleMappings map[int32]*gamestate.OngoingBattle
-	ongoingBattleSlice    []*gamestate.OngoingBattle
+	battleMutex    *sync.RWMutex
+	battleMappings map[int32]*gamestate.Battle
 
-	ongoingSiegeMutex    *sync.RWMutex
-	ongoingSiegeMappings map[int32]*gamestate.OngoingSiege
-	ongoingSiegeSlice    []*gamestate.OngoingSiege
+	siegeMutex    *sync.RWMutex
+	siegeMappings map[int32]*gamestate.Siege
 
-	outstandingActionMutex    *sync.RWMutex
-	outstandingActionMappings map[int32]*gamestate.OutstandingAction
-	outstandingActionSlice    []*gamestate.OutstandingAction
+	actionMutex    *sync.RWMutex
+	actionMappings map[int32]*gamestate.Action
 }
 
 // NewPointerMappings ...
@@ -45,19 +41,15 @@ func NewPointerMappings() *PointerMappings {
 
 	ptrMappings.fleetMutex = &sync.RWMutex{}
 	ptrMappings.fleetMappings = map[int32]*gamestate.Fleet{}
-	ptrMappings.fleetSlice = []*gamestate.Fleet{}
 
-	ptrMappings.ongoingBattleMutex = &sync.RWMutex{}
-	ptrMappings.ongoingBattleMappings = map[int32]*gamestate.OngoingBattle{}
-	ptrMappings.ongoingBattleSlice = []*gamestate.OngoingBattle{}
+	ptrMappings.battleMutex = &sync.RWMutex{}
+	ptrMappings.battleMappings = map[int32]*gamestate.Battle{}
 
-	ptrMappings.ongoingSiegeMutex = &sync.RWMutex{}
-	ptrMappings.ongoingSiegeMappings = map[int32]*gamestate.OngoingSiege{}
-	ptrMappings.ongoingSiegeSlice = []*gamestate.OngoingSiege{}
+	ptrMappings.siegeMutex = &sync.RWMutex{}
+	ptrMappings.siegeMappings = map[int32]*gamestate.Siege{}
 
-	ptrMappings.outstandingActionMutex = &sync.RWMutex{}
-	ptrMappings.outstandingActionMappings = map[int32]*gamestate.OutstandingAction{}
-	ptrMappings.outstandingActionSlice = []*gamestate.OutstandingAction{}
+	ptrMappings.actionMutex = &sync.RWMutex{}
+	ptrMappings.actionMappings = map[int32]*gamestate.Action{}
 
 	return ptrMappings
 }
@@ -87,22 +79,22 @@ func (galaxy *GalaxyStruct) GetFleetFromID(fleetID int32) *gamestate.Fleet {
 }
 
 // GetBattleFromID ...
-func (galaxy *GalaxyStruct) GetBattleFromID(battleID int32) *gamestate.OngoingBattle {
-	galaxy.PointerMappings.ongoingBattleMutex.RLock()
-	defer galaxy.PointerMappings.ongoingBattleMutex.RUnlock()
-	return galaxy.Protobuf.Ongoingbattleslice[int(battleID)]
+func (galaxy *GalaxyStruct) GetBattleFromID(battleID int32) *gamestate.Battle {
+	galaxy.PointerMappings.battleMutex.RLock()
+	defer galaxy.PointerMappings.battleMutex.RUnlock()
+	return galaxy.Protobuf.Battleslice[int(battleID)]
 }
 
 // GetSiegeFromID ...
-func (galaxy *GalaxyStruct) GetSiegeFromID(siegeID int32) *gamestate.OngoingSiege {
-	galaxy.PointerMappings.ongoingSiegeMutex.RLock()
-	defer galaxy.PointerMappings.ongoingSiegeMutex.RUnlock()
-	return galaxy.Protobuf.Ongoingsiegeslice[int(siegeID)]
+func (galaxy *GalaxyStruct) GetSiegeFromID(siegeID int32) *gamestate.Siege {
+	galaxy.PointerMappings.siegeMutex.RLock()
+	defer galaxy.PointerMappings.siegeMutex.RUnlock()
+	return galaxy.Protobuf.Siegeslice[int(siegeID)]
 }
 
 // GetActionFromID ...
-func (galaxy *GalaxyStruct) GetActionFromID(actionID int32) *gamestate.OutstandingAction {
-	galaxy.PointerMappings.outstandingActionMutex.RLock()
-	defer galaxy.PointerMappings.outstandingActionMutex.RUnlock()
-	return galaxy.Protobuf.Outstandingactionslice[int(actionID)]
+func (galaxy *GalaxyStruct) GetActionFromID(actionID int32) *gamestate.Action {
+	galaxy.PointerMappings.actionMutex.RLock()
+	defer galaxy.PointerMappings.actionMutex.RUnlock()
+	return galaxy.Protobuf.Actionslice[int(actionID)]
 }

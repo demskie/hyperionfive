@@ -14,10 +14,10 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 	if galaxy.TickTime.HasBeenOneSecond == false {
 		return
 	}
-	deleteBattle := make([][]*gamestate.OngoingBattle, args.NumberOfCores)
+	deleteBattle := make([][]*gamestate.Battle, args.NumberOfCores)
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
 		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
-			coreNum, args.NumberOfCores, len(galaxy.Protobuf.Ongoingbattleslice))
+			coreNum, args.NumberOfCores, len(galaxy.Protobuf.Battleslice))
 		if stopIndex <= startIndex {
 			return
 		}
@@ -25,7 +25,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 		startIndex = rnum.Intn(imprecisionFactor)
 
 		var (
-			battle                               *gamestate.OngoingBattle
+			battle                               *gamestate.Battle
 			disadvantageScaler, lossesMultiplier float64
 			aggressorStrength, defenderStrength  int64
 			totalStrength, idx, failedIterations int64
@@ -33,10 +33,10 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 			fleet                                *gamestate.Fleet
 		)
 
-		deleteBattle[coreNum] = []*gamestate.OngoingBattle{}
+		deleteBattle[coreNum] = []*gamestate.Battle{}
 
 		for battleIndex := startIndex; battleIndex < stopIndex; battleIndex += imprecisionFactor {
-			battle = galaxy.Protobuf.Ongoingbattleslice[battleIndex]
+			battle = galaxy.Protobuf.Battleslice[battleIndex]
 			if battle.Strategy == RUSHING {
 				disadvantageScaler = float64(0.72)
 				lossesMultiplier = float64(0.06)

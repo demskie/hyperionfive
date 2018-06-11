@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/intutil"
 	"github.com/demskie/hyperionfive/names"
 	"github.com/demskie/spatialindex"
 
@@ -48,11 +49,20 @@ type GalaxyStruct struct {
 
 	// used when serializing data for players
 	PlayerFogOfWarMutex *sync.Mutex
-	PlayerFogOfWar      map[int32]map[uint64]*gamestate.System // playerName // sysName // sysPtr
+	PlayerFogOfWar      map[uint64]map[uint64]*gamestate.System // playerName // sysName // sysPtr
 
 	// system and planet names
 	SystemAndPlanetNames *names.NameGenerator
 
+	// datastore ensuring no duplicate IDs
+	FleetIDs  *intutil.Int32Generator
+	BattleIDs *intutil.Int32Generator
+	SiegeIDs  *intutil.Int32Generator
+	ActionIDs *intutil.Int32Generator
+
 	// used to lookup system by name
 	SystemNameLookup map[uint64]*gamestate.System
+
+	// used to get list of all fleets in system
+	PlayerFleetInsideSystem map[uint64]map[uint64]*gamestate.Fleet // sysName // playerName // fleet
 }

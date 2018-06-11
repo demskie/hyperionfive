@@ -4,10 +4,10 @@ package gamestate;
 
 message Planet {
 	uint64 nameUint = 1;
-	uint64 parentSystemNameUint = 2;
+	uint64 parentSystemUint = 2;
 	int64 interX = 3;
 	int64 interY = 4;
-	int32 owner = 5;
+	uint64 ownerUint = 5;
 	int32 food = 6;
 	int64 population = 7;
 	int32 objectType = 8;
@@ -21,10 +21,10 @@ message Planet {
 
 message Object {
 	uint64 nameUint = 1;
-	uint64 parentSystemNameUint = 2;
+	uint64 parentSystemUint = 2;
 	int64 interX = 3;
 	int64 interY = 4;
-	int32 owner = 5;
+	uint64 ownerUint = 5;
 	int32 objectType = 6;
 	int32 health = 7;
 }
@@ -34,9 +34,9 @@ message System {
     uint64 nameUint = 1;
     int64 interX = 2;
     int64 interY = 3;
-	int32 primaryOwner = 4;
+	uint64 primaryOwnerUint = 4;
     int32 systemType = 16;
-	repeated uint64 connectedSystemsNameUint = 64;
+	repeated uint64 connectedSystemsUint = 64;
 	repeated Planet planetslice = 128;
 	repeated Object objectslice = 129;
 }
@@ -49,9 +49,9 @@ message Galaxy {
     int32 galaxyType = 16;
 	repeated System systemslice = 128;
 	repeated Fleet fleetslice = 129;
-	repeated OngoingBattle ongoingbattleslice = 130;
-	repeated OngoingSiege ongoingsiegeslice = 131;
-	repeated OutstandingAction outstandingactionslice = 132;
+	repeated Battle battleslice = 130;
+	repeated Siege siegeslice = 131;
+	repeated Action actionslice = 132;
 }
 
 
@@ -59,15 +59,15 @@ message Fleet {
 	int32 fleetID = 1;
 	int64 interX = 2;
 	int64 interY = 3;
-	int32 owner = 4;
-	uint64 closestSystemNameUint = 5;
+	uint64 ownerUint = 4;
+	uint64 closestSystemUint = 5;
 	int32 titanCount = 32;
 	int32 capitalCount = 33;
 	int32 fighterCount = 34;
 }
 
 
-message OngoingBattle {
+message Battle {
 	int32 battleID = 1;
 	int32 strategy = 2;
 	repeated int32 attackingFleetIDs = 64;
@@ -75,19 +75,19 @@ message OngoingBattle {
 }
 
 
-message OngoingSiege {
+message Siege {
 	int32 siegeID = 1;
 	int64 timeLeft = 2;
-	uint64 fightingOverSystemNameUint = 3;
+	uint64 fightingOverSystemUint = 3;
 	repeated int32 aggressorFleetIDs = 64;
 }
 
 
-message OutstandingAction {
+message Action {
 	int32 actionID = 1;
 	int32 actionType = 2;
 	int64 timeLeft = 3;
-	int32 owner = 4;
+	uint64 ownerUint = 4;
 	repeated int64 actionValues = 64;
 	repeated uint64 actionNames = 65;
 }

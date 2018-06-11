@@ -1,6 +1,6 @@
 package gamestate
 
-// OustandingAction types
+// Action types
 const (
 	MoveFleetToAttackFleet int32 = iota
 	MoveFleetToAttackSystem

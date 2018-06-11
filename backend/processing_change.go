@@ -7,37 +7,37 @@ import (
 )
 
 // ChangePlanetOwner ...
-func (galaxy *GalaxyStruct) ChangePlanetOwner(planet *gamestate.Planet, newOwner int32) {
+func (galaxy *GalaxyStruct) ChangePlanetOwner(planet *gamestate.Planet, newOwnerUint uint64) {
 	galaxy.PlayerFogOfWarMutex.Lock()
 	defer galaxy.PlayerFogOfWarMutex.Unlock()
-	if planet.Owner == newOwner {
-		log.Error(fmt.Sprintf("galaxy.ChangePlanetOwner called unnecessarily on '%v'", planet.Owner))
+	if planet.OwnerUint == newOwnerUint {
+		log.Error(fmt.Sprintf("galaxy.ChangePlanetOwner called unnecessarily on '%v'", planet.OwnerUint))
 		return
 	}
-	oldOwner := planet.Owner
-	planet.Owner = newOwner
+	oldOwnerUint := planet.OwnerUint
+	planet.OwnerUint = newOwnerUint
 
-	if oldOwner != 0 {
-		_, playerExists := galaxy.PlayerFogOfWar[oldOwner]
+	if oldOwnerUint != 0 {
+		_, playerExists := galaxy.PlayerFogOfWar[oldOwnerUint]
 		if playerExists {
 			removeEntireSystem := true
-			systemInQuestion := galaxy.GetSystemFromName(planet.ParentSystemNameUint)
+			systemInQuestion := galaxy.GetSystemFromName(planet.ParentSystemUint)
 			for _, pl := range systemInQuestion.Planetslice {
-				if pl.Owner == oldOwner {
+				if pl.OwnerUint == oldOwnerUint {
 					removeEntireSystem = false
 					break
 				}
 			}
 			if removeEntireSystem {
-				delete(galaxy.PlayerFogOfWar[oldOwner], planet.ParentSystemNameUint)
+				delete(galaxy.PlayerFogOfWar[oldOwnerUint], planet.ParentSystemUint)
 			}
-			if len(galaxy.PlayerFogOfWar[oldOwner]) == 0 {
-				delete(galaxy.PlayerFogOfWar, oldOwner)
+			if len(galaxy.PlayerFogOfWar[oldOwnerUint]) == 0 {
+				delete(galaxy.PlayerFogOfWar, oldOwnerUint)
 			}
 		}
 	}
 
-	if oldOwner == 0 {
+	if oldOwnerUint == 0 {
 		galaxy.NeutralTerranPlanetMutex.Lock()
 		slc := galaxy.NeutralTerranPlanetSlice
 		for idx, aPlanet := range galaxy.NeutralTerranPlanetSlice {
@@ -51,13 +51,13 @@ func (galaxy *GalaxyStruct) ChangePlanetOwner(planet *gamestate.Planet, newOwner
 		galaxy.NeutralTerranPlanetMutex.Unlock()
 	}
 
-	if newOwner != 0 {
-		ss := galaxy.GetSystemFromName(planet.ParentSystemNameUint)
-		_, playerExists := galaxy.PlayerFogOfWar[newOwner]
+	if newOwnerUint != 0 {
+		ss := galaxy.GetSystemFromName(planet.ParentSystemUint)
+		_, playerExists := galaxy.PlayerFogOfWar[newOwnerUint]
 		if playerExists {
-			galaxy.PlayerFogOfWar[newOwner][planet.ParentSystemNameUint] = ss
+			galaxy.PlayerFogOfWar[newOwnerUint][planet.ParentSystemUint] = ss
 		} else {
-			galaxy.PlayerFogOfWar[newOwner] = map[uint64]*gamestate.System{planet.ParentSystemNameUint: ss}
+			galaxy.PlayerFogOfWar[newOwnerUint] = map[uint64]*gamestate.System{planet.ParentSystemUint: ss}
 		}
 	} else {
 		galaxy.NeutralTerranPlanetMutex.Lock()

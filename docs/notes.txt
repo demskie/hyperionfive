@@ -40,7 +40,7 @@ browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
 
 ////////// PROFILING NOTES //////////
 cd $GOPATH/src/github.com/uber/go-torch
-go-torch -u http://localhost:8080/debug/pprof/profile?seconds=30
+go-torch -u http://localhost:8080/debug/pprof/profile?seconds=30 && open torch.svg
 
 wget http://localhost:8080/debug/pprof/trace?seconds=30
 go tool trace trace?seconds=30

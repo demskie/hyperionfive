@@ -2,34 +2,40 @@ package backend
 
 import "github.com/demskie/hyperionfive/gamestate"
 
+// BUG // need to sweep through and cleanup unused IDs
+
 // CreateFleet ...
 func (galaxy *GalaxyStruct) CreateFleet(fleet *gamestate.Fleet) {
 	galaxy.PointerMappings.fleetMutex.Lock()
-	defer galaxy.PointerMappings.fleetMutex.Unlock()
-	fleet.FleetID = int32(len(galaxy.Protobuf.Fleetslice))
+	fleet.FleetID = galaxy.FleetIDs.Create()
 	galaxy.Protobuf.Fleetslice = append(galaxy.Protobuf.Fleetslice, fleet)
+	galaxy.PointerMappings.fleetMappings[fleet.FleetID] = fleet
+	galaxy.PointerMappings.fleetMutex.Unlock()
 }
 
 // CreateOngoingBattle ...
-func (galaxy *GalaxyStruct) CreateOngoingBattle(battle *gamestate.OngoingBattle) {
-	galaxy.PointerMappings.ongoingBattleMutex.Lock()
-	defer galaxy.PointerMappings.ongoingBattleMutex.Unlock()
-	battle.BattleID = int32(len(galaxy.Protobuf.Ongoingbattleslice))
-	galaxy.Protobuf.Ongoingbattleslice = append(galaxy.Protobuf.Ongoingbattleslice, battle)
+func (galaxy *GalaxyStruct) CreateOngoingBattle(battle *gamestate.Battle) {
+	galaxy.PointerMappings.battleMutex.Lock()
+	battle.BattleID = galaxy.BattleIDs.Create()
+	galaxy.Protobuf.Battleslice = append(galaxy.Protobuf.Battleslice, battle)
+	galaxy.PointerMappings.battleMappings[battle.BattleID] = battle
+	galaxy.PointerMappings.battleMutex.Unlock()
 }
 
 // CreateOngoingSiege ...
-func (galaxy *GalaxyStruct) CreateOngoingSiege(siege *gamestate.OngoingSiege) {
-	galaxy.PointerMappings.ongoingSiegeMutex.Lock()
-	defer galaxy.PointerMappings.ongoingSiegeMutex.Unlock()
-	siege.SiegeID = int32(len(galaxy.Protobuf.Ongoingsiegeslice))
-	galaxy.Protobuf.Ongoingsiegeslice = append(galaxy.Protobuf.Ongoingsiegeslice, siege)
+func (galaxy *GalaxyStruct) CreateOngoingSiege(siege *gamestate.Siege) {
+	galaxy.PointerMappings.siegeMutex.Lock()
+	siege.SiegeID = galaxy.SiegeIDs.Create()
+	galaxy.Protobuf.Siegeslice = append(galaxy.Protobuf.Siegeslice, siege)
+	galaxy.PointerMappings.siegeMappings[siege.SiegeID] = siege
+	galaxy.PointerMappings.siegeMutex.Unlock()
 }
 
 // CreateOutstandingAction ...
-func (galaxy *GalaxyStruct) CreateOutstandingAction(action *gamestate.OutstandingAction) {
-	galaxy.PointerMappings.outstandingActionMutex.Lock()
-	defer galaxy.PointerMappings.outstandingActionMutex.Unlock()
-	action.ActionID = int32(len(galaxy.Protobuf.Outstandingactionslice))
-	galaxy.Protobuf.Outstandingactionslice = append(galaxy.Protobuf.Outstandingactionslice, action)
+func (galaxy *GalaxyStruct) CreateOutstandingAction(action *gamestate.Action) {
+	galaxy.PointerMappings.actionMutex.Lock()
+	action.ActionID = galaxy.ActionIDs.Create()
+	galaxy.Protobuf.Actionslice = append(galaxy.Protobuf.Actionslice, action)
+	galaxy.PointerMappings.actionMappings[action.ActionID] = action
+	galaxy.PointerMappings.actionMutex.Unlock()
 }

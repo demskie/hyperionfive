@@ -11,9 +11,9 @@ func (galaxy *GalaxyStruct) PreprocessPointerMappings() {
 		planet *gamestate.Planet
 		object *gamestate.Object
 		fleet  *gamestate.Fleet
-		battle *gamestate.OngoingBattle
-		siege  *gamestate.OngoingSiege
-		action *gamestate.OutstandingAction
+		battle *gamestate.Battle
+		siege  *gamestate.Siege
+		action *gamestate.Action
 	)
 	for _, ss = range galaxy.Protobuf.Systemslice {
 		for _, planet = range ss.Planetslice {
@@ -26,19 +26,15 @@ func (galaxy *GalaxyStruct) PreprocessPointerMappings() {
 	}
 	for _, fleet = range galaxy.Protobuf.Fleetslice {
 		galaxy.PointerMappings.fleetMappings[fleet.FleetID] = fleet
-		galaxy.PointerMappings.fleetSlice[int(fleet.FleetID)] = fleet
 	}
-	for _, battle = range galaxy.Protobuf.Ongoingbattleslice {
-		galaxy.PointerMappings.ongoingBattleMappings[battle.BattleID] = battle
-		galaxy.PointerMappings.ongoingBattleSlice[int(battle.BattleID)] = battle
+	for _, battle = range galaxy.Protobuf.Battleslice {
+		galaxy.PointerMappings.battleMappings[battle.BattleID] = battle
 	}
-	for _, siege = range galaxy.Protobuf.Ongoingsiegeslice {
-		galaxy.PointerMappings.ongoingSiegeMappings[siege.SiegeID] = siege
-		galaxy.PointerMappings.ongoingSiegeSlice[int(siege.SiegeID)] = siege
+	for _, siege = range galaxy.Protobuf.Siegeslice {
+		galaxy.PointerMappings.siegeMappings[siege.SiegeID] = siege
 	}
-	for _, action = range galaxy.Protobuf.Outstandingactionslice {
-		galaxy.PointerMappings.outstandingActionMappings[action.ActionID] = action
-		galaxy.PointerMappings.outstandingActionSlice[int(action.ActionID)] = action
+	for _, action = range galaxy.Protobuf.Actionslice {
+		galaxy.PointerMappings.actionMappings[action.ActionID] = action
 	}
 }
 
@@ -53,10 +49,10 @@ func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
 	for _, ss = range galaxy.Protobuf.Systemslice {
 		for _, planet = range ss.Planetslice {
 			galaxy.AnyPlanetSlice = append(galaxy.AnyPlanetSlice, planet)
-			if planet.Owner == 0 {
+			if planet.OwnerUint == 0 {
 				galaxy.NeutralAnyPlanetSlice = append(galaxy.NeutralAnyPlanetSlice, planet)
 			}
-			if planet.Owner == 0 && planet.ObjectType == gamestate.TERRAN {
+			if planet.OwnerUint == 0 && planet.ObjectType == gamestate.TERRAN {
 				galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, planet)
 			}
 		}
@@ -74,15 +70,15 @@ func (galaxy *GalaxyStruct) PreprocessPlayerFogOfWar() {
 	)
 	for _, ss = range galaxy.Protobuf.Systemslice {
 		for _, planet = range ss.Planetslice {
-			if planet.Owner == 0 {
+			if planet.OwnerUint == 0 {
 				continue
 			}
-			_, exists = galaxy.PlayerFogOfWar[planet.Owner]
+			_, exists = galaxy.PlayerFogOfWar[planet.OwnerUint]
 			if !exists {
-				galaxy.PlayerFogOfWar[planet.Owner] = map[uint64]*gamestate.System{}
-				galaxy.PlayerFogOfWar[planet.Owner][ss.NameUint] = ss
-			} else if galaxy.PlayerFogOfWar[planet.Owner][ss.NameUint] != ss {
-				galaxy.PlayerFogOfWar[planet.Owner][ss.NameUint] = ss
+				galaxy.PlayerFogOfWar[planet.OwnerUint] = map[uint64]*gamestate.System{}
+				galaxy.PlayerFogOfWar[planet.OwnerUint][ss.NameUint] = ss
+			} else if galaxy.PlayerFogOfWar[planet.OwnerUint][ss.NameUint] != ss {
+				galaxy.PlayerFogOfWar[planet.OwnerUint][ss.NameUint] = ss
 			}
 		}
 	}

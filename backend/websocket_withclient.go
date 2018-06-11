@@ -10,7 +10,7 @@ import (
 )
 
 // ClientToBackendCommunication ...
-func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Conn, authenticatedUserID int32) {
+func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Conn, authenticatedUserID uint64) {
 	fName := "(clientToBackend)"
 
 	////////////////////////////////////////////////////////////

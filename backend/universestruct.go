@@ -18,7 +18,7 @@ type UniverseStruct struct {
 	GlobalX              int64
 	GlobalY              int64
 	ClientSignal         chan struct{}
-	PlayerPtrs           map[int32][]*gamestate.System
+	PlayerPtrs           map[uint64][]*gamestate.System
 	PlayerNameData       *stringdatastore.References
 	SystemAndPlanetNames *names.NameGenerator
 	PendingPlayerSpawns  []*playerInfo
@@ -27,6 +27,6 @@ type UniverseStruct struct {
 }
 
 type playerInfo struct {
-	uniqueID int32
+	nameUint uint64
 	strength int
 }

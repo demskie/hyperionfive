@@ -15,6 +15,7 @@ import (
 	"github.com/demskie/hyperionfive/arguments"
 	"github.com/demskie/hyperionfive/firewall"
 	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/intutil"
 	"github.com/demskie/hyperionfive/names"
 	"github.com/demskie/hyperionfive/netutil"
 	"github.com/demskie/hyperionfive/stringdatastore"
@@ -58,9 +59,14 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		NeutralTerranPlanetSlice: make([]*gamestate.Planet, 0),
 		PointerMappings:          NewPointerMappings(),
 		PlayerFogOfWarMutex:      &sync.Mutex{},
-		PlayerFogOfWar:           make(map[int32]map[uint64]*gamestate.System, maxNumberOfPlayers),
+		PlayerFogOfWar:           make(map[uint64]map[uint64]*gamestate.System, maxNumberOfPlayers),
 		SystemAndPlanetNames:     names.NewNameGenerator(args, log),
+		FleetIDs:                 intutil.NewInt32Generator(),
+		BattleIDs:                intutil.NewInt32Generator(),
+		SiegeIDs:                 intutil.NewInt32Generator(),
+		ActionIDs:                intutil.NewInt32Generator(),
 		SystemNameLookup:         make(map[uint64]*gamestate.System),
+		PlayerFleetInsideSystem:  make(map[uint64]map[uint64]*gamestate.Fleet),
 	}
 
 	universe := &UniverseStruct{
@@ -68,7 +74,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		GlobalX:              int64(0),
 		GlobalY:              int64(0),
 		ClientSignal:         make(chan struct{}),
-		PlayerPtrs:           make(map[int32][]*gamestate.System),
+		PlayerPtrs:           make(map[uint64][]*gamestate.System),
 		PlayerNameData:       stringdatastore.New(),
 		SystemAndPlanetNames: galaxy.SystemAndPlanetNames,
 		PendingPlayerSpawns:  make([]*playerInfo, 0),
@@ -110,7 +116,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			universe.PendingPlayerSpawns = append(
 				universe.PendingPlayerSpawns,
 				&playerInfo{
-					uniqueID: 123456789,
+					nameUint: 123456789,
 					strength: 1,
 				})
 
@@ -127,12 +133,11 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			}
 
 			universe.Lock()
-			galaxy.SpawnNewPlayers(universe)      // processing_playerspawn.go
-			galaxy.CalculatePopulation()          // processing_population.go
-			galaxy.IncreaseFoodOnNeutralPlanets() // processing_population.go
-			galaxy.AdvanceProduction()            // processing_production.go
-			galaxy.ProcessOngoingBattles()        // processing_battle.go
-			galaxy.MoveFleets()                   // processing_movefleets.go
+			galaxy.SpawnNewPlayers(universe) // processing_playerspawn.go
+			galaxy.CalculatePopulation()     // processing_population.go
+			galaxy.AdvanceProduction()       // processing_production.go
+			galaxy.ProcessOngoingBattles()   // processing_battle.go
+			galaxy.MoveFleets()              // processing_movefleets.go
 
 			universe.Unlock()
 
