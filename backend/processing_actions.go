@@ -26,6 +26,7 @@ func (galaxy *GalaxyStruct) ProcessActions() {
 			undockAction[action.ActionNames[0]] = action
 		}
 	}
+	galaxy.Protobuf.Actionslice = make([]*gamestate.Action, 0)
 	semaphore := make(chan struct{}, args.NumberOfCores)
 	for _, action := range fleetAction {
 		<-semaphore
