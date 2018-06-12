@@ -16,7 +16,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 	}
 	deleteBattle := make([][]*gamestate.Battle, args.NumberOfCores)
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+		startIndex, stopIndex := intutil.GetStartStopForCore(
 			coreNum, args.NumberOfCores, len(galaxy.Protobuf.Battleslice))
 		if stopIndex <= startIndex {
 			return

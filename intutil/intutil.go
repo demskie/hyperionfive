@@ -5,8 +5,8 @@ import (
 	"strconv"
 )
 
-// GetStartAndStopIndexForCore ...
-func GetStartAndStopIndexForCore(coreNum, totalCoreNum, entireSliceLength int) (startIndex, stopIndex int) {
+// GetStartStopForCore ...
+func GetStartStopForCore(coreNum, totalCoreNum, entireSliceLength int) (startIndex, stopIndex int) {
 	if totalCoreNum > entireSliceLength {
 		if coreNum < entireSliceLength {
 			return coreNum, coreNum + 1

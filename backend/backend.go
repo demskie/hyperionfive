@@ -51,6 +51,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		TimeMultiplier:           float64(1),
 		ProcessingQueue:          simplesync.NewWorkerPool(args.NumberOfCores),
 		ProcessingRnumSlice:      randutil.CreateMultipleUniqueMathRnum(args.NumberOfCores),
+		Actors:                   make([]*actor.Bot, 0),
 		AnyPlanetMutex:           &sync.Mutex{},
 		AnyPlanetSlice:           make([]*gamestate.Planet, 0),
 		NeutralAnyPlanetMutex:    &sync.Mutex{},
@@ -70,16 +71,11 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	}
 
 	universe := &UniverseStruct{
-		GalaxyNameUint:       uint64(math.MaxUint64),
-		GlobalX:              int64(0),
-		GlobalY:              int64(0),
+		GalaxyStruct:         galaxy,
 		ClientSignal:         make(chan struct{}),
-		PlayerPtrs:           make(map[uint64][]*gamestate.System),
-		PlayerNameData:       stringdatastore.New(),
+		PlayerNames:          stringdatastore.New(),
 		SystemAndPlanetNames: galaxy.SystemAndPlanetNames,
 		PendingPlayerSpawns:  make([]*playerInfo, 0),
-		Firewall:             nil, // BUG // why is this here?
-		Actors:               make([]*actor.Bot, 0),
 	}
 
 	// create or deserialize a protobuf galaxy
@@ -137,8 +133,8 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			galaxy.CalculatePopulation()     // processing_population.go
 			galaxy.AdvanceProduction()       // processing_production.go
 			galaxy.ProcessOngoingBattles()   // processing_battle.go
-			galaxy.MoveFleets()              // processing_movefleets.go
-			galaxy.AdvanceActors(universe)   // processing_actors.go
+			galaxy.AdvanceActors()           // processing_actors.go
+			galaxy.ProcessActions()          // processing_actions.go
 			universe.Unlock()
 
 			close(universe.ClientSignal)

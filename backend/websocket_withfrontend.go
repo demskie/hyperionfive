@@ -79,9 +79,9 @@ func (universe *UniverseStruct) KickoffBackendToFrontendCommunication(conn *webs
 					return
 				}
 				universe.Lock()
-				universe.GalaxyNameUint = inMsg.GalaxyNameUint
-				universe.GlobalX = inMsg.GlobalX
-				universe.GlobalY = inMsg.GlobalY
+				universe.GalaxyStruct.Protobuf.NameUint = inMsg.GalaxyNameUint
+				universe.GalaxyStruct.Protobuf.GlobalX = inMsg.GlobalX
+				universe.GalaxyStruct.Protobuf.GlobalY = inMsg.GlobalY
 				universe.Unlock()
 			}
 		}
@@ -100,16 +100,15 @@ func (universe *UniverseStruct) KickoffBackendToFrontendCommunication(conn *webs
 				// prepare outgoing message
 				universe.RLock()
 				outMsg := backendToFrontendMessage{
-					GalaxyNameUint: universe.GalaxyNameUint,
-					GlobalX:        universe.GlobalX,
-					GlobalY:        universe.GlobalY,
-					ClientIDs:      make([]string, len(universe.PlayerPtrs)),
+					GalaxyNameUint: universe.GalaxyStruct.Protobuf.NameUint,
+					GlobalX:        universe.GalaxyStruct.Protobuf.GlobalX,
+					GlobalY:        universe.GalaxyStruct.Protobuf.GlobalY,
 				}
-				i := 0
-				for playerID := range universe.PlayerPtrs {
-					outMsg.ClientIDs[i] = universe.PlayerNameData.GetString(playerID)
-					i++
-				}
+				//	i := 0
+				//	for playerID := range universe.PlayerPtrs {
+				//		outMsg.ClientIDs[i] = universe.PlayerNameData.GetString(playerID)
+				//		i++
+				//	}
 				universe.RUnlock()
 				log.Debug(fName, remoteIP, fmt.Sprintf("outMsg= %+v", outMsg))
 				// send outgoing message

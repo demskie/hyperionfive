@@ -34,7 +34,7 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers(universe *UniverseStruct) {
 		planet = galaxy.NeutralTerranPlanetSlice[randIndex]
 		planet.Food = int32(1 + playerData.strength)
 		planet.Population = int64(10000 * playerData.strength * 10)
-		universe.Actors = append(universe.Actors, actor.New(playerData.nameUint))
+		galaxy.Actors = append(galaxy.Actors, actor.New(playerData.nameUint))
 		// BUG // not implemented
 		// obj.ChangeOwner(playerData.uniqueID, galaxy)
 	}

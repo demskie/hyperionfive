@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/demskie/hyperionbot/actor"
 	"github.com/demskie/hyperionfive/gamestate"
 	"github.com/demskie/hyperionfive/intutil"
 	"github.com/demskie/hyperionfive/names"
@@ -31,6 +32,9 @@ type GalaxyStruct struct {
 	// worker queue implementation
 	ProcessingQueue     *simplesync.WorkerPool
 	ProcessingRnumSlice []*rand.Rand
+
+	// each player has a bot that micromanages units
+	Actors []*actor.Bot
 
 	// all objects that have a population
 	AnyPlanetMutex *sync.Mutex

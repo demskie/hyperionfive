@@ -83,7 +83,7 @@ func (gal *GalaxyStruct) Generate() {
 	log.Info(fName, fmt.Sprintf("generating %v systems",
 		intutil.CommaFormatNum(len(gal.Protobuf.Systemslice))))
 	gal.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+		startIndex, stopIndex := intutil.GetStartStopForCore(
 			coreNum, args.NumberOfCores, len(gal.Protobuf.Systemslice))
 		if stopIndex <= startIndex {
 			return
@@ -120,7 +120,7 @@ func (gal *GalaxyStruct) Generate() {
 	log.Info(fName, fmt.Sprintf("regenerated %v systems", intutil.CommaFormatNum(badSystems)))
 	log.Info(fName, "generating system links")
 	gal.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+		startIndex, stopIndex := intutil.GetStartStopForCore(
 			coreNum, args.NumberOfCores, len(gal.Protobuf.Systemslice))
 		if stopIndex <= startIndex {
 			return

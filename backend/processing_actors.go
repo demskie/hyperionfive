@@ -7,7 +7,7 @@ import (
 )
 
 // AdvanceActors ...
-func (galaxy *GalaxyStruct) AdvanceActors(universe *UniverseStruct) {
+func (galaxy *GalaxyStruct) AdvanceActors() {
 	const fName = "(advanceActors)"
 	const imprecisionFactor = 10
 	if galaxy.TickTime.HasBeenOneSecond == false {
@@ -15,8 +15,8 @@ func (galaxy *GalaxyStruct) AdvanceActors(universe *UniverseStruct) {
 	}
 	allActions := make([][]*actor.ClientRequest, args.NumberOfCores)
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
-			coreNum, args.NumberOfCores, len(universe.Actors))
+		startIndex, stopIndex := intutil.GetStartStopForCore(
+			coreNum, args.NumberOfCores, len(galaxy.Actors))
 		if stopIndex <= startIndex {
 			return
 		}
@@ -27,12 +27,12 @@ func (galaxy *GalaxyStruct) AdvanceActors(universe *UniverseStruct) {
 			partialGalaxy *gamestate.Galaxy
 		)
 		for botIndex := startIndex; botIndex < stopIndex; botIndex += imprecisionFactor {
-			bot = universe.Actors[botIndex]
+			bot = galaxy.Actors[botIndex]
 			partialGalaxy = &gamestate.Galaxy{
-				NameUint:    universe.GalaxyNameUint,
-				GlobalX:     universe.GlobalX,
-				GlobalY:     universe.GlobalY,
-				Systemslice: universe.PlayerPtrs[bot.GetOwner()],
+				NameUint:    galaxy.Protobuf.NameUint,
+				GlobalX:     galaxy.Protobuf.GlobalX,
+				GlobalY:     galaxy.Protobuf.GlobalY,
+				Systemslice: galaxy.PlayerFogOfWarSlice(bot.GetOwner()),
 			}
 			allActions[coreNum] = bot.Process(partialGalaxy)
 		}

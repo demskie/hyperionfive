@@ -34,6 +34,9 @@ func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Con
 	// receive request from client
 	////////////////////////////////////////////////////////////
 
+	// BUG: when receiving data from client, use a channel or slice to add
+	// data to universe so that we don't have block a consecutive request
+
 	go func() {
 		for {
 			select {
@@ -81,10 +84,10 @@ func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Con
 
 			// prepare data
 			partialGalaxy := &gamestate.Galaxy{
-				NameUint:    universe.GalaxyNameUint, // TODO // fix this
-				GlobalX:     universe.GlobalX,
-				GlobalY:     universe.GlobalY,
-				Systemslice: universe.PlayerPtrs[authenticatedUserID],
+				NameUint:    universe.GalaxyStruct.Protobuf.NameUint,
+				GlobalX:     universe.GalaxyStruct.Protobuf.GlobalX,
+				GlobalY:     universe.GalaxyStruct.Protobuf.GlobalY,
+				Systemslice: universe.GalaxyStruct.PlayerFogOfWarSlice(authenticatedUserID),
 			}
 
 			// serialize this information

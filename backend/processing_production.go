@@ -16,7 +16,7 @@ func (galaxy *GalaxyStruct) AdvanceProduction() {
 		return
 	}
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+		startIndex, stopIndex := intutil.GetStartStopForCore(
 			coreNum, args.NumberOfCores, len(galaxy.AnyPlanetSlice))
 		if stopIndex <= startIndex {
 			return

@@ -15,7 +15,7 @@ import (
 //			return
 //		}
 //		galaxy.ProcessingQueue.Execute(func(coreNum int) {
-//			startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+//			startIndex, stopIndex := intutil.GetStartStopForCore(
 //				coreNum, args.NumberOfCores, len(galaxy.AnyPlanetSlice))
 //			if stopIndex <= startIndex {
 //				return
@@ -46,7 +46,7 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 		return
 	}
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+		startIndex, stopIndex := intutil.GetStartStopForCore(
 			coreNum, args.NumberOfCores, len(galaxy.AnyPlanetSlice))
 		if stopIndex <= startIndex {
 			return
@@ -196,7 +196,7 @@ func getCapacity(planetType, planetFood int32) (capacity float64) {
 //			return
 //		}
 //		galaxy.ProcessingQueue.Execute(func(coreNum int) {
-//			startIndex, stopIndex := intutil.GetStartAndStopIndexForCore(
+//			startIndex, stopIndex := intutil.GetStartStopForCore(
 //				coreNum, args.NumberOfCores, len(galaxy.NeutralAnyPlanetSlice))
 //			if stopIndex <= startIndex {
 //				return
