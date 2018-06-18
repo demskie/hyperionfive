@@ -107,8 +107,7 @@ func (gal *GalaxyStruct) Generate() {
 					continue
 				}
 				x2, y2 = objects[0].X, objects[0].Y
-				hypotenuse := math.Sqrt(math.Pow(x2-x1, 2) + math.Pow(y2-y1, 2))
-				if hypotenuse <= minimumDistanceBetweenSystems {
+				if math.Hypot(x1-x2, y1-y2) <= minimumDistanceBetweenSystems {
 					gal.Rtree.Delete(ss.NameUint)
 					atomic.AddInt32(&badSystems, 1)
 					continue
