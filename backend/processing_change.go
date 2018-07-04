@@ -21,7 +21,7 @@ func (galaxy *GalaxyStruct) ChangePlanetOwner(planet *gamestate.Planet, newOwner
 		_, playerExists := galaxy.PlayerFogOfWar[oldOwnerUint]
 		if playerExists {
 			removeEntireSystem := true
-			systemInQuestion := galaxy.GetSystemFromName(planet.ParentSystemUint)
+			systemInQuestion := galaxy.LookupSystemName(planet.ParentSystemUint)
 			for _, pl := range systemInQuestion.Planetslice {
 				if pl.OwnerUint == oldOwnerUint {
 					removeEntireSystem = false
@@ -52,7 +52,7 @@ func (galaxy *GalaxyStruct) ChangePlanetOwner(planet *gamestate.Planet, newOwner
 	}
 
 	if newOwnerUint != 0 {
-		ss := galaxy.GetSystemFromName(planet.ParentSystemUint)
+		ss := galaxy.LookupSystemName(planet.ParentSystemUint)
 		_, playerExists := galaxy.PlayerFogOfWar[newOwnerUint]
 		if playerExists {
 			galaxy.PlayerFogOfWar[newOwnerUint][planet.ParentSystemUint] = ss

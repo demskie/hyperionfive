@@ -2,6 +2,13 @@ package gamestate
 
 import "math"
 
+// Global constants
+const (
+	FleetSpeedPerSecond     = LightYear / 1000
+	MaximumFleetAttackRange = 20 * FleetSpeedPerSecond
+	OptimalFleetAttackRange = 10 * FleetSpeedPerSecond
+)
+
 // Power ...
 func (fleet *Fleet) Power() int64 {
 	pressure := int64(fleet.TitanCount * 1000000)

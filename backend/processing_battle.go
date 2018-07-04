@@ -73,7 +73,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 					if defenderStrength <= 0 {
 						break
 					}
-					fleet = galaxy.GetFleetFromID(fleetID)
+					fleet = galaxy.LookupFleetID(fleetID)
 					if atomic.LoadInt32(&fleet.FighterCount) > 0 {
 						atomic.AddInt32(&fleet.FighterCount, -1)
 						defenderStrength--
@@ -101,7 +101,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 					if aggressorStrength <= 0 {
 						break
 					}
-					fleet = galaxy.GetFleetFromID(fleetID)
+					fleet = galaxy.LookupFleetID(fleetID)
 					if atomic.LoadInt32(&fleet.FighterCount) > 0 {
 						atomic.AddInt32(&fleet.FighterCount, -1)
 						aggressorStrength--

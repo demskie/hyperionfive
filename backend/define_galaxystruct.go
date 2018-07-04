@@ -18,6 +18,13 @@ type GalaxyStruct struct {
 	// holds protobuf prestructured data
 	Protobuf *gamestate.Galaxy
 
+	// locks for protobuf maps
+	ObjectMapMutex *sync.RWMutex
+	FleetMapMutex  *sync.RWMutex
+	BattleMapMutex *sync.RWMutex
+	SiegeMapMutex  *sync.RWMutex
+	ActionMapMutex *sync.RWMutex
+
 	// created when generating galaxy to ensure objects are far enough apart
 	Rtree *spatialindex.Tree
 
@@ -48,9 +55,6 @@ type GalaxyStruct struct {
 	NeutralTerranPlanetMutex *sync.Mutex
 	NeutralTerranPlanetSlice []*gamestate.Planet
 
-	// used to get pointers based on ID or Name
-	PointerMappings *PointerMappings
-
 	// used when serializing data for players
 	PlayerFogOfWarMutex *sync.Mutex
 	PlayerFogOfWar      map[uint64]map[uint64]*gamestate.System // playerName // sysName // sysPtr
@@ -63,9 +67,6 @@ type GalaxyStruct struct {
 	BattleIDs *intutil.Int32Generator
 	SiegeIDs  *intutil.Int32Generator
 	ActionIDs *intutil.Int32Generator
-
-	// used to lookup system by name
-	SystemNameLookup map[uint64]*gamestate.System
 
 	// used to get list of all fleets in system
 	PlayerFleetInsideSystem map[uint64]map[uint64]*gamestate.Fleet // sysName // playerName // fleet

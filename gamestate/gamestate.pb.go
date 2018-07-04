@@ -25,6 +25,7 @@ import math "math"
 
 import strings "strings"
 import reflect "reflect"
+import sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -293,15 +294,22 @@ func (m *System) GetObjectslice() []*Object {
 }
 
 type Galaxy struct {
-	NameUint    uint64    `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
-	GlobalX     int64     `protobuf:"varint,2,opt,name=globalX,proto3" json:"globalX,omitempty"`
-	GlobalY     int64     `protobuf:"varint,3,opt,name=globalY,proto3" json:"globalY,omitempty"`
-	GalaxyType  int32     `protobuf:"varint,16,opt,name=galaxyType,proto3" json:"galaxyType,omitempty"`
-	Systemslice []*System `protobuf:"bytes,128,rep,name=systemslice" json:"systemslice,omitempty"`
-	Fleetslice  []*Fleet  `protobuf:"bytes,129,rep,name=fleetslice" json:"fleetslice,omitempty"`
-	Battleslice []*Battle `protobuf:"bytes,130,rep,name=battleslice" json:"battleslice,omitempty"`
-	Siegeslice  []*Siege  `protobuf:"bytes,131,rep,name=siegeslice" json:"siegeslice,omitempty"`
-	Actionslice []*Action `protobuf:"bytes,132,rep,name=actionslice" json:"actionslice,omitempty"`
+	NameUint    uint64             `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
+	GlobalX     int64              `protobuf:"varint,2,opt,name=globalX,proto3" json:"globalX,omitempty"`
+	GlobalY     int64              `protobuf:"varint,3,opt,name=globalY,proto3" json:"globalY,omitempty"`
+	GalaxyType  int32              `protobuf:"varint,16,opt,name=galaxyType,proto3" json:"galaxyType,omitempty"`
+	Systemslice []*System          `protobuf:"bytes,128,rep,name=systemslice" json:"systemslice,omitempty"`
+	Fleetslice  []*Fleet           `protobuf:"bytes,129,rep,name=fleetslice" json:"fleetslice,omitempty"`
+	Battleslice []*Battle          `protobuf:"bytes,130,rep,name=battleslice" json:"battleslice,omitempty"`
+	Siegeslice  []*Siege           `protobuf:"bytes,131,rep,name=siegeslice" json:"siegeslice,omitempty"`
+	Actionslice []*Action          `protobuf:"bytes,132,rep,name=actionslice" json:"actionslice,omitempty"`
+	Planetmap   map[uint64]*Planet `protobuf:"bytes,160,rep,name=planetmap" json:"planetmap,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Objectmap   map[uint64]*Object `protobuf:"bytes,161,rep,name=objectmap" json:"objectmap,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Systemmap   map[uint64]*System `protobuf:"bytes,162,rep,name=systemmap" json:"systemmap,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Fleetmap    map[int32]*Fleet   `protobuf:"bytes,163,rep,name=fleetmap" json:"fleetmap,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Battlemap   map[int32]*Battle  `protobuf:"bytes,164,rep,name=battlemap" json:"battlemap,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Siegemap    map[int32]*Siege   `protobuf:"bytes,165,rep,name=siegemap" json:"siegemap,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Actionmap   map[int32]*Action  `protobuf:"bytes,166,rep,name=actionmap" json:"actionmap,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
 }
 
 func (m *Galaxy) Reset()                    { *m = Galaxy{} }
@@ -367,6 +375,55 @@ func (m *Galaxy) GetSiegeslice() []*Siege {
 func (m *Galaxy) GetActionslice() []*Action {
 	if m != nil {
 		return m.Actionslice
+	}
+	return nil
+}
+
+func (m *Galaxy) GetPlanetmap() map[uint64]*Planet {
+	if m != nil {
+		return m.Planetmap
+	}
+	return nil
+}
+
+func (m *Galaxy) GetObjectmap() map[uint64]*Object {
+	if m != nil {
+		return m.Objectmap
+	}
+	return nil
+}
+
+func (m *Galaxy) GetSystemmap() map[uint64]*System {
+	if m != nil {
+		return m.Systemmap
+	}
+	return nil
+}
+
+func (m *Galaxy) GetFleetmap() map[int32]*Fleet {
+	if m != nil {
+		return m.Fleetmap
+	}
+	return nil
+}
+
+func (m *Galaxy) GetBattlemap() map[int32]*Battle {
+	if m != nil {
+		return m.Battlemap
+	}
+	return nil
+}
+
+func (m *Galaxy) GetSiegemap() map[int32]*Siege {
+	if m != nil {
+		return m.Siegemap
+	}
+	return nil
+}
+
+func (m *Galaxy) GetActionmap() map[int32]*Action {
+	if m != nil {
+		return m.Actionmap
 	}
 	return nil
 }
@@ -821,6 +878,62 @@ func (this *Galaxy) Equal(that interface{}) bool {
 			return false
 		}
 	}
+	if len(this.Planetmap) != len(that1.Planetmap) {
+		return false
+	}
+	for i := range this.Planetmap {
+		if !this.Planetmap[i].Equal(that1.Planetmap[i]) {
+			return false
+		}
+	}
+	if len(this.Objectmap) != len(that1.Objectmap) {
+		return false
+	}
+	for i := range this.Objectmap {
+		if !this.Objectmap[i].Equal(that1.Objectmap[i]) {
+			return false
+		}
+	}
+	if len(this.Systemmap) != len(that1.Systemmap) {
+		return false
+	}
+	for i := range this.Systemmap {
+		if !this.Systemmap[i].Equal(that1.Systemmap[i]) {
+			return false
+		}
+	}
+	if len(this.Fleetmap) != len(that1.Fleetmap) {
+		return false
+	}
+	for i := range this.Fleetmap {
+		if !this.Fleetmap[i].Equal(that1.Fleetmap[i]) {
+			return false
+		}
+	}
+	if len(this.Battlemap) != len(that1.Battlemap) {
+		return false
+	}
+	for i := range this.Battlemap {
+		if !this.Battlemap[i].Equal(that1.Battlemap[i]) {
+			return false
+		}
+	}
+	if len(this.Siegemap) != len(that1.Siegemap) {
+		return false
+	}
+	for i := range this.Siegemap {
+		if !this.Siegemap[i].Equal(that1.Siegemap[i]) {
+			return false
+		}
+	}
+	if len(this.Actionmap) != len(that1.Actionmap) {
+		return false
+	}
+	for i := range this.Actionmap {
+		if !this.Actionmap[i].Equal(that1.Actionmap[i]) {
+			return false
+		}
+	}
 	return true
 }
 func (this *Fleet) Equal(that interface{}) bool {
@@ -1062,7 +1175,7 @@ func (this *Galaxy) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 13)
+	s := make([]string, 0, 20)
 	s = append(s, "&gamestate.Galaxy{")
 	s = append(s, "NameUint: "+fmt.Sprintf("%#v", this.NameUint)+",\n")
 	s = append(s, "GlobalX: "+fmt.Sprintf("%#v", this.GlobalX)+",\n")
@@ -1082,6 +1195,97 @@ func (this *Galaxy) GoString() string {
 	}
 	if this.Actionslice != nil {
 		s = append(s, "Actionslice: "+fmt.Sprintf("%#v", this.Actionslice)+",\n")
+	}
+	keysForPlanetmap := make([]uint64, 0, len(this.Planetmap))
+	for k, _ := range this.Planetmap {
+		keysForPlanetmap = append(keysForPlanetmap, k)
+	}
+	sortkeys.Uint64s(keysForPlanetmap)
+	mapStringForPlanetmap := "map[uint64]*Planet{"
+	for _, k := range keysForPlanetmap {
+		mapStringForPlanetmap += fmt.Sprintf("%#v: %#v,", k, this.Planetmap[k])
+	}
+	mapStringForPlanetmap += "}"
+	if this.Planetmap != nil {
+		s = append(s, "Planetmap: "+mapStringForPlanetmap+",\n")
+	}
+	keysForObjectmap := make([]uint64, 0, len(this.Objectmap))
+	for k, _ := range this.Objectmap {
+		keysForObjectmap = append(keysForObjectmap, k)
+	}
+	sortkeys.Uint64s(keysForObjectmap)
+	mapStringForObjectmap := "map[uint64]*Object{"
+	for _, k := range keysForObjectmap {
+		mapStringForObjectmap += fmt.Sprintf("%#v: %#v,", k, this.Objectmap[k])
+	}
+	mapStringForObjectmap += "}"
+	if this.Objectmap != nil {
+		s = append(s, "Objectmap: "+mapStringForObjectmap+",\n")
+	}
+	keysForSystemmap := make([]uint64, 0, len(this.Systemmap))
+	for k, _ := range this.Systemmap {
+		keysForSystemmap = append(keysForSystemmap, k)
+	}
+	sortkeys.Uint64s(keysForSystemmap)
+	mapStringForSystemmap := "map[uint64]*System{"
+	for _, k := range keysForSystemmap {
+		mapStringForSystemmap += fmt.Sprintf("%#v: %#v,", k, this.Systemmap[k])
+	}
+	mapStringForSystemmap += "}"
+	if this.Systemmap != nil {
+		s = append(s, "Systemmap: "+mapStringForSystemmap+",\n")
+	}
+	keysForFleetmap := make([]int32, 0, len(this.Fleetmap))
+	for k, _ := range this.Fleetmap {
+		keysForFleetmap = append(keysForFleetmap, k)
+	}
+	sortkeys.Int32s(keysForFleetmap)
+	mapStringForFleetmap := "map[int32]*Fleet{"
+	for _, k := range keysForFleetmap {
+		mapStringForFleetmap += fmt.Sprintf("%#v: %#v,", k, this.Fleetmap[k])
+	}
+	mapStringForFleetmap += "}"
+	if this.Fleetmap != nil {
+		s = append(s, "Fleetmap: "+mapStringForFleetmap+",\n")
+	}
+	keysForBattlemap := make([]int32, 0, len(this.Battlemap))
+	for k, _ := range this.Battlemap {
+		keysForBattlemap = append(keysForBattlemap, k)
+	}
+	sortkeys.Int32s(keysForBattlemap)
+	mapStringForBattlemap := "map[int32]*Battle{"
+	for _, k := range keysForBattlemap {
+		mapStringForBattlemap += fmt.Sprintf("%#v: %#v,", k, this.Battlemap[k])
+	}
+	mapStringForBattlemap += "}"
+	if this.Battlemap != nil {
+		s = append(s, "Battlemap: "+mapStringForBattlemap+",\n")
+	}
+	keysForSiegemap := make([]int32, 0, len(this.Siegemap))
+	for k, _ := range this.Siegemap {
+		keysForSiegemap = append(keysForSiegemap, k)
+	}
+	sortkeys.Int32s(keysForSiegemap)
+	mapStringForSiegemap := "map[int32]*Siege{"
+	for _, k := range keysForSiegemap {
+		mapStringForSiegemap += fmt.Sprintf("%#v: %#v,", k, this.Siegemap[k])
+	}
+	mapStringForSiegemap += "}"
+	if this.Siegemap != nil {
+		s = append(s, "Siegemap: "+mapStringForSiegemap+",\n")
+	}
+	keysForActionmap := make([]int32, 0, len(this.Actionmap))
+	for k, _ := range this.Actionmap {
+		keysForActionmap = append(keysForActionmap, k)
+	}
+	sortkeys.Int32s(keysForActionmap)
+	mapStringForActionmap := "map[int32]*Action{"
+	for _, k := range keysForActionmap {
+		mapStringForActionmap += fmt.Sprintf("%#v: %#v,", k, this.Actionmap[k])
+	}
+	mapStringForActionmap += "}"
+	if this.Actionmap != nil {
+		s = append(s, "Actionmap: "+mapStringForActionmap+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -1492,6 +1696,209 @@ func (m *Galaxy) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if len(m.Planetmap) > 0 {
+		for k, _ := range m.Planetmap {
+			dAtA[i] = 0x82
+			i++
+			dAtA[i] = 0xa
+			i++
+			v := m.Planetmap[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovGamestate(uint64(msgSize))
+			}
+			mapSize := 1 + sovGamestate(uint64(k)) + msgSize
+			i = encodeVarintGamestate(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintGamestate(dAtA, i, uint64(v.Size()))
+				n3, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n3
+			}
+		}
+	}
+	if len(m.Objectmap) > 0 {
+		for k, _ := range m.Objectmap {
+			dAtA[i] = 0x8a
+			i++
+			dAtA[i] = 0xa
+			i++
+			v := m.Objectmap[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovGamestate(uint64(msgSize))
+			}
+			mapSize := 1 + sovGamestate(uint64(k)) + msgSize
+			i = encodeVarintGamestate(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintGamestate(dAtA, i, uint64(v.Size()))
+				n4, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n4
+			}
+		}
+	}
+	if len(m.Systemmap) > 0 {
+		for k, _ := range m.Systemmap {
+			dAtA[i] = 0x92
+			i++
+			dAtA[i] = 0xa
+			i++
+			v := m.Systemmap[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovGamestate(uint64(msgSize))
+			}
+			mapSize := 1 + sovGamestate(uint64(k)) + msgSize
+			i = encodeVarintGamestate(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintGamestate(dAtA, i, uint64(v.Size()))
+				n5, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n5
+			}
+		}
+	}
+	if len(m.Fleetmap) > 0 {
+		for k, _ := range m.Fleetmap {
+			dAtA[i] = 0x9a
+			i++
+			dAtA[i] = 0xa
+			i++
+			v := m.Fleetmap[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovGamestate(uint64(msgSize))
+			}
+			mapSize := 1 + sovGamestate(uint64(k)) + msgSize
+			i = encodeVarintGamestate(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintGamestate(dAtA, i, uint64(v.Size()))
+				n6, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n6
+			}
+		}
+	}
+	if len(m.Battlemap) > 0 {
+		for k, _ := range m.Battlemap {
+			dAtA[i] = 0xa2
+			i++
+			dAtA[i] = 0xa
+			i++
+			v := m.Battlemap[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovGamestate(uint64(msgSize))
+			}
+			mapSize := 1 + sovGamestate(uint64(k)) + msgSize
+			i = encodeVarintGamestate(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintGamestate(dAtA, i, uint64(v.Size()))
+				n7, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n7
+			}
+		}
+	}
+	if len(m.Siegemap) > 0 {
+		for k, _ := range m.Siegemap {
+			dAtA[i] = 0xaa
+			i++
+			dAtA[i] = 0xa
+			i++
+			v := m.Siegemap[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovGamestate(uint64(msgSize))
+			}
+			mapSize := 1 + sovGamestate(uint64(k)) + msgSize
+			i = encodeVarintGamestate(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintGamestate(dAtA, i, uint64(v.Size()))
+				n8, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n8
+			}
+		}
+	}
+	if len(m.Actionmap) > 0 {
+		for k, _ := range m.Actionmap {
+			dAtA[i] = 0xb2
+			i++
+			dAtA[i] = 0xa
+			i++
+			v := m.Actionmap[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovGamestate(uint64(msgSize))
+			}
+			mapSize := 1 + sovGamestate(uint64(k)) + msgSize
+			i = encodeVarintGamestate(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0x8
+			i++
+			i = encodeVarintGamestate(dAtA, i, uint64(k))
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintGamestate(dAtA, i, uint64(v.Size()))
+				n9, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n9
+			}
+		}
+	}
 	return i, nil
 }
 
@@ -1585,44 +1992,44 @@ func (m *Battle) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintGamestate(dAtA, i, uint64(m.Strategy))
 	}
 	if len(m.AttackingFleetIDs) > 0 {
-		dAtA4 := make([]byte, len(m.AttackingFleetIDs)*10)
-		var j3 int
+		dAtA11 := make([]byte, len(m.AttackingFleetIDs)*10)
+		var j10 int
 		for _, num1 := range m.AttackingFleetIDs {
 			num := uint64(num1)
 			for num >= 1<<7 {
-				dAtA4[j3] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA11[j10] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j3++
+				j10++
 			}
-			dAtA4[j3] = uint8(num)
-			j3++
+			dAtA11[j10] = uint8(num)
+			j10++
 		}
 		dAtA[i] = 0x82
 		i++
 		dAtA[i] = 0x4
 		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(j3))
-		i += copy(dAtA[i:], dAtA4[:j3])
+		i = encodeVarintGamestate(dAtA, i, uint64(j10))
+		i += copy(dAtA[i:], dAtA11[:j10])
 	}
 	if len(m.DefendingFleetIDs) > 0 {
-		dAtA6 := make([]byte, len(m.DefendingFleetIDs)*10)
-		var j5 int
+		dAtA13 := make([]byte, len(m.DefendingFleetIDs)*10)
+		var j12 int
 		for _, num1 := range m.DefendingFleetIDs {
 			num := uint64(num1)
 			for num >= 1<<7 {
-				dAtA6[j5] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA13[j12] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j5++
+				j12++
 			}
-			dAtA6[j5] = uint8(num)
-			j5++
+			dAtA13[j12] = uint8(num)
+			j12++
 		}
 		dAtA[i] = 0x8a
 		i++
 		dAtA[i] = 0x4
 		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(j5))
-		i += copy(dAtA[i:], dAtA6[:j5])
+		i = encodeVarintGamestate(dAtA, i, uint64(j12))
+		i += copy(dAtA[i:], dAtA13[:j12])
 	}
 	return i, nil
 }
@@ -1658,24 +2065,24 @@ func (m *Siege) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintGamestate(dAtA, i, uint64(m.FightingOverSystemUint))
 	}
 	if len(m.AggressorFleetIDs) > 0 {
-		dAtA8 := make([]byte, len(m.AggressorFleetIDs)*10)
-		var j7 int
+		dAtA15 := make([]byte, len(m.AggressorFleetIDs)*10)
+		var j14 int
 		for _, num1 := range m.AggressorFleetIDs {
 			num := uint64(num1)
 			for num >= 1<<7 {
-				dAtA8[j7] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA15[j14] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j7++
+				j14++
 			}
-			dAtA8[j7] = uint8(num)
-			j7++
+			dAtA15[j14] = uint8(num)
+			j14++
 		}
 		dAtA[i] = 0x82
 		i++
 		dAtA[i] = 0x4
 		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(j7))
-		i += copy(dAtA[i:], dAtA8[:j7])
+		i = encodeVarintGamestate(dAtA, i, uint64(j14))
+		i += copy(dAtA[i:], dAtA15[:j14])
 	}
 	return i, nil
 }
@@ -1716,43 +2123,43 @@ func (m *Action) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintGamestate(dAtA, i, uint64(m.OwnerUint))
 	}
 	if len(m.ActionValues) > 0 {
-		dAtA10 := make([]byte, len(m.ActionValues)*10)
-		var j9 int
+		dAtA17 := make([]byte, len(m.ActionValues)*10)
+		var j16 int
 		for _, num1 := range m.ActionValues {
 			num := uint64(num1)
 			for num >= 1<<7 {
-				dAtA10[j9] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA17[j16] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j9++
+				j16++
 			}
-			dAtA10[j9] = uint8(num)
-			j9++
+			dAtA17[j16] = uint8(num)
+			j16++
 		}
 		dAtA[i] = 0x82
 		i++
 		dAtA[i] = 0x4
 		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(j9))
-		i += copy(dAtA[i:], dAtA10[:j9])
+		i = encodeVarintGamestate(dAtA, i, uint64(j16))
+		i += copy(dAtA[i:], dAtA17[:j16])
 	}
 	if len(m.ActionNames) > 0 {
-		dAtA12 := make([]byte, len(m.ActionNames)*10)
-		var j11 int
+		dAtA19 := make([]byte, len(m.ActionNames)*10)
+		var j18 int
 		for _, num := range m.ActionNames {
 			for num >= 1<<7 {
-				dAtA12[j11] = uint8(uint64(num)&0x7f | 0x80)
+				dAtA19[j18] = uint8(uint64(num)&0x7f | 0x80)
 				num >>= 7
-				j11++
+				j18++
 			}
-			dAtA12[j11] = uint8(num)
-			j11++
+			dAtA19[j18] = uint8(num)
+			j18++
 		}
 		dAtA[i] = 0x8a
 		i++
 		dAtA[i] = 0x4
 		i++
-		i = encodeVarintGamestate(dAtA, i, uint64(j11))
-		i += copy(dAtA[i:], dAtA12[:j11])
+		i = encodeVarintGamestate(dAtA, i, uint64(j18))
+		i += copy(dAtA[i:], dAtA19[:j18])
 	}
 	return i, nil
 }
@@ -1924,6 +2331,97 @@ func (m *Galaxy) Size() (n int) {
 		for _, e := range m.Actionslice {
 			l = e.Size()
 			n += 2 + l + sovGamestate(uint64(l))
+		}
+	}
+	if len(m.Planetmap) > 0 {
+		for k, v := range m.Planetmap {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovGamestate(uint64(l))
+			}
+			mapEntrySize := 1 + sovGamestate(uint64(k)) + l
+			n += mapEntrySize + 2 + sovGamestate(uint64(mapEntrySize))
+		}
+	}
+	if len(m.Objectmap) > 0 {
+		for k, v := range m.Objectmap {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovGamestate(uint64(l))
+			}
+			mapEntrySize := 1 + sovGamestate(uint64(k)) + l
+			n += mapEntrySize + 2 + sovGamestate(uint64(mapEntrySize))
+		}
+	}
+	if len(m.Systemmap) > 0 {
+		for k, v := range m.Systemmap {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovGamestate(uint64(l))
+			}
+			mapEntrySize := 1 + sovGamestate(uint64(k)) + l
+			n += mapEntrySize + 2 + sovGamestate(uint64(mapEntrySize))
+		}
+	}
+	if len(m.Fleetmap) > 0 {
+		for k, v := range m.Fleetmap {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovGamestate(uint64(l))
+			}
+			mapEntrySize := 1 + sovGamestate(uint64(k)) + l
+			n += mapEntrySize + 2 + sovGamestate(uint64(mapEntrySize))
+		}
+	}
+	if len(m.Battlemap) > 0 {
+		for k, v := range m.Battlemap {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovGamestate(uint64(l))
+			}
+			mapEntrySize := 1 + sovGamestate(uint64(k)) + l
+			n += mapEntrySize + 2 + sovGamestate(uint64(mapEntrySize))
+		}
+	}
+	if len(m.Siegemap) > 0 {
+		for k, v := range m.Siegemap {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovGamestate(uint64(l))
+			}
+			mapEntrySize := 1 + sovGamestate(uint64(k)) + l
+			n += mapEntrySize + 2 + sovGamestate(uint64(mapEntrySize))
+		}
+	}
+	if len(m.Actionmap) > 0 {
+		for k, v := range m.Actionmap {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovGamestate(uint64(l))
+			}
+			mapEntrySize := 1 + sovGamestate(uint64(k)) + l
+			n += mapEntrySize + 2 + sovGamestate(uint64(mapEntrySize))
 		}
 	}
 	return n
@@ -2112,6 +2610,76 @@ func (this *Galaxy) String() string {
 	if this == nil {
 		return "nil"
 	}
+	keysForPlanetmap := make([]uint64, 0, len(this.Planetmap))
+	for k, _ := range this.Planetmap {
+		keysForPlanetmap = append(keysForPlanetmap, k)
+	}
+	sortkeys.Uint64s(keysForPlanetmap)
+	mapStringForPlanetmap := "map[uint64]*Planet{"
+	for _, k := range keysForPlanetmap {
+		mapStringForPlanetmap += fmt.Sprintf("%v: %v,", k, this.Planetmap[k])
+	}
+	mapStringForPlanetmap += "}"
+	keysForObjectmap := make([]uint64, 0, len(this.Objectmap))
+	for k, _ := range this.Objectmap {
+		keysForObjectmap = append(keysForObjectmap, k)
+	}
+	sortkeys.Uint64s(keysForObjectmap)
+	mapStringForObjectmap := "map[uint64]*Object{"
+	for _, k := range keysForObjectmap {
+		mapStringForObjectmap += fmt.Sprintf("%v: %v,", k, this.Objectmap[k])
+	}
+	mapStringForObjectmap += "}"
+	keysForSystemmap := make([]uint64, 0, len(this.Systemmap))
+	for k, _ := range this.Systemmap {
+		keysForSystemmap = append(keysForSystemmap, k)
+	}
+	sortkeys.Uint64s(keysForSystemmap)
+	mapStringForSystemmap := "map[uint64]*System{"
+	for _, k := range keysForSystemmap {
+		mapStringForSystemmap += fmt.Sprintf("%v: %v,", k, this.Systemmap[k])
+	}
+	mapStringForSystemmap += "}"
+	keysForFleetmap := make([]int32, 0, len(this.Fleetmap))
+	for k, _ := range this.Fleetmap {
+		keysForFleetmap = append(keysForFleetmap, k)
+	}
+	sortkeys.Int32s(keysForFleetmap)
+	mapStringForFleetmap := "map[int32]*Fleet{"
+	for _, k := range keysForFleetmap {
+		mapStringForFleetmap += fmt.Sprintf("%v: %v,", k, this.Fleetmap[k])
+	}
+	mapStringForFleetmap += "}"
+	keysForBattlemap := make([]int32, 0, len(this.Battlemap))
+	for k, _ := range this.Battlemap {
+		keysForBattlemap = append(keysForBattlemap, k)
+	}
+	sortkeys.Int32s(keysForBattlemap)
+	mapStringForBattlemap := "map[int32]*Battle{"
+	for _, k := range keysForBattlemap {
+		mapStringForBattlemap += fmt.Sprintf("%v: %v,", k, this.Battlemap[k])
+	}
+	mapStringForBattlemap += "}"
+	keysForSiegemap := make([]int32, 0, len(this.Siegemap))
+	for k, _ := range this.Siegemap {
+		keysForSiegemap = append(keysForSiegemap, k)
+	}
+	sortkeys.Int32s(keysForSiegemap)
+	mapStringForSiegemap := "map[int32]*Siege{"
+	for _, k := range keysForSiegemap {
+		mapStringForSiegemap += fmt.Sprintf("%v: %v,", k, this.Siegemap[k])
+	}
+	mapStringForSiegemap += "}"
+	keysForActionmap := make([]int32, 0, len(this.Actionmap))
+	for k, _ := range this.Actionmap {
+		keysForActionmap = append(keysForActionmap, k)
+	}
+	sortkeys.Int32s(keysForActionmap)
+	mapStringForActionmap := "map[int32]*Action{"
+	for _, k := range keysForActionmap {
+		mapStringForActionmap += fmt.Sprintf("%v: %v,", k, this.Actionmap[k])
+	}
+	mapStringForActionmap += "}"
 	s := strings.Join([]string{`&Galaxy{`,
 		`NameUint:` + fmt.Sprintf("%v", this.NameUint) + `,`,
 		`GlobalX:` + fmt.Sprintf("%v", this.GlobalX) + `,`,
@@ -2122,6 +2690,13 @@ func (this *Galaxy) String() string {
 		`Battleslice:` + strings.Replace(fmt.Sprintf("%v", this.Battleslice), "Battle", "Battle", 1) + `,`,
 		`Siegeslice:` + strings.Replace(fmt.Sprintf("%v", this.Siegeslice), "Siege", "Siege", 1) + `,`,
 		`Actionslice:` + strings.Replace(fmt.Sprintf("%v", this.Actionslice), "Action", "Action", 1) + `,`,
+		`Planetmap:` + mapStringForPlanetmap + `,`,
+		`Objectmap:` + mapStringForObjectmap + `,`,
+		`Systemmap:` + mapStringForSystemmap + `,`,
+		`Fleetmap:` + mapStringForFleetmap + `,`,
+		`Battlemap:` + mapStringForBattlemap + `,`,
+		`Siegemap:` + mapStringForSiegemap + `,`,
+		`Actionmap:` + mapStringForActionmap + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3220,6 +3795,790 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 160:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Planetmap", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Planetmap == nil {
+				m.Planetmap = make(map[uint64]*Planet)
+			}
+			var mapkey uint64
+			var mapvalue *Planet
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &Planet{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGamestate(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Planetmap[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 161:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Objectmap", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Objectmap == nil {
+				m.Objectmap = make(map[uint64]*Object)
+			}
+			var mapkey uint64
+			var mapvalue *Object
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &Object{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGamestate(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Objectmap[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 162:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Systemmap", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Systemmap == nil {
+				m.Systemmap = make(map[uint64]*System)
+			}
+			var mapkey uint64
+			var mapvalue *System
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &System{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGamestate(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Systemmap[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 163:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Fleetmap", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Fleetmap == nil {
+				m.Fleetmap = make(map[int32]*Fleet)
+			}
+			var mapkey int32
+			var mapvalue *Fleet
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= (int32(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &Fleet{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGamestate(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Fleetmap[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 164:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Battlemap", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Battlemap == nil {
+				m.Battlemap = make(map[int32]*Battle)
+			}
+			var mapkey int32
+			var mapvalue *Battle
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= (int32(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &Battle{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGamestate(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Battlemap[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 165:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Siegemap", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Siegemap == nil {
+				m.Siegemap = make(map[int32]*Siege)
+			}
+			var mapkey int32
+			var mapvalue *Siege
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= (int32(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &Siege{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGamestate(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Siegemap[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 166:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Actionmap", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGamestate
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGamestate
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Actionmap == nil {
+				m.Actionmap = make(map[int32]*Action)
+			}
+			var mapkey int32
+			var mapvalue *Action
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowGamestate
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapkey |= (int32(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowGamestate
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &Action{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipGamestate(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthGamestate
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Actionmap[mapkey] = mapvalue
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGamestate(dAtA[iNdEx:])
@@ -4182,57 +5541,72 @@ var (
 func init() { proto.RegisterFile("gamestate.proto", fileDescriptorGamestate) }
 
 var fileDescriptorGamestate = []byte{
-	// 829 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x56, 0xbf, 0x6f, 0xd3, 0x40,
-	0x14, 0xce, 0xc5, 0xb1, 0xdb, 0x5e, 0x0b, 0xb4, 0xa7, 0xaa, 0xb2, 0x10, 0xb2, 0x82, 0xa7, 0x08,
-	0x55, 0x95, 0x28, 0x88, 0x99, 0xb6, 0xa8, 0x08, 0x09, 0x51, 0x74, 0x2d, 0x88, 0x8e, 0x17, 0xe7,
-	0xe2, 0x9a, 0x3a, 0xbe, 0xc8, 0xbe, 0x00, 0xd9, 0xca, 0xaf, 0x9d, 0x3f, 0x80, 0x8d, 0x85, 0x3f,
-	0x83, 0x81, 0xa1, 0x63, 0x27, 0xc4, 0x48, 0xc3, 0xc2, 0xd8, 0x3f, 0x01, 0xdd, 0xbb, 0xd8, 0xbe,
-	0xc4, 0x6d, 0x25, 0x36, 0xb6, 0xbc, 0xef, 0x7d, 0xef, 0xee, 0x7b, 0xdf, 0xbb, 0xe7, 0x16, 0x5f,
-	0x0b, 0x59, 0x8f, 0x67, 0x92, 0x49, 0xbe, 0xd6, 0x4f, 0x85, 0x14, 0x64, 0xae, 0x00, 0xfc, 0x63,
-	0x0b, 0x3b, 0x4f, 0x63, 0x96, 0x70, 0x49, 0xae, 0xe3, 0xd9, 0x84, 0xf5, 0xf8, 0xb3, 0x28, 0x91,
-	0x2e, 0x6a, 0xa2, 0x56, 0x83, 0x16, 0x31, 0xb9, 0x85, 0x17, 0xfb, 0x2c, 0xe5, 0x89, 0xdc, 0x1d,
-	0x66, 0x92, 0xf7, 0x80, 0x53, 0x07, 0x4e, 0x05, 0x27, 0x2b, 0xd8, 0x89, 0x12, 0xc9, 0xd3, 0x17,
-	0xae, 0xd5, 0x44, 0x2d, 0x8b, 0x8e, 0xa3, 0x02, 0xdf, 0x77, 0x1b, 0x06, 0xbe, 0x4f, 0x6e, 0xe0,
-	0x39, 0xf1, 0x3a, 0xe1, 0x29, 0x1c, 0x6a, 0xc3, 0xa1, 0x25, 0x40, 0x08, 0x6e, 0x74, 0x85, 0xe8,
-	0xb8, 0x4e, 0x13, 0xb5, 0x6c, 0x0a, 0xbf, 0x89, 0x87, 0x71, 0x5f, 0xf4, 0x07, 0x31, 0x93, 0x91,
-	0x48, 0xdc, 0x19, 0x38, 0xcd, 0x40, 0x20, 0x0f, 0x3d, 0xed, 0x0d, 0xfb, 0xdc, 0x9d, 0x85, 0x4a,
-	0x03, 0x51, 0x4a, 0x0e, 0x38, 0x8b, 0xe5, 0x81, 0x3b, 0x07, 0xb9, 0x71, 0x44, 0x96, 0xb1, 0xdd,
-	0x15, 0xc1, 0x20, 0x73, 0x31, 0xc0, 0x3a, 0x50, 0xbe, 0xf4, 0x53, 0x11, 0xa6, 0x3c, 0xcb, 0xdc,
-	0x79, 0x48, 0x14, 0xb1, 0xf2, 0xa5, 0x23, 0x82, 0x43, 0xde, 0xd9, 0x8b, 0x24, 0x4b, 0xb6, 0xc4,
-	0x20, 0x91, 0xee, 0x02, 0x70, 0x2a, 0x38, 0x59, 0xc3, 0x44, 0x63, 0x5b, 0xac, 0x1f, 0x49, 0x16,
-	0x6b, 0xf6, 0x15, 0x60, 0x9f, 0x93, 0x29, 0xf9, 0xdb, 0x51, 0x78, 0x20, 0x79, 0xaa, 0xf9, 0x57,
-	0x4d, 0xbe, 0x99, 0xf1, 0x7f, 0x20, 0xec, 0xec, 0xb4, 0x5f, 0xf2, 0xe0, 0x7f, 0x1d, 0xa5, 0x87,
-	0xb1, 0x00, 0x7d, 0x30, 0x16, 0x3d, 0x50, 0x03, 0x31, 0xc6, 0x32, 0x63, 0x8e, 0xc5, 0xff, 0x56,
-	0xc7, 0x8e, 0x16, 0x75, 0x69, 0x63, 0xa5, 0xd8, 0xfa, 0x05, 0x62, 0xad, 0x09, 0xb1, 0xca, 0x88,
-	0x34, 0xea, 0xb1, 0x74, 0xb8, 0x53, 0x68, 0x6e, 0x8c, 0x8d, 0x98, 0xc2, 0x95, 0xf4, 0x0c, 0x14,
-	0x80, 0xf4, 0x45, 0x2d, 0xbd, 0x44, 0xc8, 0x3a, 0x5e, 0x0e, 0x44, 0x92, 0xf0, 0x40, 0xf2, 0x8e,
-	0x96, 0x9a, 0xc1, 0x79, 0xf7, 0x9b, 0x56, 0xab, 0x41, 0xcf, 0xcd, 0x91, 0xbb, 0x78, 0x5e, 0xbf,
-	0xc9, 0x2c, 0x8e, 0x02, 0xee, 0x1e, 0xa1, 0xa6, 0xd5, 0x9a, 0x5f, 0x5f, 0x5a, 0x2b, 0xb7, 0x55,
-	0x2f, 0x26, 0x35, 0x69, 0xaa, 0x4a, 0x5b, 0xa6, 0xab, 0xde, 0x56, 0xab, 0xf4, 0x1b, 0xa0, 0x26,
-	0xcd, 0x3f, 0xb2, 0xb0, 0xf3, 0x90, 0xc5, 0xec, 0xcd, 0xf0, 0x52, 0x0b, 0x5d, 0x3c, 0x13, 0xc6,
-	0xa2, 0xcd, 0xe2, 0xdc, 0xc3, 0x3c, 0x2c, 0x33, 0xb9, 0x8b, 0x79, 0xa8, 0xac, 0x09, 0xe1, 0x64,
-	0xd3, 0x9a, 0x12, 0x51, 0x82, 0xb5, 0x51, 0x17, 0xb6, 0xa9, 0x4d, 0xa1, 0x26, 0x8d, 0xdc, 0xc6,
-	0xb8, 0x1b, 0x73, 0x3e, 0xd9, 0xe5, 0xa2, 0x51, 0xb4, 0xad, 0xb2, 0xd4, 0x20, 0xa9, 0x8b, 0xda,
-	0x4c, 0xca, 0x98, 0xeb, 0x9a, 0x77, 0xd5, 0x8b, 0x36, 0x21, 0x4d, 0x4d, 0x9a, 0xba, 0x28, 0x8b,
-	0x78, 0x38, 0x2e, 0x7a, 0x5f, 0xbd, 0x68, 0x57, 0x65, 0xa9, 0x41, 0x52, 0x17, 0xb1, 0x40, 0x7d,
-	0x68, 0x74, 0xcd, 0x87, 0xea, 0x45, 0x1b, 0x90, 0xa6, 0x26, 0xcd, 0xff, 0x58, 0xc7, 0x36, 0x88,
-	0x56, 0x5e, 0x82, 0xec, 0x47, 0x0f, 0x60, 0x00, 0x36, 0xcd, 0xc3, 0x7f, 0x7e, 0xc2, 0x13, 0xfb,
-	0xd6, 0x98, 0xde, 0xb7, 0x55, 0xbc, 0x14, 0xc4, 0x22, 0xe3, 0x99, 0xb9, 0xea, 0x7a, 0x2b, 0xab,
-	0x09, 0x35, 0x47, 0x59, 0x7e, 0xc4, 0x9a, 0x7a, 0x8e, 0x25, 0x42, 0x7c, 0xbc, 0x10, 0x98, 0x1f,
-	0xae, 0x9b, 0xc0, 0x98, 0xc0, 0x14, 0xa7, 0x6b, 0x7e, 0xac, 0x7c, 0xcd, 0x31, 0x31, 0xff, 0x33,
-	0xc2, 0x8e, 0x1e, 0x84, 0x7a, 0x8a, 0x7a, 0x14, 0x85, 0x13, 0x45, 0xac, 0x72, 0x99, 0x4c, 0x99,
-	0xe4, 0xe1, 0x10, 0xcc, 0xb0, 0x69, 0x11, 0xab, 0xc6, 0x98, 0x94, 0x2c, 0x38, 0x8c, 0x92, 0x70,
-	0x5b, 0x5b, 0x97, 0xc1, 0xaa, 0xd9, 0xb4, 0x9a, 0x50, 0xec, 0x0e, 0xef, 0xf2, 0xa4, 0x63, 0xb2,
-	0x37, 0x34, 0xbb, 0x92, 0xf0, 0xbf, 0x20, 0x6c, 0xc3, 0xc8, 0xd5, 0x98, 0x60, 0xe8, 0xe5, 0x98,
-	0xc6, 0xa1, 0xd2, 0x26, 0xa3, 0x1e, 0x7f, 0xcc, 0xbb, 0x72, 0x3c, 0xa8, 0x22, 0x26, 0xf7, 0xf0,
-	0x0a, 0xb4, 0x1b, 0x25, 0xe1, 0xce, 0x2b, 0x9e, 0x1a, 0xce, 0x5b, 0xe0, 0xfc, 0x05, 0x59, 0xe8,
-	0x29, 0x84, 0x3f, 0x2a, 0x22, 0xad, 0xf4, 0x34, 0x9d, 0xf0, 0xbf, 0x23, 0xec, 0xe8, 0x47, 0xa6,
-	0xc4, 0xe8, 0x67, 0x56, 0x9a, 0x98, 0xc7, 0x6a, 0xa6, 0xfa, 0x37, 0xec, 0xa6, 0xb6, 0xd1, 0x40,
-	0x26, 0x1a, 0xb1, 0xa6, 0x1a, 0xb9, 0xfc, 0x6d, 0xf9, 0x78, 0x41, 0x9f, 0xf3, 0x9c, 0xc5, 0x03,
-	0xae, 0x95, 0x5a, 0x74, 0x02, 0x23, 0xcd, 0x7c, 0x4f, 0x9e, 0xa8, 0xc5, 0x00, 0xcb, 0x1b, 0xd4,
-	0x84, 0x36, 0x57, 0x4f, 0x4e, 0xbd, 0xda, 0xcf, 0x53, 0xaf, 0x76, 0x76, 0xea, 0xa1, 0xa3, 0x91,
-	0x87, 0xbe, 0x8e, 0x3c, 0x74, 0x3c, 0xf2, 0xd0, 0xc9, 0xc8, 0x43, 0xbf, 0x46, 0x1e, 0xfa, 0x33,
-	0xf2, 0x6a, 0x67, 0x23, 0x0f, 0x7d, 0xfa, 0xed, 0xd5, 0xda, 0x0e, 0xfc, 0xf7, 0x72, 0xe7, 0x6f,
-	0x00, 0x00, 0x00, 0xff, 0xff, 0x49, 0x34, 0xb9, 0x78, 0xd0, 0x08, 0x00, 0x00,
+	// 1065 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x57, 0x4f, 0x6f, 0xdc, 0x54,
+	0x10, 0x8f, 0xd7, 0xbb, 0x9b, 0xe4, 0x25, 0x2d, 0xe9, 0x53, 0x55, 0x59, 0x15, 0x32, 0x8b, 0x0f,
+	0xb0, 0x42, 0x55, 0x24, 0x0a, 0x42, 0x08, 0x21, 0x41, 0x52, 0x08, 0x42, 0x02, 0x16, 0x39, 0x05,
+	0xd1, 0xe3, 0x8b, 0xf7, 0xad, 0x63, 0xe2, 0xb5, 0x57, 0xf6, 0x4b, 0x61, 0x6f, 0xe5, 0xdf, 0x9d,
+	0x0f, 0xc0, 0x01, 0x28, 0x20, 0x3e, 0x06, 0x07, 0x0e, 0x3d, 0xf6, 0x84, 0x38, 0x92, 0xe5, 0xc2,
+	0xb1, 0x07, 0x3e, 0x00, 0x9a, 0x99, 0x67, 0xfb, 0xbd, 0x38, 0x1b, 0x69, 0x6f, 0xdc, 0x76, 0x66,
+	0x7e, 0xf3, 0x9b, 0x79, 0xbf, 0xf1, 0xf8, 0x79, 0xd9, 0x53, 0xb1, 0x98, 0xca, 0x52, 0x09, 0x25,
+	0x77, 0x67, 0x45, 0xae, 0x72, 0xbe, 0x59, 0x3b, 0x82, 0x47, 0x2e, 0xeb, 0x7f, 0x98, 0x8a, 0x4c,
+	0x2a, 0x7e, 0x93, 0x6d, 0x64, 0x62, 0x2a, 0x3f, 0x4a, 0x32, 0xe5, 0x39, 0x03, 0x67, 0xd8, 0x0d,
+	0x6b, 0x9b, 0xbf, 0xc0, 0x76, 0x66, 0xa2, 0x90, 0x99, 0x3a, 0x9c, 0x97, 0x4a, 0x4e, 0x11, 0xd3,
+	0x41, 0x4c, 0xcb, 0xcf, 0x6f, 0xb0, 0x7e, 0x92, 0x29, 0x59, 0x7c, 0xe2, 0xb9, 0x03, 0x67, 0xe8,
+	0x86, 0xda, 0xaa, 0xfd, 0xf7, 0xbc, 0xae, 0xe1, 0xbf, 0xc7, 0x9f, 0x66, 0x9b, 0xf9, 0x67, 0x99,
+	0x2c, 0x90, 0xb4, 0x87, 0xa4, 0x8d, 0x83, 0x73, 0xd6, 0x9d, 0xe4, 0xf9, 0xd8, 0xeb, 0x0f, 0x9c,
+	0x61, 0x2f, 0xc4, 0xdf, 0xdc, 0x67, 0x6c, 0x96, 0xcf, 0x4e, 0x53, 0xa1, 0x92, 0x3c, 0xf3, 0xd6,
+	0x91, 0xcd, 0xf0, 0x60, 0x1c, 0xcf, 0x74, 0x77, 0x3e, 0x93, 0xde, 0x06, 0x66, 0x1a, 0x1e, 0xe8,
+	0xe4, 0x58, 0x8a, 0x54, 0x1d, 0x7b, 0x9b, 0x18, 0xd3, 0x16, 0xbf, 0xce, 0x7a, 0x93, 0x3c, 0x3a,
+	0x2d, 0x3d, 0x86, 0x6e, 0x32, 0x40, 0x97, 0x59, 0x91, 0xc7, 0x85, 0x2c, 0x4b, 0x6f, 0x0b, 0x03,
+	0xb5, 0x0d, 0xba, 0x8c, 0xf3, 0xe8, 0x44, 0x8e, 0xef, 0x26, 0x4a, 0x64, 0x77, 0xf2, 0xd3, 0x4c,
+	0x79, 0xdb, 0x88, 0x69, 0xf9, 0xf9, 0x2e, 0xe3, 0xe4, 0xbb, 0x23, 0x66, 0x89, 0x12, 0x29, 0xa1,
+	0xaf, 0x20, 0xfa, 0x82, 0x48, 0x83, 0x3f, 0x48, 0xe2, 0x63, 0x25, 0x0b, 0xc2, 0x5f, 0x35, 0xf1,
+	0x66, 0x24, 0xf8, 0xc3, 0x61, 0xfd, 0xd1, 0xd1, 0xa7, 0x32, 0xfa, 0xbf, 0x8e, 0xd2, 0x67, 0x2c,
+	0xc7, 0xfe, 0x70, 0x2c, 0x34, 0x50, 0xc3, 0x63, 0x8c, 0x65, 0xdd, 0x1c, 0x4b, 0xf0, 0x5b, 0x87,
+	0xf5, 0xa9, 0xa9, 0x4b, 0x0f, 0xd6, 0x34, 0xdb, 0x59, 0xd2, 0xac, 0x6b, 0x35, 0x0b, 0x42, 0x14,
+	0xc9, 0x54, 0x14, 0xf3, 0x51, 0xdd, 0x73, 0x57, 0x0b, 0x71, 0xce, 0x0f, 0xad, 0x97, 0xd8, 0x01,
+	0xb6, 0xbe, 0x43, 0xad, 0x37, 0x1e, 0x7e, 0x9b, 0x5d, 0x8f, 0xf2, 0x2c, 0x93, 0x91, 0x92, 0x63,
+	0x6a, 0xb5, 0x44, 0xbe, 0x37, 0x07, 0xee, 0xb0, 0x1b, 0x5e, 0x18, 0xe3, 0x2f, 0xb3, 0x2d, 0x7a,
+	0x26, 0xcb, 0x34, 0x89, 0xa4, 0xf7, 0xc0, 0x19, 0xb8, 0xc3, 0xad, 0xdb, 0xd7, 0x76, 0x9b, 0x6d,
+	0xa5, 0xc5, 0x0c, 0x4d, 0x18, 0x64, 0x91, 0x64, 0x94, 0xf5, 0x45, 0x3b, 0x8b, 0x9e, 0x81, 0xd0,
+	0x84, 0x05, 0xff, 0x32, 0xd6, 0x7f, 0x47, 0xa4, 0xe2, 0xf3, 0xf9, 0xa5, 0x12, 0x7a, 0x6c, 0x3d,
+	0x4e, 0xf3, 0x23, 0x91, 0x56, 0x1a, 0x56, 0x66, 0x13, 0xa9, 0x54, 0xac, 0x4c, 0x90, 0x26, 0x46,
+	0x66, 0x53, 0x9a, 0xc6, 0x03, 0x0d, 0x93, 0x50, 0x4b, 0x8f, 0x49, 0xa2, 0x84, 0x26, 0x8c, 0xbf,
+	0xc8, 0xd8, 0x24, 0x95, 0xd2, 0x3e, 0xe5, 0x8e, 0x91, 0x74, 0x00, 0xd1, 0xd0, 0x00, 0x41, 0xa1,
+	0x23, 0xa1, 0x54, 0x2a, 0x29, 0xe7, 0xcb, 0x76, 0xa1, 0x7d, 0x0c, 0x87, 0x26, 0x0c, 0x0a, 0x95,
+	0x89, 0x8c, 0x75, 0xd2, 0x57, 0xed, 0x42, 0x87, 0x10, 0x0d, 0x0d, 0x10, 0x14, 0x12, 0x11, 0xbc,
+	0x68, 0x28, 0xe7, 0xeb, 0x76, 0xa1, 0x3d, 0x0c, 0x87, 0x26, 0x8c, 0xbf, 0xc1, 0x36, 0x69, 0x8e,
+	0x53, 0x31, 0xf3, 0xbe, 0xa7, 0x9c, 0x81, 0x91, 0x43, 0xe3, 0xd1, 0x33, 0x9f, 0x8a, 0xd9, 0xdb,
+	0x99, 0x2a, 0xe6, 0x61, 0x93, 0x03, 0x04, 0x34, 0x52, 0x20, 0xf8, 0x61, 0x29, 0xc1, 0xa8, 0xc2,
+	0x68, 0x82, 0x3a, 0x07, 0x08, 0x48, 0x62, 0x20, 0xf8, 0x71, 0x29, 0xc1, 0x61, 0x85, 0xd1, 0x04,
+	0x75, 0x0e, 0x7f, 0x9d, 0x6d, 0xa0, 0xde, 0x90, 0xff, 0x90, 0xf2, 0x9f, 0x69, 0xe7, 0x1f, 0x68,
+	0x08, 0xa5, 0xd7, 0x19, 0x50, 0x9e, 0x84, 0x87, 0xf4, 0x9f, 0x96, 0x96, 0xdf, 0xaf, 0x30, 0xba,
+	0x7c, 0x9d, 0x03, 0xe5, 0x71, 0x0a, 0x90, 0xff, 0xf3, 0xd2, 0xf2, 0x87, 0x1a, 0xa2, 0xcb, 0x57,
+	0x19, 0x50, 0x9e, 0xc6, 0x01, 0xe9, 0xbf, 0x2c, 0x2d, 0xbf, 0x57, 0x61, 0x74, 0xf9, 0x3a, 0xe7,
+	0xe6, 0x88, 0x5d, 0xb5, 0x87, 0xc3, 0x77, 0x98, 0x7b, 0x22, 0xe7, 0x7a, 0x8b, 0xe0, 0x27, 0x7f,
+	0x9e, 0xf5, 0xee, 0x8b, 0xf4, 0x54, 0xe2, 0xfa, 0x5c, 0xb8, 0xcc, 0x14, 0x7f, 0xad, 0xf3, 0xaa,
+	0x03, 0x84, 0xf6, 0xb0, 0x56, 0x23, 0xd4, 0x7b, 0x6e, 0x13, 0xda, 0xc3, 0x5b, 0x8d, 0x50, 0xef,
+	0xa1, 0x41, 0xf8, 0x3e, 0xbb, 0x62, 0x4d, 0xd3, 0xe4, 0xeb, 0x11, 0xdf, 0x73, 0x36, 0x5f, 0x7b,
+	0x45, 0xed, 0xfe, 0xec, 0xe9, 0x5e, 0xc0, 0x77, 0x49, 0x7f, 0x7a, 0x7d, 0xed, 0xfe, 0xac, 0x71,
+	0xaf, 0xd6, 0x1f, 0x6d, 0xb6, 0xdd, 0x9f, 0x3d, 0xfe, 0xd5, 0xfa, 0xd3, 0x5b, 0xdf, 0x10, 0x06,
+	0xdf, 0x74, 0x58, 0x0f, 0x55, 0x80, 0xf7, 0x27, 0x2e, 0xc2, 0xbb, 0x6f, 0x69, 0xb2, 0xca, 0x5c,
+	0xf9, 0xda, 0xb2, 0xee, 0xd8, 0xee, 0xf9, 0x3b, 0xf6, 0x16, 0xbb, 0x16, 0xa5, 0x79, 0x29, 0x4b,
+	0xf3, 0x7a, 0xa7, 0x9b, 0xb8, 0x1d, 0x80, 0x77, 0xb7, 0x6a, 0x3e, 0x5c, 0x06, 0xf4, 0xee, 0x6e,
+	0x3c, 0x3c, 0x60, 0xdb, 0x91, 0xf9, 0xb1, 0xf2, 0x2c, 0x22, 0x2c, 0x1f, 0x60, 0x26, 0xe6, 0x07,
+	0x4a, 0x40, 0x18, 0xd3, 0x17, 0x7c, 0xe7, 0xb0, 0x3e, 0x4d, 0x0f, 0xae, 0x1f, 0xda, 0xe8, 0x5a,
+	0x89, 0xda, 0x86, 0x58, 0xa9, 0x0a, 0xa1, 0x64, 0x3c, 0x47, 0x31, 0x7a, 0x61, 0x6d, 0xc3, 0xc1,
+	0x84, 0x52, 0x22, 0x3a, 0x49, 0xb2, 0xf8, 0x80, 0xa4, 0x2b, 0xf1, 0x7a, 0xed, 0x85, 0xed, 0x00,
+	0xa0, 0xc7, 0x72, 0x22, 0xb3, 0xb1, 0x89, 0xde, 0x23, 0x74, 0x2b, 0x10, 0x3c, 0x74, 0x58, 0x0f,
+	0x1f, 0x06, 0x18, 0x13, 0xbe, 0x30, 0x9a, 0x31, 0x69, 0x13, 0x7a, 0x53, 0xc9, 0x54, 0xbe, 0x27,
+	0x27, 0x4a, 0x0f, 0xaa, 0xb6, 0xf9, 0x2b, 0xec, 0x06, 0x1e, 0x37, 0xc9, 0xe2, 0xd1, 0x7d, 0x59,
+	0x18, 0xca, 0xbb, 0xa8, 0xfc, 0x92, 0x28, 0x9e, 0x29, 0xc6, 0x0f, 0xc9, 0xbc, 0x68, 0x9d, 0xe9,
+	0x7c, 0x20, 0xf8, 0xdd, 0x61, 0x7d, 0x7a, 0xc4, 0xa0, 0x19, 0x7a, 0x2f, 0x35, 0x22, 0x56, 0x36,
+	0xcc, 0x94, 0x7e, 0xe3, 0x7d, 0x4c, 0x32, 0x1a, 0x1e, 0xeb, 0x20, 0xee, 0xb9, 0x83, 0x5c, 0xfe,
+	0x6c, 0x05, 0x6c, 0x9b, 0x78, 0x3e, 0x86, 0x07, 0x9c, 0x3a, 0x75, 0x43, 0xcb, 0xc7, 0x07, 0xd5,
+	0xdd, 0xf8, 0x01, 0xac, 0x05, 0x4a, 0xde, 0x0d, 0x4d, 0xd7, 0xfe, 0xad, 0xc7, 0x67, 0xfe, 0xda,
+	0x9f, 0x67, 0xfe, 0xda, 0x93, 0x33, 0xdf, 0x79, 0xb0, 0xf0, 0x9d, 0x5f, 0x17, 0xbe, 0xf3, 0x68,
+	0xe1, 0x3b, 0x8f, 0x17, 0xbe, 0xf3, 0xd7, 0xc2, 0x77, 0xfe, 0x59, 0xf8, 0x6b, 0x4f, 0x16, 0xbe,
+	0xf3, 0xed, 0xdf, 0xfe, 0xda, 0x51, 0x1f, 0xff, 0xb1, 0xbc, 0xf4, 0x5f, 0x00, 0x00, 0x00, 0xff,
+	0xff, 0x91, 0xbf, 0x1f, 0x6a, 0xc4, 0x0c, 0x00, 0x00,
 }

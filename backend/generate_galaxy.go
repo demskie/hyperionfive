@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"regexp"
+	"sync"
 	"sync/atomic"
 
 	"github.com/demskie/hyperionfive/gamestate"
@@ -79,6 +80,10 @@ func (gal *GalaxyStruct) Generate() {
 	for i := range gal.Protobuf.Systemslice {
 		gal.Protobuf.Systemslice[i] = &gamestate.System{}
 	}
+	gal.Protobuf.Planetmap = make(map[uint64]*gamestate.Planet)
+	gal.Protobuf.Objectmap = make(map[uint64]*gamestate.Object)
+	gal.Protobuf.Systemmap = make(map[uint64]*gamestate.System)
+	localMutex := sync.Mutex{}
 	badSystems := int32(0)
 	log.Info(fName, fmt.Sprintf("generating %v systems",
 		intutil.CommaFormatNum(len(gal.Protobuf.Systemslice))))
@@ -107,13 +112,22 @@ func (gal *GalaxyStruct) Generate() {
 					continue
 				}
 				x2, y2 = objects[0].X, objects[0].Y
-				if math.Hypot(x1-x2, y1-y2) <= minimumDistanceBetweenSystems {
+				if math.Hypot(x1-x2, y1-y2) <= gamestate.MinimumDistanceBetweenSystems {
 					gal.Rtree.Delete(ss.NameUint)
 					atomic.AddInt32(&badSystems, 1)
 					continue
 				}
 				break
 			}
+			localMutex.Lock()
+			for _, pl := range ss.Planetslice {
+				gal.Protobuf.Planetmap[pl.NameUint] = pl
+			}
+			for _, ob := range ss.Objectslice {
+				gal.Protobuf.Objectmap[ob.NameUint] = ob
+			}
+			gal.Protobuf.Systemmap[ss.NameUint] = ss
+			localMutex.Unlock()
 		}
 	})
 	log.Info(fName, fmt.Sprintf("regenerated %v systems", intutil.CommaFormatNum(badSystems)))
@@ -315,11 +329,11 @@ func generateSpiralCoordinates(ss *gamestate.System, numArms int, rnum *rand.Ran
 	fAngularSpread := 90 / float64(numArms)
 	fNumArms := float64(numArms)
 	fK := float64(1)
-	fR := float64(rnum.Int63n(galaxyRadius))
+	fR := float64(rnum.Int63n(gamestate.GalaxyRadius))
 	fQ := float64(rnum.Int63n(int64(fAngularSpread))) * float64(randutil.GetPosOrNegOne(rnum))
 	fA := float64(roundFloat(rnum.Float64()*fNumArms)) * fArmAngle
 	ss.InterX = int64(fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ)))
-	fR = float64(rnum.Int63n(galaxyRadius))
+	fR = float64(rnum.Int63n(gamestate.GalaxyRadius))
 	fQ = float64(rnum.Int63n(int64(fAngularSpread))) * float64(randutil.GetPosOrNegOne(rnum))
 	fA = float64(roundFloat(rnum.Float64()*fNumArms)) * fArmAngle
 	ss.InterY = int64(fR * math.Cos(fDeg2Rad*(fA+(fR*fK)+fQ)))
@@ -332,7 +346,7 @@ func generateEllipticalCoordinates(ss *gamestate.System, rnum *rand.Rand) {
 		ss.InterY = rnum.Int63() * int64(randutil.GetPosOrNegOne(rnum))
 		X = float64(ss.InterX * ss.InterX)
 		Y = float64(ss.InterY * ss.InterY)
-		if math.Sqrt(X+Y) >= galaxyRadius {
+		if math.Sqrt(X+Y) >= gamestate.GalaxyRadius {
 			continue
 		}
 		break

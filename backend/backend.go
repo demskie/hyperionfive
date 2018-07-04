@@ -3,7 +3,6 @@ package backend
 import (
 	"crypto/tls"
 	"fmt"
-	"math"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -44,6 +43,11 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 
 	galaxy := &GalaxyStruct{
 		Protobuf:                 &gamestate.Galaxy{},
+		ObjectMapMutex:           &sync.RWMutex{},
+		FleetMapMutex:            &sync.RWMutex{},
+		BattleMapMutex:           &sync.RWMutex{},
+		SiegeMapMutex:            &sync.RWMutex{},
+		ActionMapMutex:           &sync.RWMutex{},
 		Rtree:                    spatialindex.NewTree(),
 		SingleRnumMutex:          &sync.Mutex{},
 		SingleRnum:               randutil.CreateUniqueMathRnum(),
@@ -58,7 +62,6 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		NeutralAnyPlanetSlice:    make([]*gamestate.Planet, 0),
 		NeutralTerranPlanetMutex: &sync.Mutex{},
 		NeutralTerranPlanetSlice: make([]*gamestate.Planet, 0),
-		PointerMappings:          NewPointerMappings(),
 		PlayerFogOfWarMutex:      &sync.Mutex{},
 		PlayerFogOfWar:           make(map[uint64]map[uint64]*gamestate.System, maxNumberOfPlayers),
 		SystemAndPlanetNames:     names.NewNameGenerator(args, log),
@@ -66,7 +69,6 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		BattleIDs:                intutil.NewInt32Generator(),
 		SiegeIDs:                 intutil.NewInt32Generator(),
 		ActionIDs:                intutil.NewInt32Generator(),
-		SystemNameLookup:         make(map[uint64]*gamestate.System),
 		PlayerFleetInsideSystem:  make(map[uint64]map[uint64]*gamestate.Fleet),
 	}
 
@@ -86,10 +88,8 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	}
 
 	// preprocess some large datastructures
-	galaxy.PreprocessPointerMappings()
 	galaxy.PreprocessPopulationObjects()
 	galaxy.PreprocessPlayerFogOfWar()
-	galaxy.PreprocessAllocations()
 
 	// connect to a frontend server
 	if false {
@@ -130,11 +130,12 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 
 			universe.Lock()
 			galaxy.SpawnNewPlayers(universe) // processing_playerspawn.go
+			galaxy.AdvanceActors()           // processing_actors.go
+			galaxy.ProcessActions()          // processing_actions.go
 			galaxy.CalculatePopulation()     // processing_population.go
 			galaxy.AdvanceProduction()       // processing_production.go
 			galaxy.ProcessOngoingBattles()   // processing_battle.go
-			galaxy.AdvanceActors()           // processing_actors.go
-			galaxy.ProcessActions()          // processing_actions.go
+
 			universe.Unlock()
 
 			close(universe.ClientSignal)
@@ -224,11 +225,6 @@ const (
 	maxNumberOfPlayers  = 10000
 	numSystemsPerPlayer = 25
 	totalNumSystems     = maxNumberOfPlayers * numSystemsPerPlayer
-
-	galaxyRadius                  = math.MaxInt64
-	realMilkyWayRadius            = 100000
-	lightYear                     = galaxyRadius / realMilkyWayRadius
-	minimumDistanceBetweenSystems = 3 * lightYear
 
 	oneMillion = 1000000
 	oneBillion = 1000000000

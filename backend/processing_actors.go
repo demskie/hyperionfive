@@ -34,7 +34,7 @@ func (galaxy *GalaxyStruct) AdvanceActors() {
 				GlobalY:     galaxy.Protobuf.GlobalY,
 				Systemslice: galaxy.PlayerFogOfWarSlice(bot.GetOwner()),
 			}
-			allActions[coreNum] = bot.Process(partialGalaxy)
+			allActions[coreNum] = bot.Process(partialGalaxy, nil)
 		}
 	})
 	for coreNum := range allActions {

@@ -6,36 +6,36 @@ import "github.com/demskie/hyperionfive/gamestate"
 
 // CreateFleet ...
 func (galaxy *GalaxyStruct) CreateFleet(fleet *gamestate.Fleet) {
-	galaxy.PointerMappings.fleetMutex.Lock()
+	galaxy.FleetMapMutex.Lock()
 	fleet.FleetID = galaxy.FleetIDs.Create()
 	galaxy.Protobuf.Fleetslice = append(galaxy.Protobuf.Fleetslice, fleet)
-	galaxy.PointerMappings.fleetMappings[fleet.FleetID] = fleet
-	galaxy.PointerMappings.fleetMutex.Unlock()
+	galaxy.Protobuf.Fleetmap[fleet.FleetID] = fleet
+	galaxy.FleetMapMutex.Unlock()
 }
 
 // CreateOngoingBattle ...
 func (galaxy *GalaxyStruct) CreateOngoingBattle(battle *gamestate.Battle) {
-	galaxy.PointerMappings.battleMutex.Lock()
+	galaxy.BattleMapMutex.Lock()
 	battle.BattleID = galaxy.BattleIDs.Create()
 	galaxy.Protobuf.Battleslice = append(galaxy.Protobuf.Battleslice, battle)
-	galaxy.PointerMappings.battleMappings[battle.BattleID] = battle
-	galaxy.PointerMappings.battleMutex.Unlock()
+	galaxy.Protobuf.Battlemap[battle.BattleID] = battle
+	galaxy.BattleMapMutex.Unlock()
 }
 
 // CreateOngoingSiege ...
 func (galaxy *GalaxyStruct) CreateOngoingSiege(siege *gamestate.Siege) {
-	galaxy.PointerMappings.siegeMutex.Lock()
+	galaxy.SiegeMapMutex.Lock()
 	siege.SiegeID = galaxy.SiegeIDs.Create()
 	galaxy.Protobuf.Siegeslice = append(galaxy.Protobuf.Siegeslice, siege)
-	galaxy.PointerMappings.siegeMappings[siege.SiegeID] = siege
-	galaxy.PointerMappings.siegeMutex.Unlock()
+	galaxy.Protobuf.Siegemap[siege.SiegeID] = siege
+	galaxy.SiegeMapMutex.Unlock()
 }
 
 // CreateOutstandingAction ...
 func (galaxy *GalaxyStruct) CreateOutstandingAction(action *gamestate.Action) {
-	galaxy.PointerMappings.actionMutex.Lock()
+	galaxy.ActionMapMutex.Lock()
 	action.ActionID = galaxy.ActionIDs.Create()
 	galaxy.Protobuf.Actionslice = append(galaxy.Protobuf.Actionslice, action)
-	galaxy.PointerMappings.actionMappings[action.ActionID] = action
-	galaxy.PointerMappings.actionMutex.Unlock()
+	galaxy.Protobuf.Actionmap[action.ActionID] = action
+	galaxy.ActionMapMutex.Unlock()
 }

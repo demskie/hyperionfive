@@ -52,6 +52,13 @@ message Galaxy {
 	repeated Battle battleslice = 130;
 	repeated Siege siegeslice = 131;
 	repeated Action actionslice = 132;
+	map<uint64, Planet> planetmap = 160;
+	map<uint64, Object> objectmap = 161;
+	map<uint64, System> systemmap = 162;
+	map<int32, Fleet> fleetmap = 163;
+	map<int32, Battle> battlemap = 164;
+	map<int32, Siege> siegemap = 165;
+	map<int32, Action> actionmap = 166;
 }
 
 
