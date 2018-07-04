@@ -83,6 +83,10 @@ func (gal *GalaxyStruct) Generate() {
 	gal.Protobuf.Planetmap = make(map[uint64]*gamestate.Planet)
 	gal.Protobuf.Objectmap = make(map[uint64]*gamestate.Object)
 	gal.Protobuf.Systemmap = make(map[uint64]*gamestate.System)
+	gal.Protobuf.Fleetmap = make(map[int32]*gamestate.Fleet)
+	gal.Protobuf.Battlemap = make(map[int32]*gamestate.Battle)
+	gal.Protobuf.Siegemap = make(map[int32]*gamestate.Siege)
+	gal.Protobuf.Actionmap = make(map[int32]*gamestate.Action)
 	localMutex := sync.Mutex{}
 	badSystems := int32(0)
 	log.Info(fName, fmt.Sprintf("generating %v systems",
