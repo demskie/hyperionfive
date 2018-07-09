@@ -6,11 +6,11 @@ function goFullscreen() {
 function startGame(login_type, id_token, id) {
 
 	var firstToolbar = { 
-		id:"firstToolbar",
 		view:"toolbar", 
-		elements:[
-			{ view:"button", value:"Add", width:100 },
-			{ view:"button", id:"fullscreen", value:"Fullscreen", width:120}
+		id:"firstToolbar",
+		cols:[
+			{ view:"button", id: "addButton", value:"Add", width:100 },
+			{ view:"button", id: "fullscreenButton", value:"Fullscreen", width:120, align:"right"}
 		]
 	}
 
@@ -23,7 +23,7 @@ function startGame(login_type, id_token, id) {
 	}
 
 	webix.ui.fullScreen();
-	var gui = webix.ui({
+	var layout = webix.ui({
 		type:"clean",
 		margin:0,
 		padding:0, 
@@ -35,13 +35,16 @@ function startGame(login_type, id_token, id) {
 			secondToolbar,
 		]
 	});
-	console.log(gui)
+
+	
+	console.log(layout)
+	console.log(layout.getNode())
 
 	// hide the login buttons
 	document.getElementById("loginPage").style.visibility = "hidden"
 
 	// toggle fullscreen using the button
-	gui.attachEvent("onClick", function(id){
+	layout.attachEvent("onClick", function(id){
 		console.log("requesting fullscreen")
 		if (id == "fullscreen") {
 			document.body.requestFullscreen();

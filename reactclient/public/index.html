@@ -2,8 +2,72 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="theme-color" content="#000000">
+
+    <!-- below attempts to disable browser zoom -->
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, shrink-to-fit=no">
+
+		<!-- below changes chrome mobile tab color -->
+		<meta name="theme-color" content="#2e2e2e">
+
+		<!-- below disables webapp mode as it is not compatibile with default Google OAuth signin -->
+    <meta name="apple-mobile-web-app-capable" content="no">
+
+    <!-- webGL framework -->
+		<script src="three.min.js"></script>
+
+		<!-- check browser compatibility -->
+		<script src="three.detecter.js"></script>
+
+		<!-- mouse and touch events -->
+		<script src="three.orbitcontrols.js"></script>
+
+		<!-- browserifed protobuf schema output -->
+		<script src="protobuf.js"></script>
+
+		<!-- main game logic -->
+    <script src="hyperionfive.js"></script>
+    
+    <!-- embedded stylesheet -->
+		<link href='https://fonts.googleapis.com/css?family=Roboto+Condensed' rel='stylesheet' type='text/css'>
+    <style>
+      body {
+        font-family: 'Roboto Condensed', sans-serif;
+        margin: 0;
+        background-color: #FFFFFF;
+        overflow: hidden;
+      }
+      canvas { 
+        width: 100%; 
+        height: 100%;
+      }
+    </style>
+    <div id="loginPage" style="position:absolute; top:50%; left:50%; transform: translate(-50%, -75%);">
+      <div id="gameTitle" style="color:grey;">hyperion5</div>
+      <div id="loadingStatus" style="text-align:center; color:grey;">downloading...</div>
+      <div id="googleLoginButton" 
+        style="position:absolute; left:50%; transform:translate(-50%, 0px); visibility:hidden;"
+        class="g-signin2" 
+        data-onsuccess="onSuccess" 
+        data-onfailure="onFailure">
+      </div>
+    </div>
+
+    <!-- initialize google analytics -->
+		<script>
+      function initGoogleAnalytics() {
+        if (typeof ga == "undefined") {
+          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+        }
+      }
+    </script>
+
+    <!-- google oauth -->
+		<meta name="google-signin-client_id" content="771328535291-3lv19jrlmhdd8f6hdhfd92qu3l7iugmd.apps.googleusercontent.com">
+		<script src="https://apis.google.com/js/platform.js" onload="initGoogleAnalytics()"></script>
+    
     <!--
       manifest.json provides metadata used when your web app is added to the
       homescreen on Android. See https://developers.google.com/web/fundamentals/engage-and-retain/web-app-manifest/
@@ -25,7 +89,67 @@
     <noscript>
       You need to enable JavaScript to run this app.
     </noscript>
-    <div id="root"></div>
+    
+    <!-- resize elements on screen -->
+		<script>
+      function resizeLoginPage() {
+        if (document.getElementById("loginPage").style.visibility !== "hidden") {
+          var width = document.documentElement.clientWidth / 100
+          if (width > 15) {
+            width = 15
+          }
+          document.getElementById("gameTitle").style.fontSize = width*10+"px"
+          document.getElementById("loadingStatus").style.fontSize = (width/4)*10+"px"
+          var loginButtonScale = (document.documentElement.clientWidth/120)/6;
+          if (loginButtonScale > 2.0833333333333335) {
+            loginButtonScale = 2.0833333333333335
+          }
+          document.getElementById("googleLoginButton").style.transform = "translate(-50%, 0px) scale("+loginButtonScale+")";
+        }
+      }
+      resizeLoginPage()
+      window.addEventListener('resize', resizeLoginPage, false);
+    </script>
+
+    <!-- get ready to signal to game when we have completed authentication -->
+		<script>
+      function OnAuthSuccess(state) {
+        var evt = new CustomEvent("authsuccess", { detail: state });
+        window.dispatchEvent(evt);
+      }
+    </script>
+
+    <!-- google oauth and unblock react rendering -->
+		<script>
+      var ID_TOKEN;
+      var USER_ID;
+      function onSuccess(googleUser) {
+        function work() {
+          // parse oauth results
+          ID_TOKEN = googleUser.getAuthResponse().id_token;
+          var profile = googleUser.getBasicProfile();
+          USER_ID = profile.getId();
+          // unhide game
+          document.getElementById("root").style.visibility = "visible";
+          OnAuthSuccess(profile)
+          // tie google analytics to user
+          initGoogleAnalytics();
+          ga('set', 'userId', USER_ID);
+          ga('create', 'UA-96532084-1', 'auto');
+          ga('send', 'pageview');
+        }
+        if (document.readyState == 'loading') {
+          document.addEventListener('DOMContentLoaded', work);
+        } else {
+          work();
+        }
+      }
+      function onFailure(e) {
+        console.log("unable to authenticate because "+e.error)
+      }
+    </script>
+
+    <div id="root" style="visibility:hidden"></div>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

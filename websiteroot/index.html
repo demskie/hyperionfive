@@ -5,7 +5,7 @@
 		<meta charset="utf-8">
 		
 		<!-- below attempts to disable browser zoom -->
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, shrink-to-fit=no">
 
 		<!-- below changes chrome mobile tab color -->
 		<meta name="theme-color" content="#2e2e2e">
@@ -26,43 +26,40 @@
 				width: 100%; 
 				height: 100%;
 			}
-			@media all and (min-width: 960px) {
-				h1 {
-					font-size: 125px;
-				}
-				h2 {
-					font-size: 50px;
-				}
-			}
-			@media all and (max-width: 959px) and (min-width: 600px) {
-				h1 {
-					font-size: 14vw;
-				}
-				h2 {
-					font-size: 6vw;
-				}
-			}
-			@media all and (max-width: 599px) and (min-width: 50px) {
-				h1 {
-					font-size: 14vw;
-				}
-				h2 {
-					font-size: 6vw;
-				}
-			}
 		</style>
 		<div id="loginPage" style="position:absolute; top:50%; left:50%; transform: translate(-50%, -75%);">
 			<div id="gameTitle" style="color:grey;">hyperion5</div>
 			<div id="loadingStatus" style="text-align:center; color:grey;">downloading...</div>
-			<div id= "googleLoginButton" 
+			<div id="googleLoginButton" 
 				style="position:absolute; left:50%; transform:translate(-50%, 0px);"
 				class="g-signin2" 
 				data-onsuccess="onSuccess" 
 				data-onfailure="onFailure">
 			</div>
 		</div>
+		<link href="https://unpkg.com/normalize.css@^7.0.0" rel="stylesheet" />
+		<link href="https://unpkg.com/@blueprintjs/core@^2.0.0/lib/css/blueprint.css" rel="stylesheet" />
+		<link href="https://unpkg.com/@blueprintjs/icons@^2.0.0/lib/css/blueprint-icons.css" rel="stylesheet" />
 	</head>
 	<body>
+		<script src="https://unpkg.com/classnames@^2.2"></script> 
+		<script src="https://unpkg.com/dom4@^1.8"></script> 
+		<script src="https://unpkg.com/react@^16.2.0/umd/react.production.min.js"></script> 
+		<script src="https://unpkg.com/react-dom@^16.2.0/umd/react-dom.production.min.js"></script> 
+		<script src="https://unpkg.com/react-transition-group@^2.2.1/dist/react-transition-group.min.js"></script> 
+		<script src="https://unpkg.com/popper.js@^1.12.6/dist/umd/popper.js"></script> 
+		<script src="https://unpkg.com/react-popper@~1.0/dist/react-popper.min.js"></script> 
+		<script src="https://unpkg.com/@blueprintjs/core@^2.0.0"></script> 
+		<script src="https://unpkg.com/@blueprintjs/icons@^2.0.0"></script> 
+
+		<div id="btn"></div>
+		<script>
+			const button = React.createElement(Blueprint.Core.Button, {
+				icon: "predictive-analysis",
+				text: "CDN Blueprint is go!",
+			});
+			ReactDOM.render(button, document.querySelector("#btn"));
+		</script> 
 
 		<!-- resize elements on screen -->
 		<script>
@@ -131,7 +128,7 @@
 
 		<!-- main game logic -->
 		<script defer src="hyperionfive.js"></script>
-		
+
 		<!-- initialize google analytics -->
 		<script>
 			function initGoogleAnalytics() {
