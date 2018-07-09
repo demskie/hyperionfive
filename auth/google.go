@@ -36,7 +36,7 @@ func HandleGoogleAuth(fName string, conn *websocket.Conn,
 	if log.CheckError(err, fName, "error receiving message") {
 		return userid
 	}
-	log.Debug(fName, fmt.Sprintf("received the following message\n%+v", inMsg))
+	log.Dump(inMsg)
 
 	successful := false
 	var oauth2Service *oauth2.Service
@@ -61,8 +61,8 @@ func HandleGoogleAuth(fName string, conn *websocket.Conn,
 		return userid
 	}
 
-	if tokenInfo.VerifiedEmail != true {
-		log.Error(fName, "tokenInfo.VerifiedEmail is not 'true'", remoteIP)
+	if tokenInfo.EmailVerified != true {
+		log.Error(fName, "tokenInfo.EmailVerified is not 'true'", remoteIP)
 		fw.TriggerFirewallException(firewall.GOOGLEAUTH, remoteIP)
 		return userid
 	}

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
-
-	"github.com/demskie/hyperionfive/intutil"
 )
 
 var backendCounters *backendCounterData
@@ -29,9 +27,9 @@ func (data *backendCounterData) StartCounting() {
 			log.Telemetry(fName, fmt.Sprintf("less than %v ticks/sec", 1+(oldNumTicks/10)))
 			// oldNumRequests := atomic.SwapUint32(&data.numRequests, 0)
 			// logTelemetry(fName, "requestsPerSecond were", text(oldNumRequests/10))
-			oldFightersPerSecond := atomic.SwapUint32(&data.numFighterSpawns, 0)
-			log.Telemetry(fName, fmt.Sprintf("spawning %v fighters/sec",
-				intutil.CommaFormatNum(oldFightersPerSecond/10)))
+			//	oldFightersPerSecond := atomic.SwapUint32(&data.numFighterSpawns, 0)
+			//	log.Telemetry(fName, fmt.Sprintf("spawning %v fighters/sec",
+			//		intutil.CommaFormatNum(oldFightersPerSecond/10)))
 		}
 	}()
 }

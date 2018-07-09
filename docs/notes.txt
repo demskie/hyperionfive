@@ -6,14 +6,15 @@ https://github.com/google/protobuf/releases
 cp ~/Downloads/protoc-3.4.0-osx-x86_64/bin/protoc ~/OneDrive/GoPrototypes/bin/
 ~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/backend/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_galaxy.proto
 ~/OneDrive/GoPrototypes/bin/protoc --go_out=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/backend/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_actor.proto
-~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/ protobuf_galaxy.proto
+~/OneDrive/GoPrototypes/bin/protoc --js_out=import_style=commonjs,binary:/Users/thedemskie/OneDrive/GoPrototypes/src/github.com/demskie/hyperionfive/websiteroot/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/github.com/demskie/hyperionfive/gamestate/ gamestate.proto
 brew install node
 npm install npm@latest -g
 npm update
-cd /Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/node_modules
+cd /Users/thedemskie/OneDrive/GoPrototypes/src/github.com/demskie/hyperionfive/node_modules
 npm install --save google-protobuf
 npm install --global browserify
-browserify ../protobuf_pb.js -o ../websiteroot/protobuf.js
+browserify ../websiteroot/gamestate_pb.js -o ../websiteroot/protobuf.js
+rm ../websiteroot/gamestate_pb.js
 /////////////////////////////
 protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=$GOPATH/src/hyperionfive/backend/ --proto_path=/Users/thedemskie/OneDrive/GoPrototypes/src/hyperionfive/backend/ protobuf_galaxy.proto
 protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=$GOPATH/src/github.com/AlexDemskie/hyperionfivebot/actor --proto_path=$GOPATH/src/github.com/AlexDemskie/hyperionfivebot/actor gamestate.proto
@@ -34,7 +35,7 @@ npm update
 cd U:\OneDrive\GoPrototypes\src\GOSERVER\node_modules
 npm install --save google-protobuf
 npm install --global browserify
-browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
+browserify ..\websiteroot\gamestate_pb.js -o ..\websiteroot\protobuf.js
 /////////////////////////////
 
 
@@ -42,8 +43,7 @@ browserify ..\protobuf_pb.js -o ..\websiteroot\protobuf.js
 cd $GOPATH/src/github.com/uber/go-torch
 go-torch -u http://localhost:8080/debug/pprof/profile?seconds=30 && open torch.svg
 
-wget http://localhost:8080/debug/pprof/trace?seconds=30
-go tool trace trace?seconds=30
+wget http://localhost:8080/debug/pprof/trace?seconds=30 && go tool trace trace?seconds=30
 
-go tool pprof -png http://localhost:8080/debug/pprof/heap > out3.png
+go tool pprof -png http://localhost:8080/debug/pprof/heap > out3.png && open out3.png
 /////////////////////////////////////

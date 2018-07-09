@@ -37,22 +37,30 @@ func (galaxy *GalaxyStruct) ProcessActions() {
 			undockAction[action.ActionNames[0]] = action
 		}
 	}
-	mtxFleet := sync.Mutex{}
-	mtxPlanet := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	actionChan := make(chan *gamestate.Action, 1000)
+	futureActionChan := make(chan *gamestate.Action, 1000)
+	go func() {
+		for _, action := range fleetAction {
+			actionChan <- action
+		}
+		for _, action := range undockAction {
+			actionChan <- action
+		}
+		close(actionChan)
+		var i int
+		for futureAction := range futureActionChan {
+			galaxy.Protobuf.Actionslice[i] = futureAction
+			i++
+		}
+		galaxy.Protobuf.Actionslice = galaxy.Protobuf.Actionslice[:i]
+		wg.Done()
+	}()
 	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		for {
-			mtxFleet.Lock()
-			var action *gamestate.Action
-			for _, action = range fleetAction {
-				break
-			}
-			mtxFleet.Unlock()
-			if action == nil {
-				break
-			}
+		for action := range actionChan {
 			switch action.ActionType {
 			case gamestate.MoveFleetToAttackFleet:
-				// BUG: are locks needed?
 				myFleet := galaxy.LookupFleetID(int32(action.ActionValues[0]))
 				otherFleet := galaxy.LookupFleetID(int32(action.ActionValues[1]))
 				distance := DistanceBetweenPoints(myFleet.InterX, myFleet.InterY,
@@ -64,7 +72,9 @@ func (galaxy *GalaxyStruct) ProcessActions() {
 					}
 				} else if distance > gamestate.OptimalFleetAttackRange {
 					myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
-						myFleet.InterX, myFleet.InterY, otherFleet.InterY, otherFleet.InterY, gamestate.FleetSpeedPerSecond)
+						myFleet.InterX, myFleet.InterY,
+						otherFleet.InterY, otherFleet.InterY,
+						gamestate.FleetSpeedPerSecond)
 				}
 			case gamestate.MoveFleetToAttackSystem:
 				myFleet := galaxy.LookupFleetID(int32(action.ActionValues[0]))
@@ -73,7 +83,9 @@ func (galaxy *GalaxyStruct) ProcessActions() {
 					otherSystem.InterX, otherSystem.InterY)
 				if distance > gamestate.LightYear/100 {
 					myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
-						myFleet.InterX, myFleet.InterY, otherSystem.InterY, otherSystem.InterY, gamestate.FleetSpeedPerSecond)
+						myFleet.InterX, myFleet.InterY,
+						otherSystem.InterY, otherSystem.InterY,
+						gamestate.FleetSpeedPerSecond)
 				}
 			case gamestate.MoveFleetToDefendSystem:
 				myFleet := galaxy.LookupFleetID(int32(action.ActionValues[0]))
@@ -82,7 +94,9 @@ func (galaxy *GalaxyStruct) ProcessActions() {
 					mySystem.InterX, mySystem.InterY)
 				if distance > gamestate.LightYear/100 {
 					myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
-						myFleet.InterX, myFleet.InterY, mySystem.InterY, mySystem.InterY, gamestate.FleetSpeedPerSecond)
+						myFleet.InterX, myFleet.InterY,
+						mySystem.InterY, mySystem.InterY,
+						gamestate.FleetSpeedPerSecond)
 				}
 			case gamestate.MoveFleetToOngoingBattle:
 				myFleet := galaxy.LookupFleetID(int32(action.ActionValues[0]))
@@ -92,22 +106,13 @@ func (galaxy *GalaxyStruct) ProcessActions() {
 					originFleet.InterX, originFleet.InterY)
 				if distance > gamestate.OptimalFleetAttackRange {
 					myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
-						myFleet.InterX, myFleet.InterY, originFleet.InterY, originFleet.InterY, gamestate.FleetSpeedPerSecond)
+						myFleet.InterX, myFleet.InterY,
+						originFleet.InterY, originFleet.InterY,
+						gamestate.FleetSpeedPerSecond)
 				}
 			}
 		}
-		for {
-			mtxPlanet.Lock()
-			var action *gamestate.Action
-			for _, action = range fleetAction {
-				break
-			}
-			mtxPlanet.Unlock()
-			if action == nil {
-				break
-			}
-			// do something
-		}
 	})
-
+	close(futureActionChan)
+	wg.Wait()
 }

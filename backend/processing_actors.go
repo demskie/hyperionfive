@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"fmt"
+
 	"github.com/demskie/hyperionbot/actor"
 	"github.com/demskie/hyperionfive/gamestate"
 	"github.com/demskie/hyperionfive/intutil"
@@ -34,11 +36,13 @@ func (galaxy *GalaxyStruct) AdvanceActors() {
 				GlobalY:     galaxy.Protobuf.GlobalY,
 				Systemslice: galaxy.PlayerFogOfWarSlice(bot.GetOwner()),
 			}
-			allActions[coreNum] = bot.Process(partialGalaxy, nil)
+			allActions[coreNum] = append(allActions[coreNum], bot.Process(partialGalaxy, nil)...)
 		}
 	})
 	for coreNum := range allActions {
 		for _, action := range allActions[coreNum] {
+			log.Debug(fmt.Sprintf("ActionType:%v\nActionValues:%v\nActionNames:%v",
+				action.ActionType, action.ActionValues, action.ActionNames))
 			galaxy.CreateOutstandingAction(&gamestate.Action{
 				ActionType:   action.ActionType,
 				ActionValues: action.ActionValues,

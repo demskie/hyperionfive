@@ -135,7 +135,6 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			galaxy.CalculatePopulation()     // processing_population.go
 			galaxy.AdvanceProduction()       // processing_production.go
 			galaxy.ProcessOngoingBattles()   // processing_battle.go
-
 			universe.Unlock()
 
 			close(universe.ClientSignal)

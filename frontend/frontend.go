@@ -44,9 +44,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	if log.CheckError(err, fName) {
 		log.SuddenExit()
 	}
-	partialDirPath := filepath.Dir(exPath)
-	entireDirPath := filepath.Join(partialDirPath, "websiteroot\\")
-	directoryObject := http.Dir(entireDirPath)
+	directoryObject := http.Dir(filepath.Join(filepath.Dir(exPath), "websiteroot"))
 	fileserverWithModifiedHeaders := addSecurityHeaders(http.FileServer(directoryObject))
 
 	// setup the websocket handlers
@@ -123,6 +121,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  30 * time.Second,
+			Addr:         netutil.GetLocalAddress(args, log) + ":80",
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Header().Set("Connection", "close")
 				url := "https://" + req.Host + req.URL.String()
@@ -138,6 +137,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		}()
 	}
 
+	log.Info("(hyperionfive) serving HTTPS", netutil.GetLocalAddress(args, log)+":443")
 	indefinite := make(chan struct{})
 	<-indefinite
 

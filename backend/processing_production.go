@@ -36,28 +36,6 @@ func (galaxy *GalaxyStruct) AdvanceProduction() {
 			millionsPlusOne = int32(planet.Population/oneMillion) + 1
 			planet.Progress += millionsPlusOne
 			planet.DockedFighterCount += rnum.Int31n(millionsPlusOne)
-			if planet.DockedFighterCount >= 100 {
-				fleet := galaxy.PlayerFleetInsideSystem[planet.ParentSystemUint][planet.OwnerUint]
-				if fleet == nil {
-					galaxy.CreateFleet(&gamestate.Fleet{
-						FleetID:           -1,
-						InterX:            planet.InterX - 10,
-						InterY:            planet.InterY,
-						OwnerUint:         planet.OwnerUint,
-						ClosestSystemUint: planet.ParentSystemUint,
-						TitanCount:        planet.DockedTitanCount,
-						CapitalCount:      planet.DockedCapitalCount,
-						FighterCount:      planet.DockedFighterCount,
-					})
-				} else {
-					fleet.TitanCount += planet.DockedTitanCount
-					fleet.CapitalCount += planet.DockedCapitalCount
-					fleet.FighterCount += planet.DockedFighterCount
-				}
-				planet.DockedTitanCount = 0
-				planet.DockedCapitalCount = 0
-				planet.DockedFighterCount = 0
-			}
 			switch planet.Focus {
 			case gamestate.INCREASEPOPULATION:
 				requiredProgress = getRequiredProgress(planet.Food)
@@ -74,74 +52,17 @@ func (galaxy *GalaxyStruct) AdvanceProduction() {
 			case gamestate.BUILDTITAN:
 				if planet.Progress > oneMillion {
 					planet.Progress -= oneMillion
-					fleet := galaxy.PlayerFleetInsideSystem[planet.ParentSystemUint][planet.OwnerUint]
-					if fleet == nil {
-						galaxy.CreateFleet(&gamestate.Fleet{
-							FleetID:           -1,
-							InterX:            planet.InterX + 10,
-							InterY:            planet.InterY,
-							OwnerUint:         planet.OwnerUint,
-							ClosestSystemUint: planet.ParentSystemUint,
-							TitanCount:        planet.DockedTitanCount,
-							CapitalCount:      planet.DockedCapitalCount,
-							FighterCount:      planet.DockedFighterCount,
-						})
-					} else {
-						fleet.TitanCount += planet.DockedTitanCount
-						fleet.CapitalCount += planet.DockedCapitalCount
-						fleet.FighterCount += planet.DockedFighterCount
-					}
-					planet.DockedTitanCount = 0
-					planet.DockedCapitalCount = 0
-					planet.DockedFighterCount = 0
+					planet.DockedTitanCount++
 				}
 			case gamestate.BUILDCAPITALSHIP:
 				if planet.Progress > 10000 {
 					planet.Progress -= 10000
-					fleet := galaxy.PlayerFleetInsideSystem[planet.ParentSystemUint][planet.OwnerUint]
-					if fleet == nil {
-						galaxy.CreateFleet(&gamestate.Fleet{
-							FleetID:           -1,
-							InterX:            planet.InterX - 10,
-							InterY:            planet.InterY,
-							OwnerUint:         planet.OwnerUint,
-							ClosestSystemUint: planet.ParentSystemUint,
-							TitanCount:        planet.DockedTitanCount,
-							CapitalCount:      planet.DockedCapitalCount,
-							FighterCount:      planet.DockedFighterCount,
-						})
-					} else {
-						fleet.TitanCount += planet.DockedTitanCount
-						fleet.CapitalCount += planet.DockedCapitalCount
-						fleet.FighterCount += planet.DockedFighterCount
-					}
-					planet.DockedTitanCount = 0
-					planet.DockedCapitalCount = 0
-					planet.DockedFighterCount = 0
+					planet.DockedCapitalCount++
 				}
 			case gamestate.BUILDFIGHTER:
 				if planet.Progress > 100 {
 					planet.Progress -= 100
-					fleet := galaxy.PlayerFleetInsideSystem[planet.ParentSystemUint][planet.OwnerUint]
-					if fleet == nil {
-						galaxy.CreateFleet(&gamestate.Fleet{
-							FleetID:           -1,
-							InterX:            planet.InterX,
-							InterY:            planet.InterY + 10,
-							OwnerUint:         planet.OwnerUint,
-							ClosestSystemUint: planet.ParentSystemUint,
-							TitanCount:        planet.DockedTitanCount,
-							CapitalCount:      planet.DockedCapitalCount,
-							FighterCount:      planet.DockedFighterCount,
-						})
-					} else {
-						fleet.TitanCount += planet.DockedTitanCount
-						fleet.CapitalCount += planet.DockedCapitalCount
-						fleet.FighterCount += planet.DockedFighterCount
-					}
-					planet.DockedTitanCount = 0
-					planet.DockedCapitalCount = 0
-					planet.DockedFighterCount = 0
+					planet.DockedFighterCount++
 				}
 			default:
 				log.Error(fName, fmt.Sprintf("Unknown obj.Focus value '%v'", planet.Focus))
