@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 //import ReactDOM from 'react-dom';
 //import * as Blueprint from '@blueprintjs/core';
-import { Button, Navbar, Alignment } from "@blueprintjs/core";
+import { Button, Navbar, NavbarGroup, NavbarDivider, Alignment } from "../node_modules/@blueprintjs/core";
 import { Systems } from "./menus/Systems.js";
 
 class Game extends Component {
@@ -9,22 +9,22 @@ class Game extends Component {
     return (
       <div className="Game">
         <div style={{ position:"fixed",
-                      width:"480px",
+                      width:"425px",
                       left:"50%",
                       transform:"translateX(-50%)" }}>
           <Navbar className="bp3-dark">
-            <Navbar.Group align={Alignment.LEFT}>
+            <NavbarGroup align={Alignment.LEFT}>
               <Systems />
               <Button className="bp3-minimal" icon="geolocation" text="Fleets" />
-              <Navbar.Divider />
+              <NavbarDivider />
               <Button className="bp3-minimal" icon="zoom-in" text="" />
               <Button className="bp3-minimal" icon="zoom-out" text="" />
-              <Navbar.Divider />
+              <NavbarDivider />
               <Button className="bp3-minimal" icon="property" text="" />
               <Button className="bp3-minimal" icon="cog" text="" />
-              <Navbar.Divider />
+              <NavbarDivider />
               <Button className="bp3-minimal" icon="fullscreen" text="" />
-            </Navbar.Group>
+            </NavbarGroup>
           </Navbar>
         </div>
         <canvas id="threeCanvas"
