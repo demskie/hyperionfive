@@ -3,10 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@blueprintjs/core": "^3.0.0",
+    "@blueprintjs/core": "^3.0.1",
+    "@blueprintjs/datetime": "^3.0.0",
+    "@blueprintjs/icons": "^3.0.0",
+    "@blueprintjs/select": "^3.0.0",
+    "@blueprintjs/table": "^3.0.0",
+    "@blueprintjs/timezone": "^3.0.0",
+    "classnames": "^2.2.6",
     "react": "^16.4.1",
     "react-dom": "^16.4.1",
-    "react-scripts": "1.1.4"
+    "react-scripts": "1.1.4",
+    "react-transition-group": "^2.4.0"
   },
   "scripts": {
     "start": "react-scripts start",
