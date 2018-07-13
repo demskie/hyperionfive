@@ -40,7 +40,7 @@ export class Systems extends Component {
     }
 
     componentDidMount = () => {
-        this.updateDimensions()
+        this.updateDimensions();
         window.addEventListener("resize", this.updateDimensions);
     }
 
