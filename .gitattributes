@@ -1,5 +1,5 @@
-nodejs_src/* linguist-vendored
-websiteroot/protobuf.js linguist-vendored
-websiteroot/three.detecter.js linguist-vendored
-websiteroot/three.min.js linguist-vendored
-websiteroot/three.orbitcontrols.js linguist-vendored
+reactclient/node_modules/* linguist-vendored
+reactclient/public/protobuf.js linguist-vendored
+reactclient/public/three.detecter.js linguist-vendored
+reactclient/public/three.min.js linguist-vendored
+reactclient/public/three.orbitcontrols.js linguist-vendored
