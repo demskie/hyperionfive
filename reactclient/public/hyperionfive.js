@@ -1,56 +1,16 @@
-function goFullscreen() {
-	
+function doSomething() {
+	console.log("doing something")
 }
 
 
-function startGame(login_type, id_token, id) {
+function OnNewGameData(state) {
+	var evt = new CustomEvent("authsuccess", { detail: state });
+	window.dispatchEvent(evt);
+  }
 
-	var firstToolbar = { 
-		view:"toolbar", 
-		id:"firstToolbar",
-		cols:[
-			{ view:"button", id: "addButton", value:"Add", width:100 },
-			{ view:"button", id: "fullscreenButton", value:"Fullscreen", width:120, align:"right"}
-		]
-	}
-
-	var secondToolbar = {
-		id:"secondToolbar",
-		view:"toolbar",
-		elements:[
-			{ view:"button", value:"Show Galaxy", width:120 },
-		]
-	}
-
-	webix.ui.fullScreen();
-	var layout = webix.ui({
-		type:"clean",
-		margin:0,
-		padding:0, 
-		rows: [ 
-			firstToolbar,
-			{ 
-				view:"template", template:"<canvas id='threeCanvas'></canvas>", type:"clean"
-			},
-			secondToolbar,
-		]
-	});
-
-	
-	console.log(layout)
-	console.log(layout.getNode())
-
-	// hide the login buttons
-	document.getElementById("loginPage").style.visibility = "hidden"
-
-	// toggle fullscreen using the button
-	layout.attachEvent("onClick", function(id){
-		console.log("requesting fullscreen")
-		if (id == "fullscreen") {
-			document.body.requestFullscreen();
-			document.body.webkitRequestFullScreen();
-		}
-	})
+function startGame(googleId, accessToken) {
+	console.log("googleId:", googleId, "accessToken:", accessToken)
+	return
 
 	// send data to hyperion5.com/clienttofrontend
 	var socket = new WebSocket("wss://hyperion5.com/clienttofrontend");

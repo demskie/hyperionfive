@@ -1,7 +1,5 @@
-import React, { Component } from 'react';
-//import ReactDOM from 'react-dom';
-//import * as Blueprint from '@blueprintjs/core';
-import { Button, Navbar, NavbarGroup, NavbarDivider } from "../node_modules/@blueprintjs/core";
+import React from 'react';
+import { Button, Navbar, NavbarGroup, NavbarDivider } from "@blueprintjs/core";
 import { Systems } from "./menus/Systems.js";
 import fscreen from "fscreen";
 
@@ -16,11 +14,12 @@ function requestFullscreen() {
     window.alert("your browser doesnt support fullscreen")
   }
 }
-fscreen.addEventListener('fullscreenerror', function(e){console.log(e)}, {});
 
-class Game extends Component {
+
+export class Game extends React.Component {
   constructor(props) {
     super(props);
+    console.log(props);
     this.state = {
         navbarOffset: null
     }
@@ -37,7 +36,6 @@ class Game extends Component {
     this.updateNavbarOffset();
     window.addEventListener("resize", this.updateNavbarOffset);
   }
-
 
   render() {
     return (
@@ -69,17 +67,18 @@ class Game extends Component {
             </NavbarGroup>
           </Navbar>
         </div>
-        <canvas id="threeCanvas"
-          style={{ backgroundColor:"rgb(0, 0, 0)",
-                   overflow:"hidden",
-                   top:"0",
-                   left:"0",
-                   width:"100%vh",
-                   height:"100vh" }}>
-        </canvas>
+        <canvas
+          id="threeCanvas"
+          style={{ 
+            backgroundColor:"rgb(0, 0, 0)",
+            overflow:"hidden",
+            top:"0",
+            left:"0",
+            width:"100%vh",
+            height:"100vh"
+          }}
+        />
       </div>
     );
   }
 }
-
-export default Game;
