@@ -2,83 +2,56 @@ import React from 'react';
 import { Button, Navbar, NavbarGroup, NavbarDivider } from "@blueprintjs/core";
 import { Systems } from "./menus/Systems.js";
 import fscreen from "fscreen";
+import { Flex, Box } from 'reflexbox'
 
 function requestFullscreen() {
-  if (fscreen.fullscreenEnabled) {
-    if (fscreen.fullscreenElement == null) {
-      fscreen.requestFullscreen(document.body);
-    } else {
-      fscreen.exitFullscreen();
-    }
-  } else {
-    window.alert("your browser doesnt support fullscreen")
-  }
+	if (fscreen.fullscreenEnabled) {
+		if (fscreen.fullscreenElement == null) {
+			fscreen.requestFullscreen(document.body);
+		} else {
+			fscreen.exitFullscreen();
+		}
+	} else {
+		window.alert("Sorry, your browser does not appear to support fullscreen mode")
+	}
 }
 
-
 export class Game extends React.Component {
-  constructor(props) {
-    super(props);
-    console.log(props);
-    this.state = {
-        navbarOffset: null
-    }
-  }
+	constructor(props) {
+		super(props);
+		console.log(props);
+		this.state = {
+			deviceWidth: document.documentElement.clientWidth + "px",
+			deviceHeight: document.documentElement.clientHeight + "px"
+		}
+	}
 
-  updateNavbarOffset = () => {
-    var width = document.documentElement.clientWidth / 2
-    this.setState({
-      navbarOffset: width+"px"
-    })
-  }
 
-  componentDidMount = () => {
-    this.updateNavbarOffset();
-    window.addEventListener("resize", this.updateNavbarOffset);
-  }
 
-  render() {
-    return (
-      <div 
-        className="Game"
-        style={{
-          display:"flex",
-          justifyContent:"center",
-          //alignItems:"center",
-        }}
-      >
-        <div
-          style={{ 
-            position:"fixed"
-          }}
-        >
-          <Navbar className="bp3-dark">
-            <NavbarGroup>
-              <Systems />
-              <Button className="bp3-minimal" icon="geolocation" text="Fleets" />
-              <NavbarDivider />
-              <Button className="bp3-minimal" icon="zoom-in" text="" />
-              <Button className="bp3-minimal" icon="zoom-out" text="" />
-              <NavbarDivider />
-              <Button className="bp3-minimal" icon="property" text="" />
-              <Button className="bp3-minimal" icon="cog" text="" />
-              <NavbarDivider />
-              <Button className="bp3-minimal" icon="fullscreen" text="" onClick={requestFullscreen} />
-            </NavbarGroup>
-          </Navbar>
-        </div>
-        <canvas
-          id="threeCanvas"
-          style={{ 
-            backgroundColor:"rgb(0, 0, 0)",
-            overflow:"hidden",
-            top:"0",
-            left:"0",
-            width:"100%vh",
-            height:"100vh"
-          }}
-        />
-      </div>
-    );
-  }
+	componentDidMount = () => {
+
+	}
+
+	render() {
+		return (
+			<Flex align="center" column>
+				<Box>
+					<Navbar className="bp3-dark">
+						<NavbarGroup>
+							<Systems />
+							<Button className="bp3-minimal" icon="geolocation" text="Fleets" />
+							<NavbarDivider />
+							<Button className="bp3-minimal" icon="zoom-in" text="" />
+							<Button className="bp3-minimal" icon="zoom-out" text="" />
+							<NavbarDivider />
+							<Button className="bp3-minimal" icon="property" text="" />
+							<Button className="bp3-minimal" icon="cog" text="" />
+							<NavbarDivider />
+							<Button className="bp3-minimal" icon="fullscreen" text="" onClick={requestFullscreen} />
+						</NavbarGroup>
+					</Navbar>
+				</Box>
+			</Flex>
+		);
+	}
 }
