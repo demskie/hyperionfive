@@ -1,6 +1,10 @@
 import React, { Component } from 'react';
-import { Button, Dialog, Classes, Tooltip, AnchorButton, Intent } from "@blueprintjs/core";
+import { Button, Dialog, Classes } from "@blueprintjs/core";
+//import { Table, Column } from "@blueprintjs/table";
 import classNames from "classnames";
+import { Flex, Box } from 'reflexbox'
+
+
 
 export class Systems extends Component {
 	constructor(props) {
@@ -45,16 +49,39 @@ export class Systems extends Component {
 		this.updateDimensions();
 	}
 
+	detectClickAndHold = (val) => {
+		console.log("detected click against", val)
+		window.alert("detected a click")
+	}
+	// zooming out to galaxy view shows
+	//	1) battle lines
+	// 	2) 
+
+
+
+	// system view
+	// filter: production rate
+	// filter: system pressure
+	// filter: proximity
+	// search: system name
+	// clicking: makes the webgl canvas zoom to that system
+	// holding: makes the 
+
+
+	// idea: spin rate represents production rate
+	// and the color of spinner represents threat level
 
 	render() {
 		return (
 			<div>
-				<Button className="bp3-minimal"
+				<Button
+					className="bp3-minimal"
 					icon="search-around"
 					text="Systems"
 					onClick={this.openDialog}
 				/>
-				<Dialog className={classNames("bp3-dark")}
+				<Dialog
+					className={classNames("bp3-dark")}
 					//icon="info-sign"
 					title="Systems"
 					isOpen={this.state.visible}
@@ -64,7 +91,8 @@ export class Systems extends Component {
 						height: "100%",
 					}}
 				>
-					<div id="systemScrollableDialogBody"
+					<div
+						id="systemScrollableDialogBody"
 						style={{
 							overflow: "hidden",
 							overflowY: "scroll",
@@ -73,87 +101,113 @@ export class Systems extends Component {
 						}}
 					>
 						<div className={Classes.DIALOG_BODY}>
-							<p>
-								<strong>
-									Data integration is the seminal problem of the digital age. For over ten years, we’ve
-									helped the world’s premier organizations rise to the challenge.
-								</strong>
-							</p>
-							<p>
-								Palantir Foundry radically reimagines the way enterprises interact with data by amplifying
-								and extending the power of data integration. With Foundry, anyone can source, fuse, and
-								transform data into any shape they desire. Business analysts become data engineers — and
-								leaders in their organization’s data revolution.
-							</p>
-							<p>
-								Foundry’s back end includes a suite of best-in-class data integration capabilities: data
-								provenance, git-style versioning semantics, granular access controls, branching,
-								transformation authoring, and more. But these powers are not limited to the back-end IT
-								shop.
-							</p>
-							<p>
-								In Foundry, tables, applications, reports, presentations, and spreadsheets operate as data
-								integrations in their own right. Access controls, transformation logic, and data quality
-								flow from original data source to intermediate analysis to presentation in real time. Every
-								end product created in Foundry becomes a new data source that other users can build upon.
-								And the enterprise data foundation goes where the business drives it.
-							</p>
-							<p>Start the revolution. Unleash the power of data integration with Palantir Foundry.</p>
-							<p>
-								<strong>
-									Data integration is the seminal problem of the digital age. For over ten years, we’ve
-									helped the world’s premier organizations rise to the challenge.
-								</strong>
-							</p>
-							<p>
-								Palantir Foundry radically reimagines the way enterprises interact with data by amplifying
-								and extending the power of data integration. With Foundry, anyone can source, fuse, and
-								transform data into any shape they desire. Business analysts become data engineers — and
-								leaders in their organization’s data revolution.
-							</p>
-							<p>
-								Foundry’s back end includes a suite of best-in-class data integration capabilities: data
-								provenance, git-style versioning semantics, granular access controls, branching,
-								transformation authoring, and more. But these powers are not limited to the back-end IT
-								shop.
-							</p>
-							<p>
-								In Foundry, tables, applications, reports, presentations, and spreadsheets operate as data
-								integrations in their own right. Access controls, transformation logic, and data quality
-								flow from original data source to intermediate analysis to presentation in real time. Every
-								end product created in Foundry becomes a new data source that other users can build upon.
-								And the enterprise data foundation goes where the business drives it.
-							</p>
-							<p>Start the revolution. Unleash the power of data integration with Palantir Foundry.</p><p>
-								<strong>
-									Data integration is the seminal problem of the digital age. For over ten years, we’ve
-									helped the world’s premier organizations rise to the challenge.
-								</strong>
-							</p>
-							<p>
-								Palantir Foundry radically reimagines the way enterprises interact with data by amplifying
-								and extending the power of data integration. With Foundry, anyone can source, fuse, and
-								transform data into any shape they desire. Business analysts become data engineers — and
-								leaders in their organization’s data revolution.
-							</p>
-							<p>
-								Foundry’s back end includes a suite of best-in-class data integration capabilities: data
-								provenance, git-style versioning semantics, granular access controls, branching,
-								transformation authoring, and more. But these powers are not limited to the back-end IT
-								shop.
-							</p>
-							<p>
-								In Foundry, tables, applications, reports, presentations, and spreadsheets operate as data
-								integrations in their own right. Access controls, transformation logic, and data quality
-								flow from original data source to intermediate analysis to presentation in real time. Every
-								end product created in Foundry becomes a new data source that other users can build upon.
-								And the enterprise data foundation goes where the business drives it.
-							</p>
-							<p>Start the revolution. Unleash the power of data integration with Palantir Foundry.</p>
+							<Flex wrap>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+								<Box>
+									<div className="bp3-card bp3-elevation-3 bp3-interactive"
+										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+										onClick={() => this.detectClickAndHold("Andromeda")}>
+										<p> Andromeda </p>
+										<p> Size: Large </p>
+										<p> Threat: Significant </p>
+										<p> Status: Under Siege </p>
+									</div>
+								</Box>
+							</Flex>
 						</div>
 					</div>
 					<div className={Classes.DIALOG_FOOTER}>
 						<div className={Classes.DIALOG_FOOTER_ACTIONS}>
+							{/*
 							<Tooltip content="This button is hooked up to close the dialog.">
 								<Button onClick={this.closeDialog}>Close</Button>
 							</Tooltip>
@@ -164,6 +218,7 @@ export class Systems extends Component {
 							>
 								Visit the Foundry website
 							</AnchorButton>
+							*/}
 						</div>
 					</div>
 				</Dialog>
