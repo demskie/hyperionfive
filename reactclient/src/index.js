@@ -69,16 +69,11 @@ export class Main extends React.Component {
 		var root = document.getElementById("root")
 		root.style.width = width
 		root.style.height = height
-		var threejs = document.getElementById("threejs")
-		threejs.style.width = width
-		threejs.style.height = height
 	}
 
 	componentDidMount = () => {
-		// manually adjust sizing of root div
-		window.addEventListener("resize", this.updateDimensions);
-		window.addEventListener("deviceorientation", this.updateDimensions);
-		this.updateDimensions();
+		window.addEventListener("resize", window.debounce(this.updateDimensions, 100));
+		this.updateDimensions(); // for good measure
 	}
 
 	render() {

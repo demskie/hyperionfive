@@ -3,7 +3,7 @@ import { Button, Navbar, NavbarGroup, NavbarDivider, Alert } from "@blueprintjs/
 import { Systems } from "./menus/Systems.js";
 import fscreen from "fscreen";
 import { Flex, Box } from 'reflexbox'
-
+import { isMobileOnly, deviceDetect } from "react-device-detect";
 
 
 export class Game extends React.Component {
@@ -42,7 +42,9 @@ export class Game extends React.Component {
 			this.props.accessToken,
 			this.props.email,
 			this.props.name,
-			this.props.imageUrl
+			this.props.imageUrl,
+			isMobileOnly,
+			deviceDetect()
 		)
 	}
 

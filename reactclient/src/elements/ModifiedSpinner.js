@@ -8,7 +8,8 @@ export class ModifiedSpinner extends Component {
 			<div style={{
 				width: this.props.size + "px",
 				WebkitAnimation: "spin360 " + this.props.cycleTime + "s linear infinite",
-				animation: "spin360 " + this.props.cycleTime + "s linear infinite"
+				animation: "spin360 " + this.props.cycleTime + "s linear infinite",
+				willChange: "transform"
 			}}>
 				<Spinner
 					// "NONE", "PRIMARY", "SUCCESS", "WARNING", "DANGER"

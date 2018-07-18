@@ -3,21 +3,30 @@ function OnNewGameData(state) {
 	window.dispatchEvent(evt);
 }
 
-function startGame(googleId, accessToken, email, name, imageUrl) {
+function debounce(func, timeout) {
+	var timer;
+	return function (event) {
+		if (timer) clearTimeout(timer);
+		timer = setTimeout(func, timeout, event);
+	};
+}
+
+function startGame(googleId, accessToken, email, name, imageUrl, isMobileOnly, deviceDetectInfo) {
 	console.debug("googleId:", googleId)
 	console.debug("accessToken:", accessToken)
 	console.debug("email:", email)
 	console.debug("name:", name)
 	console.debug("imageUrl:", imageUrl)
-	return
+	console.debug("isMobileOnly:", isMobileOnly)
+	console.debug("deviceDetectInfo:", deviceDetectInfo)
 
 	// send data to hyperion5.com/clienttofrontend
 	var socket = new WebSocket("wss://hyperion5.com/clienttofrontend");
-	socket.onopen = function (event) {
+	socket.onopen = function (ev) {
 		console.log("sending id_token to wss://hyperion5.com/clienttofrontend");
 		socket.send(JSON.stringify({
-			"login_type": login_type,
-			"id_token": id_token
+			"login_type": "google",
+			"id_token": accessToken
 		}));
 		socket.binaryType = 'arraybuffer';
 	};
@@ -36,8 +45,6 @@ function startGame(googleId, accessToken, email, name, imageUrl) {
 		console.log(someData.getName());
 		someData.setName("Andromeda-999");
 		console.log(someData.getSolarsystemsliceList());
-
-
 
 		//var arrayOfGalaxies = new Array();
 		//for(objIter in incomingMsg["Servers"]) {
@@ -64,21 +71,6 @@ function startGame(googleId, accessToken, email, name, imageUrl) {
 			console.log("error detected!!!", event);
 		}
 	}
-
-	// send data to hyperion5.com/clienttobackend
-	//	var socket = new WebSocket("wss://hyperion5.com/clienttobackend");
-	//	socket.onopen = function(event) {
-	//		console.log("sending id_token to wss://hyperion5.com/clienttofrontend");
-	//		socket.send(JSON.stringify({
-	//			"login_type" : login_type,
-	//			"id_token" : id_token
-	//		}));
-	//		socket.binaryType = 'arraybuffer';
-	//	};
-
-	//var wsJson = new WebSocket("ws://hyperion5.com/socketserver", "hyperionJson");
-	//var wsProtobuf = new WebSocket("ws://hyperion5.com/socketserver", "hyperionProtobuf");
-
 
 	// accessing data structures defined by protobuf.js
 	var Galaxy = new proto.gamestate.Galaxy();
@@ -109,94 +101,55 @@ function startGame(googleId, accessToken, email, name, imageUrl) {
 	}
 	testData();
 
-	//////////////////////////////////////////////////
-	//////////////////////////////////////////////////
-	//////////////////////////////////////////////////
+	// ensure that this device supports webgl
+	if (!Detector.webgl) {
+		Detector.addGetWebGLMessage();
+	}
 
-	if (!Detector.webgl) Detector.addGetWebGLMessage();
-
-	var camera, controls, scene, renderer;
+	var camera, scene, renderer;
+	var geometry, material, mesh;
 
 	init();
-	//render(); // remove when using next line for animation loop (requestAnimationFrame)
 	animate();
 
-	//////////////////////////////////////////////////
-
 	function init() {
+		var canvasElement = document.getElementById("threejs");
+		renderer = new THREE.WebGLRenderer({ antialias: false, canvas: canvasElement });
+
+		camera = new THREE.PerspectiveCamera(70, canvasElement.clientWidth / canvasElement.clientHeight, 0.01, 10);
+		camera.position.z = 1;
+
+		window.addEventListener("resize", window.debounce(function () {
+			canvasElement.style.width = document.documentElement.clientWidth + "px"
+			canvasElement.style.height = document.documentElement.clientHeight + "px"
+			canvasElement.clientWidth = document.documentElement.clientWidth
+			canvasElement.clientHeight = document.documentElement.clientHeight
+			canvasElement.width = document.documentElement.clientWidth
+			canvasElement.height = document.documentElement.clientHeight
+			renderer.setSize(canvasElement.width, canvasElement.height);
+			renderer.setPixelRatio(window.devicePixelRatio);
+			camera.aspect = canvasElement.width / canvasElement.height;
+			camera.updateProjectionMatrix();
+		}, 100));
+		renderer.setSize(canvasElement.clientWidth, canvasElement.clientHeight);
+		renderer.setPixelRatio(window.devicePixelRatio);
 
 		scene = new THREE.Scene();
 
-		//////////////////////////////////////////////////
+		geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+		material = new THREE.MeshNormalMaterial();
 
-		var canvasElement = document.getElementById("threeCanvas");
-		renderer = new THREE.WebGLRenderer({ canvas: canvasElement });
-		//renderer.setClearColor( scene.fog.color );
-		renderer.setPixelRatio(window.devicePixelRatio);
-		renderer.setSize(canvasElement.clientWidth, canvasElement.clientHeight, false);
-		window.addEventListener('resize', function () {
-			renderer.setPixelRatio(window.devicePixelRatio);
-			renderer.setSize(canvasElement.clientWidth, canvasElement.clientHeight, false);
-		}, false);
-
-		//////////////////////////////////////////////////
-
-		camera = new THREE.PerspectiveCamera(45, canvasElement.clientWidth / canvasElement.clientHeight, 0.1, 1000);
-		camera.position.z = 10;
-		window.addEventListener('resize', function () {
-			camera.aspect = canvasElement.clientWidth / canvasElement.clientHeight;
-			camera.updateProjectionMatrix();
-		}, false);
-
-		//////////////////////////////////////////////////
-
-		controls = new THREE.OrbitControls(camera, renderer.domElement);
-		//controls.addEventListener( 'change', render ); // remove when using animation loop
-		controls.target.set(0, 0, 0); // view direction perpendicular to XY-plane
-
-		//////////////////////////////////////////////////
-
-		var geometry = new THREE.BoxGeometry(1, 1, 1);
-		//var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-		//var cube = new THREE.Mesh( geometry, material );
-		var wireframe = new THREE.WireframeGeometry(geometry);
-		var line = new THREE.LineSegments(wireframe);
-		line.material.depthTest = true;
-		line.material.opacity = 0.25;
-		line.material.transparent = false;
-
-		scene.add(line);
-
-		//////////////////////////////////////////////////
-
-
-
+		mesh = new THREE.Mesh(geometry, material);
+		scene.add(mesh);
+		canvasElement.addEventListener('resize', function () {
+			camera.lookAt(mesh.position);
+		});
 	}
-
-	//////////////////////////////////////////////////
-
-	//var render = function () {
-	//	requestAnimationFrame( render );
-
-	//	//controls.update();
-
-	//	line.rotation.x += 0.001;
-	//	line.rotation.y += 0.001;
-
-	//	renderer.render( scene, camera );
-
-	//	//onWindowResizeCanvas();
-	//};
-	//render();
 
 	function animate() {
 		requestAnimationFrame(animate);
-		controls.update(); // required if controls.enableDamping = true, or if controls.autoRotate = true
-		//stats.update();
-		render();
-	}
-
-	function render() {
+		mesh.rotation.x += 0.01;
+		mesh.rotation.y += 0.02;
 		renderer.render(scene, camera);
 	}
 
