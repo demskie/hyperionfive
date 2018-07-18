@@ -2,7 +2,9 @@ import React, { Component } from 'react';
 import { Button, Dialog, Classes } from "@blueprintjs/core";
 //import { Table, Column } from "@blueprintjs/table";
 import classNames from "classnames";
-import { Flex, Box } from 'reflexbox'
+import { Flex, Box } from 'reflexbox';
+import { ModifiedSpinner } from "../elements/ModifiedSpinner";
+import { default as OverflowEllipsis } from 'react-overflow-ellipsis'
 
 
 
@@ -51,7 +53,7 @@ export class Systems extends Component {
 
 	detectClickAndHold = (val) => {
 		console.log("detected click against", val)
-		window.alert("detected a click")
+		//window.alert("detected a click")
 	}
 	// zooming out to galaxy view shows
 	//	1) battle lines
@@ -101,105 +103,43 @@ export class Systems extends Component {
 						}}
 					>
 						<div className={Classes.DIALOG_BODY}>
-							<Flex wrap>
+							<Flex justify="center" wrap>
 								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+									<div className="bp3-card bp3-elevation-2 bp3-interactive"
+										style={{ width: "260px", height: "120px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
 										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
+										<Flex align="center" style={{ height: "100%" }}>
+											<Box style={{ width: "150px" }}>
+												<OverflowEllipsis>
+													<b>Andromeda</b> <br />
+													Size: Large <br />
+													Threat: Significant<br />
+													Status: Under Siege
+												</OverflowEllipsis>
+											</Box>
+											<Box style={{ width: "60px", height: "60px" }}>
+												<ModifiedSpinner intent="PRIMARY" size="60" cycleTime="10" />
+											</Box>
+										</Flex>
 									</div>
 								</Box>
 								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+									<div className="bp3-card bp3-elevation-2 bp3-interactive"
+										style={{ width: "260px", height: "120px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
 										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-3 bp3-interactive"
-										style={{ width: "300px", height: "140px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<p> Andromeda </p>
-										<p> Size: Large </p>
-										<p> Threat: Significant </p>
-										<p> Status: Under Siege </p>
+										<Flex justify="space-between" align="center" style={{ height: "100%" }}>
+											<Box style={{ width: "150px" }}>
+												<OverflowEllipsis>
+													<b>Andromeda</b> <br />
+													Size: Large <br />
+													Threat: Significant<br />
+													Status: Under Siege
+												</OverflowEllipsis>
+											</Box>
+											<Box style={{ width: "60px", height: "60px" }}>
+												<ModifiedSpinner intent="PRIMARY" size="60" cycleTime="10" />
+											</Box>
+										</Flex>
 									</div>
 								</Box>
 							</Flex>

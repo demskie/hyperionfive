@@ -69,14 +69,12 @@ export class Game extends React.Component {
 				</Box>
 				<Box>
 					<Alert
-						className="bp3-minimal"
-						confirmButtonText="Okay"
+						className="bp3-dark"
 						isOpen={this.state.fullscreenAlertIsOpen}
-						isClosed={this.closeFullscreenAlert}
+						confirmButtonText="Okay"
+						onConfirm={this.closeFullscreenAlert}
 					>
-						<p>
-							"Sorry, your browser does not appear to support fullscreen mode"
-						</p>
+						Sorry, your browser does not appear to support fullscreen mode
 					</Alert>
 				</Box>
 			</Flex >
