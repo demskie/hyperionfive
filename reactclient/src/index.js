@@ -79,7 +79,7 @@ export class Main extends React.Component {
 	render() {
 		if (this.state.googleId === null) {
 			return (
-				<div id="loginPage" style={{ height: "100%" }}>
+				<div id="loginPage" style={{ height: "100%", zIndex: "999" }}>
 					<Flex className="animated fadeInUp" align="center" justify="center" style={{ height: "100%" }} column>
 						<Box>
 							<div id="gameTitle" style={{ color: "grey", marginBottom: "20px", fontSize: "70pt" }}>hyperion5</div>

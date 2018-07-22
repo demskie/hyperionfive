@@ -75,6 +75,7 @@ export class Game extends React.Component {
 						isOpen={this.state.fullscreenAlertIsOpen}
 						confirmButtonText="Okay"
 						onConfirm={this.closeFullscreenAlert}
+						style={{ zIndex: 9999 }}
 					>
 						Sorry, your browser does not appear to support fullscreen mode
 					</Alert>

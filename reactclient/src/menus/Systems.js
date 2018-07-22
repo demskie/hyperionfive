@@ -5,7 +5,8 @@ import classNames from "classnames";
 import { Flex, Box } from 'reflexbox';
 import { ModifiedSpinner } from "../elements/ModifiedSpinner";
 import { default as OverflowEllipsis } from 'react-overflow-ellipsis'
-
+import { Collection, Grid } from 'react-virtualized';
+import "./Systems.css";
 
 
 export class Systems extends Component {
@@ -13,8 +14,9 @@ export class Systems extends Component {
 		super(props);
 		this.state = {
 			visible: false,
-			dialogMaxBodyHeight: null,
-			dialogWindowWidth: "85%"
+			actualSystemDialogBodyWidth: 0,
+			actualSystemDialogBodyHeight: 0,
+			systemGrid: [[]],
 		}
 	}
 
@@ -31,35 +33,124 @@ export class Systems extends Component {
 	}
 
 	updateDimensions = () => {
-		var height = document.documentElement.clientHeight - 260
-		if (height < 200) {
-			height = 200
-		}
 		var width = document.documentElement.clientWidth * 0.85
 		if (width > 2000 * 0.85) {
 			width = 2000 * 0.85
 		}
+		var height = document.documentElement.clientHeight - 260
+		if (height < 200) {
+			height = 200
+		}
 		this.setState({
-			dialogMaxBodyHeight: height + "px",
-			dialogWindowWidth: width + "px"
+			actualSystemDialogBodyWidth: width,
+			actualSystemDialogBodyHeight: height,
 		})
+		this.resizeSystemGrid()
+	}
+
+	makeSystemGrid = () => {
+		var newGrid = [[]];
+		var cellWidth = 280
+		var dialogWidth = document.documentElement.clientWidth * 0.85
+		if (dialogWidth > 2000 * 0.85) {
+			dialogWidth = 2000 * 0.85
+		}
+		var cellsPerRow = Math.floor((dialogWidth - 40) / cellWidth);
+		var currentRow = 0;
+		var currentColumn = 0;
+		var receiveClick = (name) => {
+			this.detectClickAndHold(name)
+		}
+		for (var [k, v] of window.galaxy.getSystemmapMap().entries()) {
+			newGrid[currentRow].push(
+				<div className="bp3-card bp3-elevation-2 bp3-interactive"
+					style={{ width: "260px", height: "120px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+					onClick={
+						function (name) {
+							return function () {
+								receiveClick(name)
+							}
+						}(k)
+					}
+				>
+					<Flex align="center" style={{ height: "100%" }}>
+						<Box style={{ width: "150px" }}>
+							<OverflowEllipsis>
+								<b>{window.nameConvert.get(k)}</b> <br />
+								Size: Large <br />
+								Threat: Significant<br />
+								Status: Under Siege
+							</OverflowEllipsis>
+						</Box>
+						<Box style={{ width: "60px", height: "60px" }}>
+							<ModifiedSpinner intent="PRIMARY" size="60" cycleTime={window.chance.integer({ min: 1, max: 15 })} />
+						</Box>
+					</Flex>
+				</div>
+			);
+			currentColumn++
+			if (currentColumn >= cellsPerRow) {
+				currentColumn = 0;
+				currentRow++
+				newGrid.push([]);
+			}
+		}
+		this.setState({
+			systemGrid: newGrid
+		})
+	}
+
+	resizeSystemGrid = () => {
+		var newGrid = [[]];
+		var cellsPerRow = Math.floor((this.state.actualSystemDialogBodyWidth - 40) / 280);
+		var currentRow = 0;
+		var currentColumn = 0;
+		for (var i = 0; i < this.state.systemGrid.length; i++) {
+			for (var j = 0; j < this.state.systemGrid[i].length; j++) {
+				newGrid[currentRow].push(this.state.systemGrid[i][j])
+				currentColumn++
+				if (currentColumn >= cellsPerRow) {
+					currentColumn = 0;
+					currentRow++
+					newGrid.push([])
+				}
+			}
+		}
+		this.setState({
+			systemGrid: newGrid
+		})
+	}
+
+	cellRenderer = ({ columnIndex, key, rowIndex, style }) => {
+		return (
+			<div
+				key={key}
+				style={style}
+			>
+				{this.state.systemGrid[rowIndex][columnIndex]}
+			</div>
+		)
 	}
 
 	componentDidMount = () => {
 		window.addEventListener("resize", this.updateDimensions);
-		window.addEventListener("deviceorientation", this.updateDimensions);
 		this.updateDimensions();
+
+		window.addEventListener("newgamedata", () => {
+			console.log(window.galaxy)
+			this.updateDimensions()
+			this.makeSystemGrid()
+		});
 	}
 
 	detectClickAndHold = (val) => {
 		console.log("detected click against", val)
 		//window.alert("detected a click")
 	}
+
 	// zooming out to galaxy view shows
 	//	1) battle lines
 	// 	2) 
-
-
 
 	// system view
 	// filter: production rate
@@ -69,13 +160,12 @@ export class Systems extends Component {
 	// clicking: makes the webgl canvas zoom to that system
 	// holding: makes the 
 
-
 	// idea: spin rate represents production rate
 	// and the color of spinner represents threat level
 
 	render() {
 		return (
-			<div>
+			<div style={{ zIndex: 9999 }}>
 				<Button
 					className="bp3-minimal"
 					icon="search-around"
@@ -89,77 +179,20 @@ export class Systems extends Component {
 					isOpen={this.state.visible}
 					onClose={this.closeDialog}
 					style={{
-						width: this.state.dialogWindowWidth,
+						width: this.state.actualSystemDialogBodyWidth + "px",
 						height: "100%",
 					}}
 				>
-					<div
-						id="systemScrollableDialogBody"
-						style={{
-							overflow: "hidden",
-							overflowY: "scroll",
-							maxHeight: this.state.dialogMaxBodyHeight,
-							marginBottom: "15px"
-						}}
-					>
-						<div className={Classes.DIALOG_BODY}>
-							<Flex justify="center" wrap>
-								<Box>
-									<div className="bp3-card bp3-elevation-2 bp3-interactive"
-										style={{ width: "260px", height: "120px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<Flex align="center" style={{ height: "100%" }}>
-											<Box style={{ width: "150px" }}>
-												<OverflowEllipsis>
-													<b>Andromeda</b> <br />
-													Size: Large <br />
-													Threat: Significant<br />
-													Status: Under Siege
-												</OverflowEllipsis>
-											</Box>
-											<Box style={{ width: "60px", height: "60px" }}>
-												<ModifiedSpinner intent="PRIMARY" size="60" cycleTime="10" />
-											</Box>
-										</Flex>
-									</div>
-								</Box>
-								<Box>
-									<div className="bp3-card bp3-elevation-2 bp3-interactive"
-										style={{ width: "260px", height: "120px", marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-										onClick={() => this.detectClickAndHold("Andromeda")}>
-										<Flex justify="space-between" align="center" style={{ height: "100%" }}>
-											<Box style={{ width: "150px" }}>
-												<OverflowEllipsis>
-													<b>Andromeda</b> <br />
-													Size: Large <br />
-													Threat: Significant<br />
-													Status: Under Siege
-												</OverflowEllipsis>
-											</Box>
-											<Box style={{ width: "60px", height: "60px" }}>
-												<ModifiedSpinner intent="PRIMARY" size="60" cycleTime="10" />
-											</Box>
-										</Flex>
-									</div>
-								</Box>
-							</Flex>
-						</div>
-					</div>
-					<div className={Classes.DIALOG_FOOTER}>
-						<div className={Classes.DIALOG_FOOTER_ACTIONS}>
-							{/*
-							<Tooltip content="This button is hooked up to close the dialog.">
-								<Button onClick={this.closeDialog}>Close</Button>
-							</Tooltip>
-							<AnchorButton
-								intent={Intent.PRIMARY}
-								href="https://www.palantir.com/palantir-foundry/"
-								target="_blank"
-							>
-								Visit the Foundry website
-							</AnchorButton>
-							*/}
-						</div>
+					<div id="actualSystemDialogBody" className={Classes.DIALOG_BODY}>
+						<Grid
+							cellRenderer={this.cellRenderer}
+							columnCount={this.state.systemGrid[0].length}
+							columnWidth={280}
+							height={this.state.actualSystemDialogBodyHeight}
+							rowCount={this.state.systemGrid.length}
+							rowHeight={140}
+							width={this.state.actualSystemDialogBodyWidth - 40}
+						/>
 					</div>
 				</Dialog>
 			</div>

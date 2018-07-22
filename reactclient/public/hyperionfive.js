@@ -1,7 +1,6 @@
-function OnNewGameData(state) {
-	var evt = new CustomEvent("authsuccess", { detail: state });
-	window.dispatchEvent(evt);
-}
+var newGameDataEvent = new Event("newgamedata");
+var galaxy = new proto.gamestate.Galaxy();
+var nameConvert = new Map();
 
 function debounce(func, timeout) {
 	var timer;
@@ -10,6 +9,10 @@ function debounce(func, timeout) {
 		timer = setTimeout(func, timeout, event);
 	};
 }
+
+var distanceFunction = function (ax, ay, az, bx, by, bz) {
+	return Math.pow(ax - bx, 2) + Math.pow(ay - by, 2) + Math.pow(az - bz, 2);
+};
 
 function startGame(googleId, accessToken, email, name, imageUrl, isMobileOnly, deviceDetectInfo) {
 	console.debug("googleId:", googleId)
@@ -30,84 +33,56 @@ function startGame(googleId, accessToken, email, name, imageUrl, isMobileOnly, d
 		}));
 		socket.binaryType = 'arraybuffer';
 	};
-	socket.onmessage = function (event) {
-		incomingMsg = JSON.parse(event.data);
-		//console.log("received the following message:");
-		//console.log(JSON.stringify(incomingMsg));
+	socket.onmessage = function (ev) {
+	};
 
-		var Galaxy = new proto.main.Galaxy();
-
-		//Galaxy = proto.main.Galaxy.deserializeBinary(Array.from(event.data));
-
-		var someData = proto.main.Galaxy.deserializeBinary(event.data)
-
-		console.log(someData);
-		console.log(someData.getName());
-		someData.setName("Andromeda-999");
-		console.log(someData.getSolarsystemsliceList());
-
-		//var arrayOfGalaxies = new Array();
-		//for(objIter in incomingMsg["Servers"]) {
-		//	arrayOfGalaxies.push( incomingMsg["Servers"][objIter]["GalaxyName"] )
-		//}
-		//console.log("  arrayOfGalaxies: " + arrayOfGalaxies);
-
-		//pingTestGameServers(incomingMsg["Servers"]);
-		//return incomingMsg["Servers"];
-
-		//	"Servers": [{
-		//	    "GalaxyName": "Milkyway-832",
-		//	    "ServerList": ["127.0.0.1", "blahblahblah"]
-		//	}, {
-		//	    "GalaxyName": "Andromeda-187",
-		//	    "ServerList": ["10.0.0.99", "192.168.1.1", "moredata"]
-		//	}]
-		//	}
-
-		socket.onclose = function (event) {
-			console.log("connection closed!!!", event);
-		};
-		socket.onerror = function (event) {
-			console.log("error detected!!!", event);
-		}
+	socket.onclose = function (ev) {
+		console.log("connection closed!!!", ev);
+	};
+	socket.onerror = function (ev) {
+		console.log("error detected!!!", ev);
 	}
 
 	// accessing data structures defined by protobuf.js
-	var Galaxy = new proto.gamestate.Galaxy();
-	function testData() {
-		console.log(Galaxy);
 
-		var systemAlpha = new proto.gamestate.System();
-		var planetAlpha = new proto.gamestate.Planet();
-		planetAlpha.setInterx(-25);
-		planetAlpha.setIntery(-25);
-		var planetBravo = new proto.gamestate.Planet();
-		planetBravo.setInterx(25);
-		planetBravo.setIntery(-25);
-		var planetCharlie = new proto.gamestate.Planet();
-		planetCharlie.setInterx(25);
-		planetCharlie.setIntery(25);
-		var planetDelta = new proto.gamestate.Planet();
-		planetDelta.setInterx(-25);
-		planetDelta.setIntery(25);
+	var systemAlpha = new proto.gamestate.System();
+	systemAlpha.setInterx(0);
+	systemAlpha.setIntery(0);
+	galaxy.getSystemmapMap().set(0, systemAlpha);
 
-		Galaxy.getSystemmapMap().set(3, systemAlpha);
-		Galaxy.getPlanetmapMap().set(4, planetAlpha);
-		Galaxy.getPlanetmapMap().set(5, planetBravo);
-		Galaxy.getPlanetmapMap().set(6, planetCharlie);
-		Galaxy.getPlanetmapMap().set(7, planetDelta);
-
-		console.log(Galaxy);
+	var oneBillion = 1000000000
+	for (var i = 0; i < 10000; i++) {
+		var sys = new proto.gamestate.System()
+		sys.setNameuint(i + 1)
+		if (chance.bool()) {
+			sys.setInterx(Math.random() * oneBillion)
+		} else {
+			sys.setInterx(Math.random() * -oneBillion)
+		}
+		if (chance.bool()) {
+			sys.setIntery(Math.random() * oneBillion)
+		} else {
+			sys.setIntery(Math.random() * -oneBillion)
+		}
+		galaxy.getSystemmapMap().set(i + 1, sys);
 	}
-	testData();
+
+	for (var i = 0; i < 10001; i++) {
+		nameConvert.set(i, chance.city())
+	}
+
+	window.dispatchEvent(newGameDataEvent);
+
+
 
 	// ensure that this device supports webgl
 	if (!Detector.webgl) {
-		Detector.addGetWebGLMessage();
+		window.alert("Sorry, your browser does not appear to support WebGL")
 	}
 
 	var camera, scene, renderer;
 	var geometry, material, mesh;
+	var controls;
 
 	init();
 	animate();
@@ -116,8 +91,15 @@ function startGame(googleId, accessToken, email, name, imageUrl, isMobileOnly, d
 		var canvasElement = document.getElementById("threejs");
 		renderer = new THREE.WebGLRenderer({ antialias: false, canvas: canvasElement });
 
-		camera = new THREE.PerspectiveCamera(70, canvasElement.clientWidth / canvasElement.clientHeight, 0.01, 10);
-		camera.position.z = 1;
+		camera = new THREE.PerspectiveCamera(50, canvasElement.clientWidth / canvasElement.clientHeight, 0.0001, 10000000);
+		camera.position.z = 1000000;
+
+		controls = new THREE.MapControls(camera, renderer.domElement);
+		controls.dampingFactor = 0.025;
+		controls.screenSpacePanning = true;
+		controls.enableZoom = true;
+		controls.enableRotate = false;
+		controls.enableKeys = false;
 
 		window.addEventListener("resize", window.debounce(function () {
 			canvasElement.style.width = document.documentElement.clientWidth + "px"
@@ -135,22 +117,25 @@ function startGame(googleId, accessToken, email, name, imageUrl, isMobileOnly, d
 		renderer.setPixelRatio(window.devicePixelRatio);
 
 		scene = new THREE.Scene();
-
-		geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+		geometry = new THREE.BoxGeometry(100000, 100000, 100000); // 100,000
 		material = new THREE.MeshNormalMaterial();
 
 		mesh = new THREE.Mesh(geometry, material);
 		scene.add(mesh);
-		canvasElement.addEventListener('resize', function () {
-			camera.lookAt(mesh.position);
-		});
 	}
 
 	function animate() {
 		requestAnimationFrame(animate);
+
 		mesh.rotation.x += 0.01;
 		mesh.rotation.y += 0.02;
+
+		controls.update();
+
 		renderer.render(scene, camera);
 	}
-
 }
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
+// https://github.com/google/protobuf/blob/master/js/map.js
+// https://chancejs.com/location/city.html

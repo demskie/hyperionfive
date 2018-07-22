@@ -5,3 +5,4 @@
 @import '~@blueprintjs/table/lib/css/table.css';
 @import '~@blueprintjs/timezone/lib/css/blueprint-timezone.css';
 @import "~animate.css";
+@import '~react-virtualized/styles.css';
