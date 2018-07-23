@@ -5,7 +5,7 @@ import classNames from "classnames";
 import { Flex, Box } from 'reflexbox';
 import { ModifiedSpinner } from "../elements/ModifiedSpinner";
 import { default as OverflowEllipsis } from 'react-overflow-ellipsis'
-import { Collection, Grid } from 'react-virtualized';
+import { Grid } from 'react-virtualized';
 import "./Systems.css";
 
 
