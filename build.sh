@@ -17,16 +17,9 @@ $GOPATH/bin/protoc \
 #    --proto_path=$GOPATH/src/github.com/demskie/hyperionfive/gamestate/ gamestate.proto
 
 $GOPATH/bin/protoc \
-    --js_out=import_style=commonjs,binary:$GOPATH/src/github.com/demskie/hyperionfive/reactclient/ \
+    --js_out=import_style=commonjs,binary:$HOME/OneDrive/react-hyperion5-game/src/components/webgl/ \
     --proto_path=$GOPATH/src/github.com/demskie/hyperionfive/gamestate/ gamestate.proto
 
-#npm install --global browserify
+sed -i '1s/^//* eslint-disable */ \n/' $HOME/OneDrive/react-hyperion5-game/src/components/webgl/gamestate_pb.js 
 
-#mkdir -p $GOPATH/src/github.com/demskie/hyperionfive/reactclient/node_modules
-#npm install --prefix $GOPATH/src/github.com/demskie/hyperionfive/reactclient google-protobuf
-
-browserify \
-    $GOPATH/src/github.com/demskie/hyperionfive/reactclient/gamestate_pb.js \
-    -o $GOPATH/src/github.com/demskie/hyperionfive/reactclient/public/protobuf.js
-
-rm $GOPATH/src/github.com/demskie/hyperionfive/reactclient/gamestate_pb.js
+echo '/* eslint-disable */' | cat - $HOME/OneDrive/react-hyperion5-game/src/components/webgl/gamestate_pb.js  > temp && mv temp $HOME/OneDrive/react-hyperion5-game/src/components/webgl/gamestate_pb.js 

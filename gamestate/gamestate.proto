@@ -2,28 +2,25 @@ syntax = "proto3";
 package gamestate;
 
 
+message NullMessage {}
+
+
 message Planet {
-	uint64 nameUint = 1;
 	uint64 parentSystemUint = 2;
-	int64 interX = 3;
-	int64 interY = 4;
-	uint64 ownerUint = 5;
-	int32 food = 6;
-	int64 population = 7;
-	int32 planetType = 8;
-	int32 health = 9;
-	int32 focus = 10;
-	int32 progress = 11;
-	int32 dockedTitanCount = 12;
+	uint64 ownerUint = 3;
+	int32 food = 4;
+	int64 population = 5;
+	int32 planetType = 6;
+	int32 health = 7;
+	int32 progress = 8;
+	int32 dockedTitanCount = 9;
 	int32 dockedCapitalCount = 13;
 	int32 dockedFighterCount = 14;
 }
 
+
 message Object {
-	uint64 nameUint = 1;
 	uint64 parentSystemUint = 2;
-	int64 interX = 3;
-	int64 interY = 4;
 	uint64 ownerUint = 5;
 	int32 objectType = 6;
 	int32 health = 7;
@@ -31,39 +28,32 @@ message Object {
 
 
 message System {
-    uint64 nameUint = 1;
     int64 interX = 2;
     int64 interY = 3;
 	uint64 primaryOwnerUint = 4;
     int32 systemType = 16;
-	repeated uint64 connectedSystemsUint = 64;
-	repeated Planet planetslice = 128;
-	repeated Object objectslice = 129;
+	map<uint64, NullMessage> nearbySystems = 128;
+	map<uint64, NullMessage> childPlanet = 129;
+	map<uint64, NullMessage> childObject = 130;
 }
 
 
 message Galaxy {
-    uint64 nameUint = 1;
-    int64 globalX = 2;
+	uint64 nameUint = 1;
+	int64 globalX = 2;
     int64 globalY = 3;
     int32 galaxyType = 16;
-	repeated System systemslice = 128;
-	repeated Fleet fleetslice = 129;
-	repeated Battle battleslice = 130;
-	repeated Siege siegeslice = 131;
-	repeated Action actionslice = 132;
-	map<uint64, Planet> planetmap = 160;
-	map<uint64, Object> objectmap = 161;
-	map<uint64, System> systemmap = 162;
-	map<int32, Fleet> fleetmap = 163;
-	map<int32, Battle> battlemap = 164;
-	map<int32, Siege> siegemap = 165;
-	map<int32, Action> actionmap = 166;
+	map<uint64, Planet> planet = 128;
+	map<uint64, Object> object = 129;
+	map<uint64, System> system = 130;
+	map<int32, Fleet> fleet = 131;
+	map<int32, Battle> battle = 132;
+	map<int32, Siege> siege = 133;
+	map<int32, Action> action = 134;
 }
 
 
 message Fleet {
-	int32 fleetID = 1;
 	int64 interX = 2;
 	int64 interY = 3;
 	uint64 ownerUint = 4;
@@ -75,23 +65,20 @@ message Fleet {
 
 
 message Battle {
-	int32 battleID = 1;
 	int32 strategy = 2;
-	repeated int32 attackingFleetIDs = 64;
-	repeated int32 defendingFleetIDs = 65;
+	map<int32, NullMessage> attackingFleetIDs = 128;
+	map<int32, NullMessage> defendingFleetIDs = 129;
 }
 
 
 message Siege {
-	int32 siegeID = 1;
 	int64 timeLeft = 2;
 	uint64 fightingOverSystemUint = 3;
-	repeated int32 aggressorFleetIDs = 64;
+	map<int32, NullMessage> aggressorFleetIDs = 128;
 }
 
 
 message Action {
-	int32 actionID = 1;
 	int32 actionType = 2;
 	int64 timeLeft = 3;
 	uint64 ownerUint = 4;
@@ -99,7 +86,3 @@ message Action {
 	repeated uint64 actionNames = 65;
 }
 
-
-/*
-protoc -I=. -I=$GOPATH/src -I=$GOPATH/src/github.com/gogo/protobuf/protobuf --gogoslick_out=$GOPATH/src/github.com/demskie/hyperionfive/gamestate --proto_path=$GOPATH/src/github.com/demskie/hyperionfive/gamestate gamestate.proto
-*/
