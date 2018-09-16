@@ -40,6 +40,10 @@ type GalaxyStruct struct {
 	ProcessingQueue     *simplesync.WorkerPool
 	ProcessingRnumSlice []*rand.Rand
 
+	// System slice for parallel execution
+	SystemSlice []*gamestate.System
+	SystemNames []uint64
+
 	// each player has a bot that micromanages units
 	Actors []*actor.Bot
 
@@ -54,10 +58,6 @@ type GalaxyStruct struct {
 	// used when spawning new players
 	NeutralTerranPlanetMutex *sync.Mutex
 	NeutralTerranPlanetSlice []*gamestate.Planet
-
-	// used when serializing data for players
-	PlayerFogOfWarMutex *sync.Mutex
-	PlayerFogOfWar      map[uint64]map[uint64]*gamestate.System // playerName // sysName // sysPtr
 
 	// system and planet names
 	SystemAndPlanetNames *names.NameGenerator

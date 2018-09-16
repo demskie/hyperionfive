@@ -14,8 +14,8 @@ message Planet {
 	int32 health = 7;
 	int32 progress = 8;
 	int32 dockedTitanCount = 9;
-	int32 dockedCapitalCount = 13;
-	int32 dockedFighterCount = 14;
+	int32 dockedCapitalCount = 10;
+	int32 dockedFighterCount = 11;
 }
 
 
@@ -35,6 +35,7 @@ message System {
 	map<uint64, NullMessage> nearbySystems = 128;
 	map<uint64, NullMessage> childPlanet = 129;
 	map<uint64, NullMessage> childObject = 130;
+	map<uint64, NullMessage> nearbyFleets = 131;
 }
 
 

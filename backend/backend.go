@@ -55,6 +55,8 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		TimeMultiplier:           float64(1),
 		ProcessingQueue:          simplesync.NewWorkerPool(args.NumberOfCores),
 		ProcessingRnumSlice:      randutil.CreateMultipleUniqueMathRnum(args.NumberOfCores),
+		SystemSlice:              make([]*gamestate.System, 0),
+		SystemNames:              make([]uint64, 0),
 		Actors:                   make([]*actor.Bot, 0),
 		AnyPlanetMutex:           &sync.Mutex{},
 		AnyPlanetSlice:           make([]*gamestate.Planet, 0),
@@ -62,8 +64,6 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		NeutralAnyPlanetSlice:    make([]*gamestate.Planet, 0),
 		NeutralTerranPlanetMutex: &sync.Mutex{},
 		NeutralTerranPlanetSlice: make([]*gamestate.Planet, 0),
-		PlayerFogOfWarMutex:      &sync.Mutex{},
-		PlayerFogOfWar:           make(map[uint64]map[uint64]*gamestate.System, maxNumberOfPlayers),
 		SystemAndPlanetNames:     names.NewNameGenerator(args, log),
 		FleetIDs:                 intutil.NewInt32Generator(),
 		BattleIDs:                intutil.NewInt32Generator(),
@@ -89,7 +89,6 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 
 	// preprocess some large datastructures
 	galaxy.PreprocessPopulationObjects()
-	galaxy.PreprocessPlayerFogOfWar()
 
 	// connect to a frontend server
 	if false {

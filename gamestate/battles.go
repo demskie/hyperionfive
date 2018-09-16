@@ -2,5 +2,8 @@ package gamestate
 
 // GetBattleOriginFleetID ...
 func (b *Battle) GetBattleOriginFleetID() int32 {
-	return b.AttackingFleetIDs[0]
+	for k := range b.AttackingFleetIDs {
+		return k
+	}
+	return -1
 }

@@ -17,9 +17,9 @@ $GOPATH/bin/protoc \
 #    --proto_path=$GOPATH/src/github.com/demskie/hyperionfive/gamestate/ gamestate.proto
 
 $GOPATH/bin/protoc \
-    --js_out=import_style=commonjs,binary:$HOME/OneDrive/react-hyperion5-game/src/components/webgl/ \
+    --plugin="protoc-gen-ts=/usr/local/bin/protoc-gen-ts" \
+	--ts_out=$HOME/OneDrive/react-hyperion5-game/src/components/ \
+	--js_out=import_style=commonjs,binary:$HOME/OneDrive/react-hyperion5-game/src/components/ \
     --proto_path=$GOPATH/src/github.com/demskie/hyperionfive/gamestate/ gamestate.proto
 
-sed -i '1s/^//* eslint-disable */ \n/' $HOME/OneDrive/react-hyperion5-game/src/components/webgl/gamestate_pb.js 
-
-echo '/* eslint-disable */' | cat - $HOME/OneDrive/react-hyperion5-game/src/components/webgl/gamestate_pb.js  > temp && mv temp $HOME/OneDrive/react-hyperion5-game/src/components/webgl/gamestate_pb.js 
+echo '/* eslint-disable */' | cat - $HOME/OneDrive/react-hyperion5-game/src/components/gamestate_pb.js  > temp && mv temp $HOME/OneDrive/react-hyperion5-game/src/components/gamestate_pb.js 

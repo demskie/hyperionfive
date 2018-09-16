@@ -31,10 +31,10 @@ func (galaxy *GalaxyStruct) AdvanceActors() {
 		for botIndex := startIndex; botIndex < stopIndex; botIndex += imprecisionFactor {
 			bot = galaxy.Actors[botIndex]
 			partialGalaxy = &gamestate.Galaxy{
-				NameUint:    galaxy.Protobuf.NameUint,
-				GlobalX:     galaxy.Protobuf.GlobalX,
-				GlobalY:     galaxy.Protobuf.GlobalY,
-				Systemslice: galaxy.PlayerFogOfWarSlice(bot.GetOwner()),
+				NameUint: galaxy.Protobuf.NameUint,
+				GlobalX:  galaxy.Protobuf.GlobalX,
+				GlobalY:  galaxy.Protobuf.GlobalY,
+				//Systemslice: galaxy.PlayerFogOfWarSlice(bot.GetOwner()),
 			}
 			allActions[coreNum] = append(allActions[coreNum], bot.Process(partialGalaxy, nil)...)
 		}

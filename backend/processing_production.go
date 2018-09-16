@@ -36,36 +36,20 @@ func (galaxy *GalaxyStruct) AdvanceProduction() {
 			millionsPlusOne = int32(planet.Population/oneMillion) + 1
 			planet.Progress += millionsPlusOne
 			planet.DockedFighterCount += rnum.Int31n(millionsPlusOne)
-			switch planet.Focus {
-			case gamestate.INCREASEPOPULATION:
-				requiredProgress = getRequiredProgress(planet.Food)
+			requiredProgress = getRequiredProgress(planet.Food)
+			if args.DebugModeBool && planetIndex == 0 {
+				log.Debug(fmt.Sprintf("current: %v required: %v", planet.Progress, requiredProgress))
+			}
+			if planet.Progress >= requiredProgress {
+				planet.Progress -= requiredProgress
+				planet.Food++
 				if args.DebugModeBool && planetIndex == 0 {
-					log.Debug(fmt.Sprintf("current: %v required: %v", planet.Progress, requiredProgress))
+					log.Debug(fmt.Sprintf("food increased to: %v", planet.Food))
 				}
-				if planet.Progress >= requiredProgress {
-					planet.Progress -= requiredProgress
-					planet.Food++
-					if args.DebugModeBool && planetIndex == 0 {
-						log.Debug(fmt.Sprintf("food increased to: %v", planet.Food))
-					}
-				}
-			case gamestate.BUILDTITAN:
-				if planet.Progress > oneMillion {
-					planet.Progress -= oneMillion
-					planet.DockedTitanCount++
-				}
-			case gamestate.BUILDCAPITALSHIP:
-				if planet.Progress > 10000 {
-					planet.Progress -= 10000
-					planet.DockedCapitalCount++
-				}
-			case gamestate.BUILDFIGHTER:
-				if planet.Progress > 100 {
-					planet.Progress -= 100
-					planet.DockedFighterCount++
-				}
-			default:
-				log.Error(fName, fmt.Sprintf("Unknown obj.Focus value '%v'", planet.Focus))
+			}
+			if planet.Progress > 100 {
+				planet.Progress -= 100
+				planet.DockedFighterCount++
 			}
 		}
 	})
