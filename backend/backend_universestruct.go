@@ -1,10 +1,10 @@
 package backend
 
 import (
-	"bytes"
 	"sync"
 
 	"github.com/demskie/spatialindex"
+	"github.com/gogo/protobuf/proto"
 )
 
 // UniverseStruct ...
@@ -15,7 +15,7 @@ type UniverseStruct struct {
 	UgridFleets         *spatialindex.Grid
 	UgridBattles        *spatialindex.Grid
 	UgridSieges         *spatialindex.Grid
-	UgridBytes          map[int]bytes.Buffer
+	UgridBytes          [65535]proto.Buffer
 	ClientSignal        chan struct{}
 	PendingPlayerSpawns []*playerInfo
 }

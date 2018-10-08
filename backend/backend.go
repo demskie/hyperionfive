@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"bytes"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/demskie/hyperionfive/auth"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/alecthomas/units"
 	"github.com/demskie/hyperionfive/arguments"
@@ -63,7 +63,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		UgridFleets:         spatialindex.NewGrid(65535),
 		UgridBattles:        spatialindex.NewGrid(65535),
 		UgridSieges:         spatialindex.NewGrid(65535),
-		UgridBytes:          map[int]bytes.Buffer{},
+		UgridBytes:          [65535]proto.Buffer{},
 		ClientSignal:        make(chan struct{}),
 		PendingPlayerSpawns: make([]*playerInfo, 0),
 	}
@@ -127,6 +127,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			galaxy.CalculatePopulation()     // processing_population.go
 			galaxy.AdvanceProduction()       // processing_production.go
 			galaxy.ProcessOngoingBattles()   // processing_battle.go
+			universe.SerializeSystems()      // processing_serialize.go
 			universe.Unlock()
 
 			close(universe.ClientSignal)
@@ -235,9 +236,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		}()
 	}
 
-	indefinite := make(chan struct{})
-	<-indefinite
-
+	<-make(chan struct{})
 	return
 }
 
