@@ -1,86 +1,108 @@
 package auth
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
+	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/clientmessage"
 	"github.com/demskie/hyperionfive/firewall"
 	"github.com/demskie/logging"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/gorilla/websocket"
-	oauth2 "google.golang.org/api/oauth2/v1"
+	oauth2 "google.golang.org/api/oauth2/v2"
 )
 
-// HandleGoogleAuth ...
-func HandleGoogleAuth(fName string, conn *websocket.Conn,
-	fw *firewall.Checker, args *arguments.Args, log *logging.Logger) (userid string) {
-
-	fName += " (googleAuth)"
-
-	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-	err := fw.CheckFirewall(firewall.GOOGLEAUTH, fName, remoteIP)
-	if log.CheckError(err) {
-		return userid
-	}
-
-	type incomingMessage struct {
-		LoginType string `json:"login_type"`
-		IDToken   string `json:"id_token"`
-	}
-	var inMsg incomingMessage
-	err = conn.ReadJSON(&inMsg)
-	if log.CheckError(err, fName, "error receiving message") {
-		return userid
-	}
-	log.Dump(inMsg)
-
-	successful := false
+func checkWithGoogle(fName string, idToken string, remoteIP string,
+	fw *firewall.Checker, args *arguments.Args, log *logging.Logger) (string, error) {
 	var oauth2Service *oauth2.Service
-	for i := 0; i < firewall.GoogleAuthLimit; i++ {
-		var httpClient = &http.Client{}
-		oauth2Service, err = oauth2.New(httpClient)
-		if log.CheckError(err, fName, "error contacting google") {
-			continue
-		} else {
-			successful = true
-			break
-		}
+	var httpClient = &http.Client{}
+	oauth2Service, err := oauth2.New(httpClient)
+	if log.CheckError(err, fName, "(code 6237F5)") {
+		return "", errors.New("Unable to complete request (code 6237F5)")
 	}
-	if successful == false {
-		return userid
-	}
-
 	tokenInfoCall := oauth2Service.Tokeninfo()
-	tokenInfoCall.IdToken(inMsg.IDToken)
+	tokenInfoCall.IdToken(idToken)
 	tokenInfo, err := tokenInfoCall.Do()
-	if log.CheckError(err, fName, "error parsing incoming google response") {
-		return userid
-	}
-
-	if tokenInfo.EmailVerified != true {
-		log.Error(fName, "tokenInfo.EmailVerified is not 'true'", remoteIP)
-		fw.TriggerFirewallException(firewall.GOOGLEAUTH, remoteIP)
-		return userid
+	if log.CheckError(err, fName, "(code C7A568)") {
+		return "", errors.New("Unable to complete request (code C7A568)")
 	}
 	if tokenInfo.Audience != args.GoogleAudience {
-		log.Error(fName, fmt.Sprintf("tokenInfo.Audience (%s) does not match googleAudience (%s) remoteIP=%s",
+		log.Error(fName, fmt.Sprintf("googleAudience (%s) != (%s) remoteIP=%s",
 			tokenInfo.Audience, args.GoogleAudience, remoteIP))
 		fw.TriggerFirewallException(firewall.GOOGLEAUTH, remoteIP)
-		return userid
+		return "", errors.New("Unable to complete request (code 3B8111)")
 	}
+	return tokenInfo.UserId, nil
+}
 
-	if args.DebugModeBool {
-		rawJSON, err := tokenInfo.MarshalJSON()
-		log.CheckError(err, fName, "error MarshalJSONing google response")
-		var prettyJSON bytes.Buffer
-		err = json.Indent(&prettyJSON, rawJSON, "", "    ")
-		log.CheckError(err, fName, "error jsonIndenting google response")
-		log.Debug(fName, "received the following message from google:\n", string(prettyJSON.Bytes()))
+// HandleGoogleAuth ...
+func HandleGoogleAuth(fName string, conn *websocket.Conn, preauthUserIDs map[string]time.Time,
+	fw *firewall.Checker, args *arguments.Args, log *logging.Logger) (userid string, err error) {
+	fName += " (googleAuth)"
+	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+	err = fw.CheckFirewall(firewall.GOOGLEAUTH, fName, remoteIP)
+	if log.CheckError(err, fName, "(code 708BD4)") {
+		return userid, errors.New("Unable to complete request (code 708BD4)")
 	}
+	conn.SetReadLimit(128 * int64(units.Kilobyte))
+	msgType, b, err := conn.ReadMessage()
+	if log.CheckError(err, fName, "(code 83FF64)") {
+		return userid, errors.New("Unable to complete request (code 83FF64)")
+	}
+	if msgType != websocket.BinaryMessage {
+		return userid, errors.New("Unable to complete request (code 61F991)")
+	}
+	var inMsg clientmessage.Request
+	proto.Unmarshal(b, &inMsg)
+	if log.CheckError(err, fName, "(code 88473A)") {
+		return userid, errors.New("Unable to complete request (code 88473A)")
+	}
+	log.Dump(inMsg)
+	if inMsg.GoogleAuth == nil || inMsg.GoogleAuth.UserID == "" || inMsg.GoogleAuth.IdToken == "" {
+		return userid, fmt.Errorf("Unable to complete request (code B94319)")
+	}
+	_, exists := preauthUserIDs[inMsg.GoogleAuth.UserID]
+	if exists {
+		return inMsg.GoogleAuth.UserID, nil
+	}
+	return checkWithGoogle(fName, inMsg.GoogleAuth.IdToken, remoteIP, fw, args, log)
+}
 
-	return tokenInfo.UserId
+// HandleRestfulGoogleAuth ...
+func HandleRestfulGoogleAuth(fName string, r *http.Request, preauthUserIDs map[string]time.Time,
+	fw *firewall.Checker, args *arguments.Args, log *logging.Logger) (userid string, err error) {
+	fName += " (googleAuth)"
+	remoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
+	err = fw.CheckFirewall(firewall.GOOGLEAUTH, fName, remoteIP)
+	if log.CheckError(err, fName, "0DDB3B") {
+		return userid, fmt.Errorf("Unable to complete request (code 0DDB3B)")
+	}
+	b, err := ioutil.ReadAll(io.LimitReader(r.Body, 128*int64(units.Kilobyte)))
+	if log.CheckError(err, fName, "00A7AF") {
+		return userid, fmt.Errorf("Unable to complete request (code 00A7AF)")
+	}
+	var inMsg clientmessage.Request
+	proto.Unmarshal(b, &inMsg)
+	if err == http.ErrBodyReadAfterClose {
+		return userid, fmt.Errorf("Unable to complete request (code CC30B5)")
+	} else if log.CheckError(err, fName, "FBD3CC") {
+		return userid, fmt.Errorf("Unable to complete request (code FBD3CC)")
+	}
+	log.Dump(inMsg)
+	if inMsg.GoogleAuth == nil || inMsg.GoogleAuth.UserID == "" || inMsg.GoogleAuth.IdToken == "" {
+		return userid, fmt.Errorf("Unable to complete request (code B94319)")
+	}
+	_, exists := preauthUserIDs[inMsg.GoogleAuth.UserID]
+	if exists {
+		return inMsg.GoogleAuth.UserID, nil
+	}
+	return checkWithGoogle(fName, inMsg.GoogleAuth.IdToken, remoteIP, fw, args, log)
 }

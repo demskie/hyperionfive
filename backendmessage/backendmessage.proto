@@ -1,0 +1,81 @@
+syntax = "proto3";
+package backendmessage;
+
+// backend server >>> client
+
+message NullMessage {}
+
+message Planet {
+	uint64 parentSystemUint = 2;
+	uint64 ownerUint = 3;
+	int32 food = 4;
+	int64 population = 5;
+	int32 planetType = 6;
+	int32 health = 7;
+	int32 progress = 8;
+	int32 dockedTitanCount = 9;
+	int32 dockedCapitalCount = 10;
+	int32 dockedFighterCount = 11;
+}
+
+message Object {
+	uint64 parentSystemUint = 2;
+	uint64 ownerUint = 5;
+	int32 objectType = 6;
+	int32 health = 7;
+}
+
+message System {
+    int64 interX = 2;
+    int64 interY = 3;
+	uint64 primaryOwnerUint = 4;
+    int32 systemType = 16;
+	map<uint64, NullMessage> nearbySystems = 128;
+	map<uint64, NullMessage> childPlanet = 129;
+	map<uint64, NullMessage> childObject = 130;
+	map<uint64, NullMessage> nearbyFleets = 131;
+}
+
+message Fleet {
+	int64 interX = 2;
+	int64 interY = 3;
+	uint64 ownerUint = 4;
+	uint64 closestSystemUint = 5;
+	int32 titanCount = 32;
+	int32 capitalCount = 33;
+	int32 fighterCount = 34;
+}
+
+message Battle {
+	int32 strategy = 2;
+	map<int32, NullMessage> attackingFleetIDs = 128;
+	map<int32, NullMessage> defendingFleetIDs = 129;
+}
+
+message Siege {
+	int64 timeLeft = 2;
+	uint64 fightingOverSystemUint = 3;
+	map<int32, NullMessage> aggressorFleetIDs = 128;
+}
+
+message Action {
+	int32 actionType = 2;
+	int64 timeLeft = 3;
+	uint64 ownerUint = 4;
+	repeated int64 actionValues = 64;
+	repeated uint64 actionNames = 65;
+}
+
+message Galaxy {
+	uint64 nameUint = 1;
+	int64 globalX = 2;
+    int64 globalY = 3;
+    int32 galaxyType = 16;
+	map<uint64, Planet> planet = 128;
+	map<uint64, Object> object = 129;
+	map<uint64, System> system = 130;
+	map<int32, Fleet> fleet = 131;
+	map<int32, Battle> battle = 132;
+	map<int32, Siege> siege = 133;
+	map<int32, Action> action = 134;
+}

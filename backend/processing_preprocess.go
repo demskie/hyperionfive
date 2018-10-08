@@ -1,6 +1,6 @@
 package backend
 
-import "github.com/demskie/hyperionfive/gamestate"
+import "github.com/demskie/hyperionfive/backendmessage"
 
 // PreprocessPopulationObjects ...
 func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
@@ -13,7 +13,7 @@ func (galaxy *GalaxyStruct) PreprocessPopulationObjects() {
 			if planet.OwnerUint == 0 {
 				galaxy.NeutralAnyPlanetSlice = append(galaxy.NeutralAnyPlanetSlice, planet)
 			}
-			if planet.OwnerUint == 0 && planet.PlanetType == gamestate.TERRAN {
+			if planet.OwnerUint == 0 && planet.PlanetType == backendmessage.TERRAN {
 				galaxy.NeutralTerranPlanetSlice = append(galaxy.NeutralTerranPlanetSlice, planet)
 			}
 		}

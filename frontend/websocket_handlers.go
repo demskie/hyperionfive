@@ -11,44 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func handleClientToFrontend(w http.ResponseWriter, r *http.Request) {
-	const fName = "(clientToFrontend)"
-
-	httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
-	err := fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
-	if log.CheckError(err, fName) {
-		return
-	}
-
-	upgrader := websocket.Upgrader{
-		HandshakeTimeout:  30 * time.Second,
-		ReadBufferSize:    1024,
-		WriteBufferSize:   1024,
-		EnableCompression: true,
-	}
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if log.CheckError(err, fName, "upgrade error") {
-		return
-	}
-	defer conn.Close()
-	conn.EnableWriteCompression(true)
-	conn.SetCompressionLevel(1)
-
-	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
-	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
-	log.Info(fName, "receiving connection:", remoteIP, "using", localIP)
-	defer log.Info(fName, "closing connection:", remoteIP, "using", localIP)
-
-	fwall.AddSessionToHistory(remoteIP, fName)
-	defer fwall.RemoveSessionFromHistory(remoteIP, fName)
-
-	userid := auth.HandleGoogleAuth(fName, conn, fwall, args, log)
-	if userid != "" {
-		clientToFrontendCommunication(conn, userid)
-	}
-}
-
-func handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleBackendToFrontend(w http.ResponseWriter, r *http.Request) {
 	const fName = "(backendToFrontend)"
 
 	httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -93,7 +56,7 @@ type frontendToFrontendMessage struct {
 	OtherFrontends map[string]time.Time
 }
 
-func handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
 	const fName = "(frontendToFrontend)"
 
 	httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)

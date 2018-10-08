@@ -1,4 +1,4 @@
-package gamestate
+package backendmessage
 
 // solarsystem type
 const (

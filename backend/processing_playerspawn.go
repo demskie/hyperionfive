@@ -3,8 +3,7 @@ package backend
 import (
 	"fmt"
 
-	"github.com/demskie/hyperionbot/actor"
-	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/backendmessage"
 )
 
 // SpawnNewPlayers ...
@@ -19,7 +18,7 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers(universe *UniverseStruct) {
 	}
 	log.Telemetry(fName, fmt.Sprintf("processing %v new player spawns", len(universe.PendingPlayerSpawns)))
 	var (
-		planet     *gamestate.Planet
+		planet     *backendmessage.Planet
 		playerData *playerInfo
 		randIndex  int
 	)
@@ -28,13 +27,11 @@ func (galaxy *GalaxyStruct) SpawnNewPlayers(universe *UniverseStruct) {
 			log.Error(fName, "ran out NeutralTerranPlanets")
 			return
 		}
-		galaxy.SingleRnumMutex.Lock()
 		randIndex = galaxy.SingleRnum.Intn(len(galaxy.NeutralTerranPlanetSlice))
-		galaxy.SingleRnumMutex.Unlock()
 		planet = galaxy.NeutralTerranPlanetSlice[randIndex]
 		planet.Food = int32(1 + playerData.strength)
 		planet.Population = int64(10000 * playerData.strength * 10)
-		galaxy.Actors = append(galaxy.Actors, actor.New(playerData.nameUint))
+		//galaxy.Actors = append(galaxy.Actors, actor.New(playerData.nameUint))
 		// BUG // not implemented
 		// obj.ChangeOwner(playerData.uniqueID, galaxy)
 	}

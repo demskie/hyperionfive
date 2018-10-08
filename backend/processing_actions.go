@@ -3,7 +3,7 @@ package backend
 import (
 	"math"
 
-	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/backendmessage"
 	"github.com/demskie/vectors"
 )
 
@@ -20,55 +20,55 @@ func (galaxy *GalaxyStruct) ProcessActions() {
 	}
 	for actionID, action := range galaxy.Protobuf.Action {
 		switch action.ActionType {
-		case gamestate.MoveFleetToAttackFleet:
-			var myFleet, otherFleet *gamestate.Fleet
+		case backendmessage.MoveFleetToAttackFleet:
+			var myFleet, otherFleet *backendmessage.Fleet
 			distance := DistanceBetweenPoints(myFleet.InterX, myFleet.InterY,
 				otherFleet.InterX, otherFleet.InterY)
-			if distance <= gamestate.OptimalFleetAttackRange {
+			if distance <= backendmessage.OptimalFleetAttackRange {
 				// create battle
 				delete(galaxy.Protobuf.Action, actionID)
-			} else if distance > gamestate.OptimalFleetAttackRange {
+			} else if distance > backendmessage.OptimalFleetAttackRange {
 				myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
 					myFleet.InterX, myFleet.InterY,
 					otherFleet.InterY, otherFleet.InterY,
-					gamestate.FleetSpeedPerSecond)
+					backendmessage.FleetSpeedPerSecond)
 			}
-		case gamestate.MoveFleetToAttackSystem:
-			var myFleet *gamestate.Fleet
-			var otherSystem *gamestate.System
+		case backendmessage.MoveFleetToAttackSystem:
+			var myFleet *backendmessage.Fleet
+			var otherSystem *backendmessage.System
 			distance := DistanceBetweenPoints(myFleet.InterX, myFleet.InterY,
 				otherSystem.InterX, otherSystem.InterY)
-			if distance > gamestate.LightYear/100 {
+			if distance > backendmessage.LightYear/100 {
 				myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
 					myFleet.InterX, myFleet.InterY,
 					otherSystem.InterY, otherSystem.InterY,
-					gamestate.FleetSpeedPerSecond)
+					backendmessage.FleetSpeedPerSecond)
 			} else {
 				delete(galaxy.Protobuf.Action, actionID)
 			}
-		case gamestate.MoveFleetToDefendSystem:
-			var myFleet *gamestate.Fleet
-			var mySystem *gamestate.System
+		case backendmessage.MoveFleetToDefendSystem:
+			var myFleet *backendmessage.Fleet
+			var mySystem *backendmessage.System
 			distance := DistanceBetweenPoints(myFleet.InterX, myFleet.InterY,
 				mySystem.InterX, mySystem.InterY)
-			if distance > gamestate.LightYear/100 {
+			if distance > backendmessage.LightYear/100 {
 				myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
 					myFleet.InterX, myFleet.InterY,
 					mySystem.InterY, mySystem.InterY,
-					gamestate.FleetSpeedPerSecond)
+					backendmessage.FleetSpeedPerSecond)
 			} else {
 				delete(galaxy.Protobuf.Action, actionID)
 			}
-		case gamestate.MoveFleetToOngoingBattle:
-			var myFleet *gamestate.Fleet
-			var originFleet *gamestate.Fleet
+		case backendmessage.MoveFleetToOngoingBattle:
+			var myFleet *backendmessage.Fleet
+			var originFleet *backendmessage.Fleet
 			distance := DistanceBetweenPoints(myFleet.InterX, myFleet.InterY,
 				originFleet.InterX, originFleet.InterY)
-			if distance > gamestate.OptimalFleetAttackRange {
+			if distance > backendmessage.OptimalFleetAttackRange {
 				myFleet.InterX, myFleet.InterY = vectors.MoveTowardsDestination(
 					myFleet.InterX, myFleet.InterY,
 					originFleet.InterY, originFleet.InterY,
-					gamestate.FleetSpeedPerSecond)
+					backendmessage.FleetSpeedPerSecond)
 			} else {
 				delete(galaxy.Protobuf.Action, actionID)
 			}

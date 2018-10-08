@@ -1,0 +1,22 @@
+syntax = "proto3";
+package clientmessage;
+
+// client >>> server
+
+message GoogleAuth {
+	string idToken = 1;
+	string userID = 2;
+}
+
+message CameraPosition {
+	int64 globalX = 1;
+	int64 globalY = 2;
+	int64 interX = 3;
+	int64 interY = 4;
+	double cameraZ = 5;
+}
+
+message Request {
+	GoogleAuth googleAuth = 1;
+	CameraPosition cameraPosition = 2;
+}

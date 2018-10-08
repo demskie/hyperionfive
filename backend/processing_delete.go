@@ -1,7 +1,7 @@
 package backend
 
-import "github.com/demskie/hyperionfive/gamestate"
+import "github.com/demskie/hyperionfive/backendmessage"
 
 // DeleteOngoingBattle ...
-func (galaxy *GalaxyStruct) DeleteOngoingBattle(battle *gamestate.Battle) {
+func (galaxy *GalaxyStruct) DeleteOngoingBattle(battle *backendmessage.Battle) {
 }

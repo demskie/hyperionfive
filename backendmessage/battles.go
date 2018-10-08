@@ -1,4 +1,4 @@
-package gamestate
+package backendmessage
 
 // GetBattleOriginFleetID ...
 func (b *Battle) GetBattleOriginFleetID() int32 {

@@ -1,4 +1,4 @@
-package gamestate
+package backendmessage
 
 // Action types
 const (

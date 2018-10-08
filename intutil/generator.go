@@ -1,20 +1,25 @@
 package intutil
 
-import "sync"
+import (
+	"math/rand"
+	"sync"
+
+	"github.com/demskie/randutil"
+)
 
 // Int32Generator ...
 type Int32Generator struct {
-	mtx    *sync.Mutex
-	used   map[int32]struct{}
-	unused map[int32]struct{}
+	mtx  *sync.Mutex
+	rnum *rand.Rand
+	used map[int32]struct{}
 }
 
 // NewInt32Generator ...
 func NewInt32Generator() *Int32Generator {
 	return &Int32Generator{
-		mtx:    &sync.Mutex{},
-		used:   map[int32]struct{}{},
-		unused: map[int32]struct{}{},
+		mtx:  &sync.Mutex{},
+		rnum: randutil.CreateUniqueMathRnum(),
+		used: map[int32]struct{}{},
 	}
 }
 
@@ -30,15 +35,12 @@ func (g *Int32Generator) Len() int {
 func (g *Int32Generator) Create() int32 {
 	var val int32
 	g.mtx.Lock()
-	if len(g.unused) > 0 {
-		for k := range g.unused {
-			val = k
+	for {
+		val = g.rnum.Int31()
+		_, exists := g.used[val]
+		if !exists {
 			break
 		}
-		delete(g.unused, val)
-	} else {
-		val = int32(len(g.used))
-		g.used[val] = struct{}{}
 	}
 	g.mtx.Unlock()
 	return val
@@ -47,10 +49,6 @@ func (g *Int32Generator) Create() int32 {
 // Remove deletes this integer
 func (g *Int32Generator) Remove(i int32) {
 	g.mtx.Lock()
-	_, exists := g.used[i]
-	if exists {
-		delete(g.used, i)
-		g.unused[i] = struct{}{}
-	}
+	delete(g.used, i)
 	g.mtx.Unlock()
 }

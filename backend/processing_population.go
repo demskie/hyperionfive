@@ -3,7 +3,7 @@ package backend
 import (
 	"fmt"
 
-	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/backendmessage"
 	"github.com/demskie/hyperionfive/intutil"
 )
 
@@ -23,7 +23,7 @@ import (
 //			rnum := galaxy.ProcessingRnumSlice[coreNum]
 //			startIndex += rnum.Intn(imprecisionFactor)
 //			var (
-//				obj               *gamestate.SolarObject
+//				obj               *backendmessage.SolarObject
 //				availableFighters int32
 //			)
 //			for i := startIndex; i < stopIndex; i += imprecisionFactor {
@@ -45,76 +45,68 @@ func (galaxy *GalaxyStruct) CalculatePopulation() {
 	if galaxy.TickTime.HasBeenOneSecond == false {
 		return
 	}
-	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartStopForCore(
-			coreNum, args.NumberOfCores, len(galaxy.AnyPlanetSlice))
-		if stopIndex <= startIndex {
-			return
+	const (
+		maxPercentChange   = float64(.57)
+		populationExponent = float64(1.8)
+		randomFactor       = float64(.1)
+	)
+	var (
+		N                     float64
+		K                     float64
+		logisticPercentChange float64
+		planet                *backendmessage.Planet
+		startIndex            = galaxy.SingleRnum.Intn(imprecisionFactor)
+	)
+	for planetIndex := startIndex; planetIndex < len(galaxy.AnyPlanetSlice); planetIndex += imprecisionFactor {
+		planet = galaxy.AnyPlanetSlice[planetIndex]
+		// https://play.golang.org/p/gWizLY0X2A
+		if planet.Population == 0 {
+			planet.Population = 100 + galaxy.SingleRnum.Int63n(2302)
 		}
-		rnum := galaxy.ProcessingRnumSlice[coreNum]
-		startIndex += rnum.Intn(imprecisionFactor)
-		const (
-			maxPercentChange   = float64(.57)
-			populationExponent = float64(1.8)
-			randomFactor       = float64(.1)
-		)
-		var (
-			N                     float64
-			K                     float64
-			logisticPercentChange float64
-			planet                *gamestate.Planet
-		)
-		for planetIndex := startIndex; planetIndex < stopIndex; planetIndex += imprecisionFactor {
-			planet = galaxy.AnyPlanetSlice[planetIndex]
-			// https://play.golang.org/p/gWizLY0X2A
-			if planet.Population == 0 {
-				planet.Population = 100 + rnum.Int63n(2302)
-			}
-			N = float64(planet.Population)
-			K = getCapacity(planet.PlanetType, planet.Food)
-			K -= float64(rnum.Int63n(1 + int64(K*.05)))
-			logisticPercentChange = (K - N) / K
-			switch {
-			case logisticPercentChange < -1:
-				logisticPercentChange = -1
-			case logisticPercentChange > 1:
-				logisticPercentChange = 1
-			case logisticPercentChange == 0:
-				logisticPercentChange = .000001 // can't divide by zero!
-			}
-			planet.Population = int64(N + ((N * maxPercentChange) * logisticPercentChange))
-			if args.DebugModeBool {
-				if planetIndex == 0 {
-					log.Debug(planet.GetPlanetTypeString(), fmt.Sprint(planet.Food),
-						intutil.CommaFormatNum(planet.Population),
-						intutil.CommaFormatNum(K))
-				}
+		N = float64(planet.Population)
+		K = getCapacity(planet.PlanetType, planet.Food)
+		K -= float64(galaxy.SingleRnum.Int63n(1 + int64(K*.05)))
+		logisticPercentChange = (K - N) / K
+		switch {
+		case logisticPercentChange < -1:
+			logisticPercentChange = -1
+		case logisticPercentChange > 1:
+			logisticPercentChange = 1
+		case logisticPercentChange == 0:
+			logisticPercentChange = .000001 // can't divide by zero!
+		}
+		planet.Population = int64(N + ((N * maxPercentChange) * logisticPercentChange))
+		if args.DebugModeBool {
+			if planetIndex == 0 {
+				log.Debug(planet.GetPlanetTypeString(), fmt.Sprint(planet.Food),
+					intutil.CommaFormatNum(planet.Population),
+					intutil.CommaFormatNum(K))
 			}
 		}
-	})
+	}
 }
 
 func getCapacity(planetType, planetFood int32) (capacity float64) {
 	switch planetType {
-	case gamestate.TERRAN:
+	case backendmessage.TERRAN:
 		capacity = 25 * oneBillion
-	case gamestate.DESERT:
+	case backendmessage.DESERT:
 		capacity = 10 * oneBillion
-	case gamestate.VOLCANIC:
+	case backendmessage.VOLCANIC:
 		capacity = 3 * oneBillion
-	case gamestate.ICE:
+	case backendmessage.ICE:
 		capacity = 25 * oneBillion
-	case gamestate.BARREN:
+	case backendmessage.BARREN:
 		capacity = 1 * oneBillion
-	case gamestate.FERROUS:
+	case backendmessage.FERROUS:
 		capacity = 5 * oneBillion
-	case gamestate.GREENHOUSE:
+	case backendmessage.GREENHOUSE:
 		capacity = 20 * oneBillion
-	case gamestate.OCEANIC:
+	case backendmessage.OCEANIC:
 		capacity = 39 * oneBillion
-	case gamestate.LARGEASTEROID:
+	case backendmessage.LARGEASTEROID:
 		capacity = oneBillion / 120
-	case gamestate.DWARF:
+	case backendmessage.DWARF:
 		capacity = oneBillion / 5
 	}
 	switch planetFood {
@@ -204,7 +196,7 @@ func getCapacity(planetType, planetFood int32) (capacity float64) {
 //			rnum := galaxy.ProcessingRnumSlice[coreNum]
 //			startIndex += rnum.Intn(imprecisionFactor)
 //			var (
-//				planet        *gamestate.Planet
+//				planet        *backendmessage.Planet
 //				normalDistVal int32
 //			)
 //			for i := startIndex; i < stopIndex; i += imprecisionFactor {

@@ -1,8 +1,6 @@
 package backend
 
-import (
-	"github.com/demskie/hyperionfive/gamestate"
-)
+import "github.com/demskie/hyperionfive/backendmessage"
 
 // ProcessOngoingBattles ...
 func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
@@ -16,9 +14,8 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 		aggressorStrength, defenderStrength  int64
 		totalStrength                        int64
 		fleetID                              int32
-		fleet                                *gamestate.Fleet
+		fleet                                *backendmessage.Fleet
 	)
-	rnum := galaxy.ProcessingRnumSlice[0]
 	for _, battle := range galaxy.Protobuf.Battle {
 		if battle.Strategy == RUSHING {
 			disadvantageScaler = float64(0.72)
@@ -39,9 +36,9 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 		}
 		aggressorStrength = int64(float64(aggressorStrength) * disadvantageScaler)
 		totalStrength = aggressorStrength * defenderStrength
-		if rnum.Int63n(totalStrength) < aggressorStrength {
+		if galaxy.SingleRnum.Int63n(totalStrength) < aggressorStrength {
 			defenderStrength = 1 + int64(float64(defenderStrength)*lossesMultiplier)
-			fleetID = int32(rnum.Intn(len(battle.DefendingFleetIDs)))
+			fleetID = int32(galaxy.SingleRnum.Intn(len(battle.DefendingFleetIDs)))
 			fleet = galaxy.Protobuf.Fleet[fleetID]
 			for defenderStrength > 0 {
 				if fleet.FighterCount > 0 {
@@ -54,7 +51,7 @@ func (galaxy *GalaxyStruct) ProcessOngoingBattles() {
 			}
 		} else {
 			aggressorStrength = 1 + int64(float64(aggressorStrength)*lossesMultiplier)
-			fleetID = int32(rnum.Intn(len(battle.AttackingFleetIDs)))
+			fleetID = int32(galaxy.SingleRnum.Intn(len(battle.AttackingFleetIDs)))
 			fleet = galaxy.Protobuf.Fleet[fleetID]
 			for aggressorStrength > 0 {
 				if fleet.FighterCount > 0 {

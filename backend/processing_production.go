@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/demskie/hyperionfive/gamestate"
-	"github.com/demskie/hyperionfive/intutil"
+	"github.com/demskie/hyperionfive/backendmessage"
 )
 
 // AdvanceProduction ...
@@ -15,44 +14,36 @@ func (galaxy *GalaxyStruct) AdvanceProduction() {
 	if galaxy.TickTime.HasBeenOneSecond == false {
 		return
 	}
-	galaxy.ProcessingQueue.Execute(func(coreNum int) {
-		startIndex, stopIndex := intutil.GetStartStopForCore(
-			coreNum, args.NumberOfCores, len(galaxy.AnyPlanetSlice))
-		if stopIndex <= startIndex {
-			return
+	const (
+		progressExponent = float64(2)
+	)
+	var (
+		millionsPlusOne  int32
+		requiredProgress int32
+		planet           *backendmessage.Planet
+		startIndex       = galaxy.SingleRnum.Intn(imprecisionFactor)
+	)
+	for planetIndex := startIndex; planetIndex < len(galaxy.AnyPlanetSlice); planetIndex += imprecisionFactor {
+		planet = galaxy.AnyPlanetSlice[planetIndex]
+		millionsPlusOne = int32(planet.Population/oneMillion) + 1
+		planet.Progress += millionsPlusOne
+		planet.DockedFighterCount += galaxy.SingleRnum.Int31n(millionsPlusOne)
+		requiredProgress = getRequiredProgress(planet.Food)
+		if args.DebugModeBool && planetIndex == 0 {
+			log.Debug(fmt.Sprintf("current: %v required: %v", planet.Progress, requiredProgress))
 		}
-		rnum := galaxy.ProcessingRnumSlice[coreNum]
-		startIndex += rnum.Intn(imprecisionFactor)
-		const (
-			progressExponent = float64(2)
-		)
-		var (
-			millionsPlusOne  int32
-			requiredProgress int32
-			planet           *gamestate.Planet
-		)
-		for planetIndex := startIndex; planetIndex < stopIndex; planetIndex += imprecisionFactor {
-			planet = galaxy.AnyPlanetSlice[planetIndex]
-			millionsPlusOne = int32(planet.Population/oneMillion) + 1
-			planet.Progress += millionsPlusOne
-			planet.DockedFighterCount += rnum.Int31n(millionsPlusOne)
-			requiredProgress = getRequiredProgress(planet.Food)
+		if planet.Progress >= requiredProgress {
+			planet.Progress -= requiredProgress
+			planet.Food++
 			if args.DebugModeBool && planetIndex == 0 {
-				log.Debug(fmt.Sprintf("current: %v required: %v", planet.Progress, requiredProgress))
-			}
-			if planet.Progress >= requiredProgress {
-				planet.Progress -= requiredProgress
-				planet.Food++
-				if args.DebugModeBool && planetIndex == 0 {
-					log.Debug(fmt.Sprintf("food increased to: %v", planet.Food))
-				}
-			}
-			if planet.Progress > 100 {
-				planet.Progress -= 100
-				planet.DockedFighterCount++
+				log.Debug(fmt.Sprintf("food increased to: %v", planet.Food))
 			}
 		}
-	})
+		if planet.Progress > 100 {
+			planet.Progress -= 100
+			planet.DockedFighterCount++
+		}
+	}
 }
 
 func getRequiredProgress(food int32) int32 {

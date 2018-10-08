@@ -1,28 +1,29 @@
 package backend
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
-	"github.com/demskie/hyperionbot/actor"
+	"github.com/demskie/hyperionfive/auth"
+
+	"github.com/alecthomas/units"
 	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/backendmessage"
 	"github.com/demskie/hyperionfive/firewall"
-	"github.com/demskie/hyperionfive/gamestate"
 	"github.com/demskie/hyperionfive/intutil"
-	"github.com/demskie/hyperionfive/names"
 	"github.com/demskie/hyperionfive/netutil"
-	"github.com/demskie/hyperionfive/stringdatastore"
 	"github.com/demskie/logging"
 	"github.com/demskie/randutil"
 	"github.com/demskie/spatialindex"
+	"github.com/gorilla/websocket"
 
-	"github.com/demskie/simplesync"
 	// runtimepprof "runtime/pprof"
 	_ "net/http/pprof"
 )
@@ -42,42 +43,29 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	fwall = firewall.New()
 
 	galaxy := &GalaxyStruct{
-		Protobuf:                 &gamestate.Galaxy{},
-		ObjectMapMutex:           &sync.RWMutex{},
-		FleetMapMutex:            &sync.RWMutex{},
-		BattleMapMutex:           &sync.RWMutex{},
-		SiegeMapMutex:            &sync.RWMutex{},
-		ActionMapMutex:           &sync.RWMutex{},
+		Protobuf:                 &backendmessage.Galaxy{},
 		Rtree:                    spatialindex.NewTree(),
-		SingleRnumMutex:          &sync.Mutex{},
 		SingleRnum:               randutil.CreateUniqueMathRnum(),
 		TickTime:                 &tickCounterData{lastTick: time.Now()},
 		TimeMultiplier:           float64(1),
-		ProcessingQueue:          simplesync.NewWorkerPool(args.NumberOfCores),
-		ProcessingRnumSlice:      randutil.CreateMultipleUniqueMathRnum(args.NumberOfCores),
-		SystemSlice:              make([]*gamestate.System, 0),
-		SystemNames:              make([]uint64, 0),
-		Actors:                   make([]*actor.Bot, 0),
-		AnyPlanetMutex:           &sync.Mutex{},
-		AnyPlanetSlice:           make([]*gamestate.Planet, 0),
-		NeutralAnyPlanetMutex:    &sync.Mutex{},
-		NeutralAnyPlanetSlice:    make([]*gamestate.Planet, 0),
-		NeutralTerranPlanetMutex: &sync.Mutex{},
-		NeutralTerranPlanetSlice: make([]*gamestate.Planet, 0),
-		SystemAndPlanetNames:     names.NewNameGenerator(args, log),
+		AnyPlanetSlice:           make([]*backendmessage.Planet, 0),
+		NeutralAnyPlanetSlice:    make([]*backendmessage.Planet, 0),
+		NeutralTerranPlanetSlice: make([]*backendmessage.Planet, 0),
 		FleetIDs:                 intutil.NewInt32Generator(),
 		BattleIDs:                intutil.NewInt32Generator(),
 		SiegeIDs:                 intutil.NewInt32Generator(),
 		ActionIDs:                intutil.NewInt32Generator(),
-		PlayerFleetInsideSystem:  make(map[uint64]map[uint64]*gamestate.Fleet),
 	}
 
 	universe := &UniverseStruct{
-		GalaxyStruct:         galaxy,
-		ClientSignal:         make(chan struct{}),
-		PlayerNames:          stringdatastore.New(),
-		SystemAndPlanetNames: galaxy.SystemAndPlanetNames,
-		PendingPlayerSpawns:  make([]*playerInfo, 0),
+		GalaxyStruct:        galaxy,
+		UgridSystems:        spatialindex.NewGrid(65535),
+		UgridFleets:         spatialindex.NewGrid(65535),
+		UgridBattles:        spatialindex.NewGrid(65535),
+		UgridSieges:         spatialindex.NewGrid(65535),
+		UgridBytes:          map[int]bytes.Buffer{},
+		ClientSignal:        make(chan struct{}),
+		PendingPlayerSpawns: make([]*playerInfo, 0),
 	}
 
 	// create or deserialize a protobuf galaxy
@@ -85,6 +73,11 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		galaxy.Generate()
 	} else {
 		galaxy.UnmarshalFile()
+	}
+
+	// create uGrid for virtualized client systems
+	for systemName, system := range universe.GalaxyStruct.Protobuf.System {
+		universe.UgridSystems.Add(systemName, system.InterX, system.InterY)
 	}
 
 	// preprocess some large datastructures
@@ -146,9 +139,36 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	////////////////////////////////////////////////////////////
 
 	muxSecure := http.NewServeMux()
-
-	// setup the websocket handlers
-	muxSecure.HandleFunc("/clienttobackend", universe.HandleClientToBackend) // websocket_handlers.go
+	muxSecure.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
+		err := fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
+		if log.CheckError(err, fName, httpRemoteIP) {
+			return
+		}
+		upgrader := websocket.Upgrader{
+			HandshakeTimeout:  15 * time.Second,
+			ReadBufferSize:    0,
+			WriteBufferSize:   0,
+			EnableCompression: true,
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if log.CheckError(err, fName, "upgrade error") {
+			return
+		}
+		defer conn.Close()
+		conn.SetReadLimit(128 * int64(units.Kilobyte))
+		switch conn.Subprotocol() {
+		case "detailedData":
+			userID, err := auth.HandleGoogleAuth(fName, conn, nil, fwall, args, log)
+			if log.CheckError(err, fName) {
+				return
+			}
+			conn.SetReadLimit(1 * int64(units.Megabyte))
+			universe.ClientToBackendCommunication(conn, userID)
+		default:
+			log.Info(fName, "received invalid Subprotocol", conn.Subprotocol())
+		}
+	})
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
@@ -172,7 +192,9 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 		},
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+
+		// allow HTTP2 by not specifying proto handlers
+		TLSNextProto: nil,
 	}
 
 	// serve HTTPS requests with config defined above

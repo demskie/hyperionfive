@@ -1,4 +1,4 @@
-package gamestate
+package backendmessage
 
 // defining types of objects
 const (

@@ -6,7 +6,6 @@ import (
 	"net/http/pprof"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/demskie/hyperionfive/arguments"
@@ -40,19 +39,18 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			h.ServeHTTP(w, r)
 		}
 	}
-	exPath, err := os.Executable()
-	if log.CheckError(err, fName) {
-		log.SuddenExit()
-	}
-	directoryObject := http.Dir(filepath.Join(filepath.Dir(exPath), "websiteroot"))
+	directoryObject := http.Dir(filepath.Dir(`C:\Users\alexd\OneDrive\react-hyperion5-game\build\`))
 	fileserverWithModifiedHeaders := addSecurityHeaders(http.FileServer(directoryObject))
 
-	// setup the websocket handlers
-	muxSecure.HandleFunc("/clienttofrontend", handleClientToFrontend)
-	muxSecure.HandleFunc("/backendtofrontend", handleBackendToFrontend)
-	muxSecure.HandleFunc("/frontendtofrontend", handleFrontendToFrontend)
+	// initialize service
+	service := &Service{}
 
-	// setup the fileserver handler now that the necessary security headers have been added
+	// link the http handlers
+	muxSecure.HandleFunc("/frontend", service.handleClientToFrontend)
+	muxSecure.HandleFunc("/backendtofrontend", service.handleBackendToFrontend)
+	muxSecure.HandleFunc("/frontendtofrontend", service.handleFrontendToFrontend)
+
+	// link the fileserver handler now that the necessary security headers have been added
 	muxSecure.Handle("/", fileserverWithModifiedHeaders)
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
@@ -70,14 +68,13 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, // Go 1.8 only
-				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,   // Go 1.8 only
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 		},
-
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0),
+		TLSNextProto: nil, // enables HTTP2
 	}
 
 	// serve HTTPS requests with config defined above
@@ -116,6 +113,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			log.CheckError(errServeInsecure, fName, "(pprof)")
 		}()
 	} else {
+
 		// define nonsecure HTTP parameters
 		srvInsecure := &http.Server{
 			ReadTimeout:  5 * time.Second,
@@ -128,6 +126,9 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 				http.Redirect(w, req, url, http.StatusMovedPermanently)
 			}),
 		}
+		// no need for keepalives on a handler that only redirects
+		srvInsecure.SetKeepAlivesEnabled(false)
+
 		// serve HTTP requests by redirecting to HTTPS
 		go func() {
 			errServeInsecure := srvInsecure.ListenAndServe()
@@ -138,19 +139,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	}
 
 	log.Info("(hyperionfive) serving HTTPS", netutil.GetLocalAddress(args, log)+":443")
-	indefinite := make(chan struct{})
-	<-indefinite
+	<-make(chan struct{})
 
 	return
-}
-
-type clientRequests struct {
-	sync.Mutex
-	Data []modifiedClientRequest
-}
-
-type modifiedClientRequest struct {
-	ClientID      int32
-	ClientMessage string
-	ClientValues  []string
 }

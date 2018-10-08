@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/demskie/hyperionfive/gamestate"
+	"github.com/demskie/hyperionfive/backendmessage"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
 
 // ClientToBackendCommunication ...
-func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Conn, authenticatedUserID uint64) {
+func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Conn, userID string) {
 	fName := "(clientToBackend)"
 
 	////////////////////////////////////////////////////////////
@@ -83,7 +83,7 @@ func (universe *UniverseStruct) ClientToBackendCommunication(conn *websocket.Con
 			universe.RLock()
 
 			// prepare data
-			partialGalaxy := &gamestate.Galaxy{
+			partialGalaxy := &backendmessage.Galaxy{
 				NameUint: universe.GalaxyStruct.Protobuf.NameUint,
 				GlobalX:  universe.GalaxyStruct.Protobuf.GlobalX,
 				GlobalY:  universe.GalaxyStruct.Protobuf.GlobalY,

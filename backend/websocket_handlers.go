@@ -44,11 +44,9 @@ func (universe *UniverseStruct) HandleClientToBackend(w http.ResponseWriter, r *
 	fwall.AddSessionToHistory(remoteIP, fName)
 	defer fwall.RemoveSessionFromHistory(remoteIP, fName)
 
-	userid := auth.HandleGoogleAuth(fName, conn, fwall, args, log)
-	if userid != "" {
-		// TODO // actually implement using uint64
-		//id := universe.PlayerNameData.GetReferenceInt(userid)
-		universe.ClientToBackendCommunication(conn, 123456789)
+	userID, err := auth.HandleGoogleAuth(fName, conn, nil, fwall, args, log)
+	if err != nil {
+		universe.ClientToBackendCommunication(conn, userID)
 	}
 }
 
