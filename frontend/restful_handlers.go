@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/alecthomas/units"
 	"github.com/demskie/hyperionfive/auth"
 	"github.com/demskie/hyperionfive/frontendmessage"
 	"github.com/gogo/protobuf/proto"
@@ -20,7 +21,7 @@ func (s *Service) handleClientToFrontend(w http.ResponseWriter, r *http.Request)
 	const fName = "(clientToFrontend)"
 	s.RLock()
 	defer s.RUnlock()
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // limit to one megabyte
+	r.Body = http.MaxBytesReader(w, r.Body, 1*int64(units.Megabyte))
 	httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
 	possibleProfiles := s.addrToProfiles[httpRemoteIP]
 	pb := serverInfoBufferPool.Get().(proto.Buffer)
@@ -49,5 +50,7 @@ func (s *Service) handleClientToFrontend(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.Write(pb.Bytes())
+	} else {
+		http.Error(w, "encountered protobuf encoding error", http.StatusProcessing)
 	}
 }

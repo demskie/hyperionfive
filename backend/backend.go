@@ -84,14 +84,12 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	galaxy.PreprocessPopulationObjects()
 
 	// connect to a frontend server
-	if false {
-		go func() {
-			for {
-				universe.SpawnBackendToFrontend("hyperion5.com", galaxy)
-				time.Sleep(1 * time.Second)
-			}
-		}()
-	}
+	go func() {
+		for {
+			universe.spawnBackendToFrontend("hyperion5.com")
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	////////////////////////////////////////////////////////////
 	// continuously process galaxy
@@ -159,7 +157,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		defer conn.Close()
 		conn.SetReadLimit(128 * int64(units.Kilobyte))
 		switch conn.Subprotocol() {
-		case "detailedData":
+		case "detailed-data":
 			userID, err := auth.HandleGoogleAuth(fName, conn, nil, fwall, args, log)
 			if log.CheckError(err, fName) {
 				return
@@ -185,11 +183,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 			PreferServerCipherSuites: true,
 			CipherSuites: []uint16{
-				//tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-				//tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-				//tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-				//tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 		},

@@ -1,12 +1,14 @@
 package frontend
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/demskie/hyperionfive/auth"
 	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/hyperionfive/netutil"
 
 	"github.com/gorilla/websocket"
 )
@@ -15,25 +17,21 @@ func (s *Service) handleBackendToFrontend(w http.ResponseWriter, r *http.Request
 	const fName = "(backendToFrontend)"
 
 	httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
-
 	err := fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
 	if log.CheckError(err, fName) {
 		return
 	}
 
 	upgrader := websocket.Upgrader{
-		HandshakeTimeout:  30 * time.Second,
-		ReadBufferSize:    1024,
-		WriteBufferSize:   1024,
-		EnableCompression: true,
+		HandshakeTimeout: 10 * time.Second,
+		ReadBufferSize:   0,
+		WriteBufferSize:  0,
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if log.CheckError(err, fName, "upgrade error") {
 		return
 	}
 	defer conn.Close()
-	conn.EnableWriteCompression(true)
-	conn.SetCompressionLevel(1)
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
@@ -43,17 +41,16 @@ func (s *Service) handleBackendToFrontend(w http.ResponseWriter, r *http.Request
 	fwall.AddSessionToHistory(remoteIP, fName)
 	defer fwall.RemoveSessionFromHistory(remoteIP, fName)
 
-	if auth.HandleChallengeResponse(fName, conn, fwall, args, log) {
-		handleBackendToFrontendCommunication(conn)
+	err = auth.HandleChallengeResponse(fName, conn, fwall, args, log)
+	if log.CheckError(err) {
+		return
 	}
-}
-
-type frontendToFrontendMessage struct {
-	GalGlobalX     map[string]int64
-	GalGlobalY     map[string]int64
-	GalClientIDs   map[string][]string
-	GalBackends    map[string][]string
-	OtherFrontends map[string]time.Time
+	for {
+		err = s.receiveBackendSync(conn)
+		if err != nil {
+			return
+		}
+	}
 }
 
 func (s *Service) handleFrontendToFrontend(w http.ResponseWriter, r *http.Request) {
@@ -66,18 +63,15 @@ func (s *Service) handleFrontendToFrontend(w http.ResponseWriter, r *http.Reques
 	}
 
 	upgrader := websocket.Upgrader{
-		HandshakeTimeout:  30 * time.Second,
-		ReadBufferSize:    1024,
-		WriteBufferSize:   1024,
-		EnableCompression: true,
+		HandshakeTimeout: 10 * time.Second,
+		ReadBufferSize:   0,
+		WriteBufferSize:  0,
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if log.CheckError(err, fName, "upgrade error") {
 		return
 	}
 	defer conn.Close()
-	conn.EnableWriteCompression(true)
-	conn.SetCompressionLevel(1)
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
@@ -87,22 +81,26 @@ func (s *Service) handleFrontendToFrontend(w http.ResponseWriter, r *http.Reques
 	fwall.AddSessionToHistory(remoteIP, fName)
 	defer fwall.RemoveSessionFromHistory(remoteIP, fName)
 
-	if auth.HandleChallengeResponse(fName, conn, fwall, args, log) {
-		frontendToFrontendCommunication(conn)
+	err = auth.HandleChallengeResponse(fName, conn, fwall, args, log)
+	if log.CheckError(err, fName) {
+		return
+	}
+	for {
+		if s.receiveFrontendSync(conn) != nil {
+			return
+		}
 	}
 }
 
-func spawnFrontendToFrontend(host string) {
+func (s *Service) spawnFrontendToFrontend(host string) error {
 	const fName = "(frontendToFrontend)"
 
-	var dialer *websocket.Dialer
-	conn, _, err := dialer.Dial("wss://"+host+":443/frontendtofrontend", nil)
-	if log.CheckError(err, fName, "unable to open websocket with frontend loadbalancer") {
-		return
+	dialer := netutil.GetWebsocketDialer(args, log)
+	conn, _, err := dialer.Dial("wss://"+host+":443/frontend-to-frontend", nil)
+	if err != nil {
+		return fmt.Errorf("unable to open socket with %v because %v", host, err)
 	}
 	defer conn.Close()
-	conn.EnableWriteCompression(true)
-	conn.SetCompressionLevel(1)
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
@@ -112,7 +110,15 @@ func spawnFrontendToFrontend(host string) {
 	fwall.AddSessionToHistory(remoteIP, fName)
 	defer fwall.RemoveSessionFromHistory(remoteIP, fName)
 
-	if auth.KickoffChallengeResponse(fName, conn, fwall, args, log) {
-		frontendToFrontendCommunication(conn)
+	err = auth.KickoffChallengeResponse(fName, conn, fwall, args, log)
+	if err != nil {
+		return err
+	}
+	for {
+		err = s.startFrontendSync(conn)
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Second)
 	}
 }

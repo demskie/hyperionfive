@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -12,8 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// HandleClientToBackend ...
-func (universe *UniverseStruct) HandleClientToBackend(w http.ResponseWriter, r *http.Request) {
+func (universe *UniverseStruct) handleClientToBackend(w http.ResponseWriter, r *http.Request) {
 	const fName = "(clientToBackend)"
 
 	httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -50,18 +50,15 @@ func (universe *UniverseStruct) HandleClientToBackend(w http.ResponseWriter, r *
 	}
 }
 
-// SpawnBackendToFrontend ...
-func (universe *UniverseStruct) SpawnBackendToFrontend(host string, galaxy *GalaxyStruct) {
+func (universe *UniverseStruct) spawnBackendToFrontend(host string) error {
 	const fName = "(backendToFrontend)"
 
 	dialer := netutil.GetWebsocketDialer(args, log)
-	conn, _, err := dialer.Dial("wss://"+host+":443/backendtofrontend", nil)
-	if log.CheckError(err, fName, "unable to open websocket with frontend loadbalancer") {
-		return
+	conn, _, err := dialer.Dial("wss://"+host+":443/backend-to-frontend", nil)
+	if err != nil {
+		return fmt.Errorf("unable to open socket with %v because %v", host, err)
 	}
 	defer conn.Close()
-	conn.EnableWriteCompression(true)
-	conn.SetCompressionLevel(1)
 
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 	localIP, _, _ := net.SplitHostPort(conn.LocalAddr().String())
@@ -71,7 +68,15 @@ func (universe *UniverseStruct) SpawnBackendToFrontend(host string, galaxy *Gala
 	fwall.AddSessionToHistory(remoteIP, fName)
 	defer fwall.RemoveSessionFromHistory(remoteIP, fName)
 
-	if auth.KickoffChallengeResponse(fName, conn, fwall, args, log) {
-		universe.KickoffBackendToFrontendCommunication(conn, galaxy)
+	err = auth.KickoffChallengeResponse(fName, conn, fwall, args, log)
+	if err != nil {
+		return err
+	}
+	for {
+		err = universe.startFrontendSync(conn)
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Second)
 	}
 }

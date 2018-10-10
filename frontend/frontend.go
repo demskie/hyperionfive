@@ -46,9 +46,9 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	service := &Service{}
 
 	// link the http handlers
-	muxSecure.HandleFunc("/frontend", service.handleClientToFrontend)
-	muxSecure.HandleFunc("/backendtofrontend", service.handleBackendToFrontend)
-	muxSecure.HandleFunc("/frontendtofrontend", service.handleFrontendToFrontend)
+	muxSecure.HandleFunc("/client-to-frontend", service.handleClientToFrontend)
+	muxSecure.HandleFunc("/backend-to-frontend", service.handleBackendToFrontend)
+	muxSecure.HandleFunc("/frontend-to-frontend", service.handleFrontendToFrontend)
 
 	// link the fileserver handler now that the necessary security headers have been added
 	muxSecure.Handle("/", fileserverWithModifiedHeaders)
@@ -74,7 +74,9 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 		},
-		TLSNextProto: nil, // enables HTTP2
+
+		// enables HTTP2
+		TLSNextProto: nil,
 	}
 
 	// serve HTTPS requests with config defined above

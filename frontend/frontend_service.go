@@ -14,4 +14,5 @@ type Service struct {
 	version        int32
 	allServers     map[uint64]*frontendmessage.Backend
 	addrToProfiles map[string]map[string]time.Time
+	playersToSpawn map[string]int32
 }
