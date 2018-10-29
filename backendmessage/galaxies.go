@@ -2,18 +2,13 @@ package backendmessage
 
 import "math"
 
-// galaxy type
-const (
-	ELLIPTICAL int32 = iota
-	SPIRAL
-	BARREDSPIRAL
-	IRREGULAR
-)
-
 // global constants
 const (
-	GalaxyRadius                  = math.MaxInt64
+	GalaxyRadius                  = math.MaxInt32
 	RealMilkyWayRadius            = 100000
 	LightYear                     = GalaxyRadius / RealMilkyWayRadius
 	MinimumDistanceBetweenSystems = 3 * LightYear
+	MaxNumberOfPlayers            = 10000
+	NumSystemsPerPlayer           = 25
+	TotalNumSystems               = MaxNumberOfPlayers * NumSystemsPerPlayer
 )

@@ -3,169 +3,151 @@ package backend
 import (
 	"crypto/tls"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
-
-	"github.com/demskie/hyperionfive/auth"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/alecthomas/units"
 	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/auth"
+	"github.com/demskie/hyperionfive/backend/counters"
+	"github.com/demskie/hyperionfive/backend/subdivision"
 	"github.com/demskie/hyperionfive/backendmessage"
 	"github.com/demskie/hyperionfive/firewall"
 	"github.com/demskie/hyperionfive/intutil"
 	"github.com/demskie/hyperionfive/netutil"
 	"github.com/demskie/logging"
-	"github.com/demskie/randutil"
-	"github.com/demskie/spatialindex"
 	"github.com/gorilla/websocket"
 
 	// runtimepprof "runtime/pprof"
 	_ "net/http/pprof"
 )
 
-var (
-	args  *arguments.Args
-	log   *logging.Logger
-	fwall *firewall.Checker
-)
+type service struct {
+	sync.RWMutex
+	args                *arguments.Args
+	log                 *logging.Logger
+	fwall               *firewall.Checker
+	googleAuth          *auth.GoogleAuth
+	virtualGalaxy       *subdivision.VirtualizedGalaxy
+	perfStats           *counters.PerfStats
+	rateLimiter         *counters.RateLimiter
+	timeMultiplier      float64
+	pendingPlayerSpawns map[string]int32
+	playerStrength      map[string]int32
+	playersToSpawn      map[string]int32
+}
+
+func newService(ar *arguments.Args, lg *logging.Logger) *service {
+	fw := firewall.New()
+	ga := auth.NewGoogleAuth(lg, fw, ar.GoogleAudience)
+	return &service{
+		args:                ar,
+		log:                 lg,
+		fwall:               fw,
+		googleAuth:          ga,
+		virtualGalaxy:       nil,
+		perfStats:           counters.NewPerfStats(lg),
+		rateLimiter:         counters.NewRateLimiter(),
+		timeMultiplier:      1,
+		pendingPlayerSpawns: map[string]int32{},
+		playerStrength:      map[string]int32{},
+		playersToSpawn:      map[string]int32{},
+	}
+}
 
 // Start ...
 func Start(arguments *arguments.Args, logger *logging.Logger) {
 	const fName = "(backend)"
 
-	args = arguments
-	log = logger
-	fwall = firewall.New()
+	s := newService(arguments, logger)
+	s.log.Info(fName, fmt.Sprintf("generating %v systems",
+		intutil.CommaFormatNum(backendmessage.TotalNumSystems)))
 
-	galaxy := &GalaxyStruct{
-		Protobuf:                 &backendmessage.Galaxy{},
-		Rtree:                    spatialindex.NewTree(),
-		SingleRnum:               randutil.CreateUniqueMathRnum(),
-		TickTime:                 &tickCounterData{lastTick: time.Now()},
-		TimeMultiplier:           float64(1),
-		AnyPlanetSlice:           make([]*backendmessage.Planet, 0),
-		NeutralAnyPlanetSlice:    make([]*backendmessage.Planet, 0),
-		NeutralTerranPlanetSlice: make([]*backendmessage.Planet, 0),
-		FleetIDs:                 intutil.NewInt32Generator(),
-		BattleIDs:                intutil.NewInt32Generator(),
-		SiegeIDs:                 intutil.NewInt32Generator(),
-		ActionIDs:                intutil.NewInt32Generator(),
-	}
-
-	universe := &UniverseStruct{
-		GalaxyStruct:        galaxy,
-		UgridSystems:        spatialindex.NewGrid(65535),
-		UgridFleets:         spatialindex.NewGrid(65535),
-		UgridBattles:        spatialindex.NewGrid(65535),
-		UgridSieges:         spatialindex.NewGrid(65535),
-		UgridBytes:          [65535]proto.Buffer{},
-		ClientSignal:        make(chan struct{}),
-		PendingPlayerSpawns: make([]*playerInfo, 0),
-	}
-
-	// create or deserialize a protobuf galaxy
-	if args.InputFile == "" {
-		galaxy.Generate()
-	} else {
-		galaxy.UnmarshalFile()
-	}
-
-	// create uGrid for virtualized client systems
-	for systemName, system := range universe.GalaxyStruct.Protobuf.System {
-		universe.UgridSystems.Add(systemName, system.InterX, system.InterY)
-	}
-
-	// preprocess some large datastructures
-	galaxy.PreprocessPopulationObjects()
-
-	// connect to a frontend server
+	s.Lock()
 	go func() {
 		for {
-			universe.spawnBackendToFrontend("hyperion5.com")
+			err := s.spawnFrontendSync("hyperion5.com")
+			s.log.CheckError(err, fName, "failed frontend connection >")
 			time.Sleep(1 * time.Second)
 		}
 	}()
 
-	////////////////////////////////////////////////////////////
+	s.virtualGalaxy = subdivision.NewVirtualizedGalaxy(s.args, 256)
+	s.Unlock()
+
 	// continuously process galaxy
-	////////////////////////////////////////////////////////////
-
 	go func() {
-		// for testing purposes
-		if args.DebugModeBool {
-			universe.Lock()
-			universe.PendingPlayerSpawns = append(
-				universe.PendingPlayerSpawns,
-				&playerInfo{
-					nameUint: 123456789,
-					strength: 1,
-				},
-			)
-			universe.Unlock()
-		}
-		// start monitoring backend atomic counters
-		backendCounters.StartCounting()
-		// start processing loop
 		for {
-			galaxy.TimeMultiplier = galaxy.TickTime.Update()
+			s.timeMultiplier = s.rateLimiter.Update()
 
-			if galaxy.TimeMultiplier >= 1 {
-				log.Error(fName, fmt.Sprintf("iteration took %v seconds", galaxy.TimeMultiplier))
+			if s.timeMultiplier >= 1 {
+				s.log.Error(fName, fmt.Sprintf("iteration took %v seconds", s.timeMultiplier))
 			}
 
-			universe.Lock()
-			galaxy.SpawnNewPlayers(universe) // processing_playerspawn.go
-			galaxy.AdvanceActors()           // processing_actors.go
-			galaxy.ProcessActions()          // processing_actions.go
-			galaxy.CalculatePopulation()     // processing_population.go
-			galaxy.AdvanceProduction()       // processing_production.go
-			galaxy.ProcessOngoingBattles()   // processing_battle.go
-			universe.SerializeSystems()      // processing_serialize.go
-			universe.Unlock()
-
-			close(universe.ClientSignal)
-			universe.ClientSignal = make(chan struct{})
+			s.Lock()
+			// DO SOME WORK
+			s.Unlock()
 		}
 	}()
 
-	////////////////////////////////////////////////////////////
 	// setup HTTP and HTTPS server
-	////////////////////////////////////////////////////////////
-
 	muxSecure := http.NewServeMux()
-	muxSecure.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	muxSecure.HandleFunc("/static-galaxy", func(w http.ResponseWriter, r *http.Request) {
 		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
-		err := fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
-		if log.CheckError(err, fName, httpRemoteIP) {
+		err := s.fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
+		if s.log.CheckError(err, fName, httpRemoteIP) {
 			return
 		}
+		s.fwall.AddSessionToHistory(httpRemoteIP, fName)
+		defer s.fwall.RemoveSessionFromHistory(httpRemoteIP, fName)
+		_, err = s.googleAuth.HandleRestful(fName, r)
+		if s.log.CheckError(err, fName, httpRemoteIP) {
+			return
+		}
+		w.Header().Set("Content-Type", "application/octet-stream")
+		s.RLock()
+		b := s.virtualGalaxy.GetStaticGalaxyBytes()
+		copiedBytes := make([]byte, len(b))
+		copy(copiedBytes, b)
+		s.RUnlock()
+		_, err = w.Write(copiedBytes)
+		s.log.CheckError(err, fName, "failed to completely write response")
+	})
+	muxSecure.HandleFunc("/websocket", func(w http.ResponseWriter, r *http.Request) {
+		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
+		err := s.fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
+		if s.log.CheckError(err, fName, httpRemoteIP) {
+			return
+		}
+		s.fwall.AddSessionToHistory(httpRemoteIP, fName)
+		defer s.fwall.RemoveSessionFromHistory(httpRemoteIP, fName)
 		upgrader := websocket.Upgrader{
 			HandshakeTimeout:  15 * time.Second,
 			ReadBufferSize:    0,
 			WriteBufferSize:   0,
-			EnableCompression: true,
+			EnableCompression: false,
 		}
 		conn, err := upgrader.Upgrade(w, r, nil)
-		if log.CheckError(err, fName, "upgrade error") {
+		if s.log.CheckError(err, fName, "upgrade error") {
 			return
 		}
 		defer conn.Close()
-		conn.SetReadLimit(128 * int64(units.Kilobyte))
+		conn.SetReadLimit(1 * int64(units.Megabyte))
+		userID, err := s.googleAuth.HandleWebsocket(fName, conn)
+		if s.log.CheckError(err, fName, httpRemoteIP) {
+			return
+		}
 		switch conn.Subprotocol() {
-		case "detailed-data":
-			userID, err := auth.HandleGoogleAuth(fName, conn, nil, fwall, args, log)
-			if log.CheckError(err, fName) {
-				return
-			}
-			conn.SetReadLimit(1 * int64(units.Megabyte))
-			universe.ClientToBackendCommunication(conn, userID)
+		case "client-to-backend":
+			s.clientToBackend(conn, userID)
 		default:
-			log.Info(fName, "received invalid Subprotocol", conn.Subprotocol())
+			s.log.Info(fName, "received invalid Subprotocol:", conn.Subprotocol())
 		}
 	})
 
@@ -174,7 +156,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
-		Addr:         netutil.GetLocalAddress(args, log) + ":443",
+		Addr:         fmt.Sprintf("[%v]:443", netutil.GetLocalAddress(s.args, s.log)),
 		Handler:      muxSecure,
 
 		// defining various security parameters used to specify accepted ciphersuites
@@ -195,20 +177,23 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	// serve HTTPS requests with config defined above
 	go func() {
 		exPath, err := os.Executable()
-		if log.CheckError(err, fName) {
-			log.SuddenExit()
+		if s.log.CheckError(err, fName) {
+			s.log.SuddenExit()
 		}
 		dir := filepath.Dir(exPath)
 		errServeTLS := srvSecure.ListenAndServeTLS(
 			filepath.Join(dir, "server.rsa.crt"),
 			filepath.Join(dir, "server.rsa.key"))
-		if log.CheckError(errServeTLS, fName) {
-			log.SuddenExit()
+		if s.log.CheckError(errServeTLS, fName) {
+			s.log.SuddenExit()
 		}
 	}()
 
 	// serve HTTP requests just for Debug purposes
-	if args.DebugModeBool {
+	if s.args.DebugModeBool {
+		// go get -u github.com/google/pprof
+		// pprof -http=":" %GOPATH%/bin/hyperionfive.exe http://192.168.1.70:8080/debug/pprof/profile
+		// pprof -http=":" %GOPATH%/bin/hyperionfive.exe http://192.168.1.70:8080/debug/pprof/heap
 		go func() {
 			profmux := http.NewServeMux()
 			profmux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -222,29 +207,17 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
 			profmux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
 			srvProf := &http.Server{
-				Addr:    netutil.GetLocalAddress(args, log) + ":8080",
+				Addr:    fmt.Sprintf("[%v]:8080", netutil.GetLocalAddress(s.args, s.log)),
 				Handler: profmux,
 			}
 			errServeInsecure := srvProf.ListenAndServe()
-			log.CheckError(errServeInsecure, fName, "(net/http/pprof)")
+			s.log.CheckError(errServeInsecure, fName, "(net/http/pprof)")
 		}()
 	}
 
 	<-make(chan struct{})
-	return
 }
 
-const (
-	maxNumberOfPlayers  = 10000
-	numSystemsPerPlayer = 25
-	totalNumSystems     = maxNumberOfPlayers * numSystemsPerPlayer
-
-	oneMillion = 1000000
-	oneBillion = 1000000000
-)
-
-// used to determine what the odds of success will be
-const (
-	ATTACKING int32 = iota
-	RUSHING
-)
+func distanceBetweenPoints(x1, y1, x2, y2 int64) uint64 {
+	return uint64(math.Hypot(float64(x1)-float64(x2), float64(y1)-float64(y2)))
+}

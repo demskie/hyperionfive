@@ -2,11 +2,20 @@ package frontend
 
 import (
 	"crypto/tls"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
+
+	"github.com/alecthomas/units"
+	"github.com/demskie/hyperionfive/auth"
+	"github.com/demskie/hyperionfive/frontendmessage"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gorilla/websocket"
 
 	"github.com/demskie/hyperionfive/arguments"
 	"github.com/demskie/hyperionfive/firewall"
@@ -14,22 +23,131 @@ import (
 	"github.com/demskie/logging"
 )
 
-var (
-	args  *arguments.Args
-	log   *logging.Logger
-	fwall *firewall.Checker
-)
+type service struct {
+	sync.RWMutex
+	args            *arguments.Args
+	log             *logging.Logger
+	fwall           *firewall.Checker
+	googleAuth      *auth.GoogleAuth
+	dynamicUniverse *proto.Buffer
+	instanceName    string
+	version         int32
+	allServers      map[int32]*frontendmessage.Backend
+	playersToSpawn  map[string]int32
+}
+
+func newService(ar *arguments.Args, lg *logging.Logger) *service {
+	fw := firewall.New()
+	ga := auth.NewGoogleAuth(lg, fw, ar.GoogleAudience)
+	return &service{
+		args:            ar,
+		log:             lg,
+		fwall:           fw,
+		googleAuth:      ga,
+		dynamicUniverse: &proto.Buffer{},
+		instanceName:    "",
+		version:         -1,
+		allServers:      make(map[int32]*frontendmessage.Backend, 0),
+		playersToSpawn:  make(map[string]int32, 0),
+	}
+}
 
 // Start ...
 func Start(arguments *arguments.Args, logger *logging.Logger) {
 	const fName = "(frontend)"
 
-	args = arguments
-	log = logger
-	fwall = firewall.New()
+	s := newService(arguments, logger)
+	s.log.Info(fName, "starting")
 
 	// setup httpMux to avoid leaking default handlers
 	muxSecure := http.NewServeMux()
+	muxSecure.HandleFunc("/dynamic-universe", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "custom error #100929", http.StatusMethodNotAllowed)
+			return
+		}
+		origin := r.Header.Get("Origin")
+		if origin != "http://localhost:3000" {
+			origin = "https://hyperion5.com"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Content-Type", "application/octet-stream")
+		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
+		err := s.fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
+		if s.log.CheckError(err, fName, httpRemoteIP) {
+			return
+		}
+		s.fwall.AddSessionToHistory(httpRemoteIP, fName)
+		defer s.fwall.RemoveSessionFromHistory(httpRemoteIP, fName)
+		_, err = s.googleAuth.HandleRestful(fName, r)
+		if s.log.CheckError(err, fName, httpRemoteIP) {
+			b, err := proto.Marshal(
+				&frontendmessage.ServerInfo{
+					ErrorMessage: err.Error(),
+				},
+			)
+			if s.log.CheckError(err, fName, "unable to marshal error message") {
+				return
+			}
+			w.Write(b)
+		} else {
+			s.RLock()
+			b := s.dynamicUniverse.Bytes()
+			copiedBytes := make([]byte, len(b))
+			copy(copiedBytes, b)
+			s.RUnlock()
+			_, err = w.Write(copiedBytes)
+			s.log.CheckError(err, fName, "failed to completely write response")
+		}
+	})
+	muxSecure.HandleFunc("/websocket", func(w http.ResponseWriter, r *http.Request) {
+		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
+		err := s.fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
+		if s.log.CheckError(err, fName, httpRemoteIP) {
+			return
+		}
+		s.fwall.AddSessionToHistory(httpRemoteIP, fName)
+		defer s.fwall.RemoveSessionFromHistory(httpRemoteIP, fName)
+		upgrader := websocket.Upgrader{
+			HandshakeTimeout:  15 * time.Second,
+			ReadBufferSize:    0,
+			WriteBufferSize:   0,
+			EnableCompression: false,
+			Subprotocols: []string{
+				"backend-to-frontend",
+				"frontend-to-frontend",
+			},
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if s.log.CheckError(err, fName, "upgrade error") {
+			return
+		}
+		defer conn.Close()
+		conn.SetReadLimit(1 * int64(units.Megabyte))
+		err = auth.HandleChallengeResponse(fName, conn, s.fwall, s.args, s.log)
+		if err != nil {
+			return
+		}
+		switch conn.Subprotocol() {
+		case "backend-to-frontend":
+			for {
+				err = s.receiveBackendSync(conn)
+				if s.log.CheckError(err, fName) {
+					return
+				}
+			}
+		case "frontend-to-frontend":
+			for {
+				err = s.receiveFrontendSync(conn)
+				if s.log.CheckError(err, fName) {
+					return
+				}
+			}
+		default:
+			s.log.Info(fName, fmt.Sprintf("received invalid Subprotocol: '%v'", conn.Subprotocol()))
+		}
+	})
 
 	// to enable perfect forward secrecy it's necessary to add 'Strict-Transport-Security'
 	// and since we are not writing out own FileServer, we'll need to add Headers this way
@@ -40,24 +158,13 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		}
 	}
 	directoryObject := http.Dir(filepath.Dir(`C:\Users\alexd\OneDrive\react-hyperion5-game\build\`))
-	fileserverWithModifiedHeaders := addSecurityHeaders(http.FileServer(directoryObject))
-
-	// initialize service
-	service := &Service{}
-
-	// link the http handlers
-	muxSecure.HandleFunc("/client-to-frontend", service.handleClientToFrontend)
-	muxSecure.HandleFunc("/backend-to-frontend", service.handleBackendToFrontend)
-	muxSecure.HandleFunc("/frontend-to-frontend", service.handleFrontendToFrontend)
-
-	// link the fileserver handler now that the necessary security headers have been added
-	muxSecure.Handle("/", fileserverWithModifiedHeaders)
+	muxSecure.Handle("/", addSecurityHeaders(http.FileServer(directoryObject)))
 
 	// tying the following http parameters to the handlers associated with 'muxSecure'
 	srvSecure := &http.Server{
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
-		Addr:         netutil.GetLocalAddress(args, log) + ":443",
+		Addr:         netutil.GetLocalAddress(s.args, s.log) + ":443",
 		Handler:      muxSecure,
 
 		// defining various security parameters used to specify accepted ciphersuites
@@ -82,19 +189,19 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	// serve HTTPS requests with config defined above
 	go func() {
 		exPath, err := os.Executable()
-		if log.CheckError(err, fName) {
-			log.SuddenExit()
+		if s.log.CheckError(err, fName) {
+			s.log.SuddenExit()
 		}
 		dir := filepath.Dir(exPath)
 		errServeTLS := srvSecure.ListenAndServeTLS(
 			filepath.Join(dir, "server.rsa.crt"),
 			filepath.Join(dir, "server.rsa.key"))
-		if log.CheckError(errServeTLS, fName) {
-			log.SuddenExit()
+		if s.log.CheckError(errServeTLS, fName) {
+			s.log.SuddenExit()
 		}
 	}()
 
-	if args.DebugModeBool {
+	if s.args.DebugModeBool {
 		go func() {
 			// serve HTTP requests just for Debug purposes
 			profmux := http.NewServeMux()
@@ -108,11 +215,11 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			profmux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
 			profmux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
 			srvProf := &http.Server{
-				Addr:    netutil.GetLocalAddress(args, log) + ":8080",
+				Addr:    netutil.GetLocalAddress(s.args, s.log) + ":8080",
 				Handler: profmux,
 			}
 			errServeInsecure := srvProf.ListenAndServe()
-			log.CheckError(errServeInsecure, fName, "(pprof)")
+			s.log.CheckError(errServeInsecure, fName, "(pprof)")
 		}()
 	} else {
 
@@ -121,7 +228,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 10 * time.Second,
 			IdleTimeout:  30 * time.Second,
-			Addr:         netutil.GetLocalAddress(args, log) + ":80",
+			Addr:         netutil.GetLocalAddress(s.args, s.log) + ":80",
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				w.Header().Set("Connection", "close")
 				url := "https://" + req.Host + req.URL.String()
@@ -134,13 +241,13 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		// serve HTTP requests by redirecting to HTTPS
 		go func() {
 			errServeInsecure := srvInsecure.ListenAndServe()
-			if log.CheckError(errServeInsecure, fName) {
-				log.SuddenExit()
+			if s.log.CheckError(errServeInsecure, fName) {
+				s.log.SuddenExit()
 			}
 		}()
 	}
 
-	log.Info("(hyperionfive) serving HTTPS", netutil.GetLocalAddress(args, log)+":443")
+	s.log.Info("(hyperionfive) serving HTTPS", netutil.GetLocalAddress(s.args, s.log)+":443")
 	<-make(chan struct{})
 
 	return

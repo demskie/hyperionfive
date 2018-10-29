@@ -47,3 +47,13 @@ wget http://localhost:8080/debug/pprof/trace?seconds=30 && go tool trace trace?s
 
 go tool pprof -png http://localhost:8080/debug/pprof/heap > out3.png && open out3.png
 /////////////////////////////////////
+
+- frontend starts
+- backend starts
+- backend generates galaxy
+- backend connects to 1.hyperion5.com/websocket "backend-to-frontend"
+	- frontend learns the hostname, galaxyName, globalX, globalY and playerStrength
+	- backend learns of pendingPlayerSpawns
+- client sends HTTP POST to frontend.hyperion5.com/dynamic-universe and receives all backends
+- client sends HTTP POST to andromeda.hyperion5.com/static-galaxy and receives all systems
+- client connects to andromeda.hyperion5.com/websocket "client-to-frontend"

@@ -30,7 +30,7 @@ type NullMessage struct {
 func (m *NullMessage) Reset()      { *m = NullMessage{} }
 func (*NullMessage) ProtoMessage() {}
 func (*NullMessage) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{0}
+	return fileDescriptor_backendmessage_3981642a80d3e238, []int{0}
 }
 func (m *NullMessage) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -59,30 +59,25 @@ func (m *NullMessage) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_NullMessage proto.InternalMessageInfo
 
-type Planet struct {
-	ParentSystemUint   uint64 `protobuf:"varint,2,opt,name=parentSystemUint,proto3" json:"parentSystemUint,omitempty"`
-	OwnerUint          uint64 `protobuf:"varint,3,opt,name=ownerUint,proto3" json:"ownerUint,omitempty"`
-	Food               int32  `protobuf:"varint,4,opt,name=food,proto3" json:"food,omitempty"`
-	Population         int64  `protobuf:"varint,5,opt,name=population,proto3" json:"population,omitempty"`
-	PlanetType         int32  `protobuf:"varint,6,opt,name=planetType,proto3" json:"planetType,omitempty"`
-	Health             int32  `protobuf:"varint,7,opt,name=health,proto3" json:"health,omitempty"`
-	Progress           int32  `protobuf:"varint,8,opt,name=progress,proto3" json:"progress,omitempty"`
-	DockedTitanCount   int32  `protobuf:"varint,9,opt,name=dockedTitanCount,proto3" json:"dockedTitanCount,omitempty"`
-	DockedCapitalCount int32  `protobuf:"varint,10,opt,name=dockedCapitalCount,proto3" json:"dockedCapitalCount,omitempty"`
-	DockedFighterCount int32  `protobuf:"varint,11,opt,name=dockedFighterCount,proto3" json:"dockedFighterCount,omitempty"`
+type StaticGalaxy struct {
+	Id           int32                   `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	GlobalX      int64                   `protobuf:"varint,2,opt,name=globalX,proto3" json:"globalX,omitempty"`
+	GlobalY      int64                   `protobuf:"varint,3,opt,name=globalY,proto3" json:"globalY,omitempty"`
+	Precision    int32                   `protobuf:"varint,4,opt,name=precision,proto3" json:"precision,omitempty"`
+	StaticSystem map[int32]*StaticSystem `protobuf:"bytes,128,rep,name=staticSystem" json:"staticSystem,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
 }
 
-func (m *Planet) Reset()      { *m = Planet{} }
-func (*Planet) ProtoMessage() {}
-func (*Planet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{1}
+func (m *StaticGalaxy) Reset()      { *m = StaticGalaxy{} }
+func (*StaticGalaxy) ProtoMessage() {}
+func (*StaticGalaxy) Descriptor() ([]byte, []int) {
+	return fileDescriptor_backendmessage_3981642a80d3e238, []int{1}
 }
-func (m *Planet) XXX_Unmarshal(b []byte) error {
+func (m *StaticGalaxy) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Planet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *StaticGalaxy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Planet.Marshal(b, m, deterministic)
+		return xxx_messageInfo_StaticGalaxy.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalTo(b)
@@ -92,685 +87,238 @@ func (m *Planet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (dst *Planet) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Planet.Merge(dst, src)
+func (dst *StaticGalaxy) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StaticGalaxy.Merge(dst, src)
 }
-func (m *Planet) XXX_Size() int {
+func (m *StaticGalaxy) XXX_Size() int {
 	return m.Size()
 }
-func (m *Planet) XXX_DiscardUnknown() {
-	xxx_messageInfo_Planet.DiscardUnknown(m)
+func (m *StaticGalaxy) XXX_DiscardUnknown() {
+	xxx_messageInfo_StaticGalaxy.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Planet proto.InternalMessageInfo
+var xxx_messageInfo_StaticGalaxy proto.InternalMessageInfo
 
-func (m *Planet) GetParentSystemUint() uint64 {
+func (m *StaticGalaxy) GetId() int32 {
 	if m != nil {
-		return m.ParentSystemUint
+		return m.Id
 	}
 	return 0
 }
 
-func (m *Planet) GetOwnerUint() uint64 {
-	if m != nil {
-		return m.OwnerUint
-	}
-	return 0
-}
-
-func (m *Planet) GetFood() int32 {
-	if m != nil {
-		return m.Food
-	}
-	return 0
-}
-
-func (m *Planet) GetPopulation() int64 {
-	if m != nil {
-		return m.Population
-	}
-	return 0
-}
-
-func (m *Planet) GetPlanetType() int32 {
-	if m != nil {
-		return m.PlanetType
-	}
-	return 0
-}
-
-func (m *Planet) GetHealth() int32 {
-	if m != nil {
-		return m.Health
-	}
-	return 0
-}
-
-func (m *Planet) GetProgress() int32 {
-	if m != nil {
-		return m.Progress
-	}
-	return 0
-}
-
-func (m *Planet) GetDockedTitanCount() int32 {
-	if m != nil {
-		return m.DockedTitanCount
-	}
-	return 0
-}
-
-func (m *Planet) GetDockedCapitalCount() int32 {
-	if m != nil {
-		return m.DockedCapitalCount
-	}
-	return 0
-}
-
-func (m *Planet) GetDockedFighterCount() int32 {
-	if m != nil {
-		return m.DockedFighterCount
-	}
-	return 0
-}
-
-type Object struct {
-	ParentSystemUint uint64 `protobuf:"varint,2,opt,name=parentSystemUint,proto3" json:"parentSystemUint,omitempty"`
-	OwnerUint        uint64 `protobuf:"varint,5,opt,name=ownerUint,proto3" json:"ownerUint,omitempty"`
-	ObjectType       int32  `protobuf:"varint,6,opt,name=objectType,proto3" json:"objectType,omitempty"`
-	Health           int32  `protobuf:"varint,7,opt,name=health,proto3" json:"health,omitempty"`
-}
-
-func (m *Object) Reset()      { *m = Object{} }
-func (*Object) ProtoMessage() {}
-func (*Object) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{2}
-}
-func (m *Object) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Object) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Object.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (dst *Object) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Object.Merge(dst, src)
-}
-func (m *Object) XXX_Size() int {
-	return m.Size()
-}
-func (m *Object) XXX_DiscardUnknown() {
-	xxx_messageInfo_Object.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Object proto.InternalMessageInfo
-
-func (m *Object) GetParentSystemUint() uint64 {
-	if m != nil {
-		return m.ParentSystemUint
-	}
-	return 0
-}
-
-func (m *Object) GetOwnerUint() uint64 {
-	if m != nil {
-		return m.OwnerUint
-	}
-	return 0
-}
-
-func (m *Object) GetObjectType() int32 {
-	if m != nil {
-		return m.ObjectType
-	}
-	return 0
-}
-
-func (m *Object) GetHealth() int32 {
-	if m != nil {
-		return m.Health
-	}
-	return 0
-}
-
-type System struct {
-	InterX           int64                   `protobuf:"varint,2,opt,name=interX,proto3" json:"interX,omitempty"`
-	InterY           int64                   `protobuf:"varint,3,opt,name=interY,proto3" json:"interY,omitempty"`
-	PrimaryOwnerUint uint64                  `protobuf:"varint,4,opt,name=primaryOwnerUint,proto3" json:"primaryOwnerUint,omitempty"`
-	SystemType       int32                   `protobuf:"varint,16,opt,name=systemType,proto3" json:"systemType,omitempty"`
-	NearbySystems    map[uint64]*NullMessage `protobuf:"bytes,128,rep,name=nearbySystems" json:"nearbySystems,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	ChildPlanet      map[uint64]*NullMessage `protobuf:"bytes,129,rep,name=childPlanet" json:"childPlanet,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	ChildObject      map[uint64]*NullMessage `protobuf:"bytes,130,rep,name=childObject" json:"childObject,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	NearbyFleets     map[uint64]*NullMessage `protobuf:"bytes,131,rep,name=nearbyFleets" json:"nearbyFleets,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-}
-
-func (m *System) Reset()      { *m = System{} }
-func (*System) ProtoMessage() {}
-func (*System) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{3}
-}
-func (m *System) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *System) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_System.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (dst *System) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_System.Merge(dst, src)
-}
-func (m *System) XXX_Size() int {
-	return m.Size()
-}
-func (m *System) XXX_DiscardUnknown() {
-	xxx_messageInfo_System.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_System proto.InternalMessageInfo
-
-func (m *System) GetInterX() int64 {
-	if m != nil {
-		return m.InterX
-	}
-	return 0
-}
-
-func (m *System) GetInterY() int64 {
-	if m != nil {
-		return m.InterY
-	}
-	return 0
-}
-
-func (m *System) GetPrimaryOwnerUint() uint64 {
-	if m != nil {
-		return m.PrimaryOwnerUint
-	}
-	return 0
-}
-
-func (m *System) GetSystemType() int32 {
-	if m != nil {
-		return m.SystemType
-	}
-	return 0
-}
-
-func (m *System) GetNearbySystems() map[uint64]*NullMessage {
-	if m != nil {
-		return m.NearbySystems
-	}
-	return nil
-}
-
-func (m *System) GetChildPlanet() map[uint64]*NullMessage {
-	if m != nil {
-		return m.ChildPlanet
-	}
-	return nil
-}
-
-func (m *System) GetChildObject() map[uint64]*NullMessage {
-	if m != nil {
-		return m.ChildObject
-	}
-	return nil
-}
-
-func (m *System) GetNearbyFleets() map[uint64]*NullMessage {
-	if m != nil {
-		return m.NearbyFleets
-	}
-	return nil
-}
-
-type Fleet struct {
-	InterX            int64  `protobuf:"varint,2,opt,name=interX,proto3" json:"interX,omitempty"`
-	InterY            int64  `protobuf:"varint,3,opt,name=interY,proto3" json:"interY,omitempty"`
-	OwnerUint         uint64 `protobuf:"varint,4,opt,name=ownerUint,proto3" json:"ownerUint,omitempty"`
-	ClosestSystemUint uint64 `protobuf:"varint,5,opt,name=closestSystemUint,proto3" json:"closestSystemUint,omitempty"`
-	TitanCount        int32  `protobuf:"varint,32,opt,name=titanCount,proto3" json:"titanCount,omitempty"`
-	CapitalCount      int32  `protobuf:"varint,33,opt,name=capitalCount,proto3" json:"capitalCount,omitempty"`
-	FighterCount      int32  `protobuf:"varint,34,opt,name=fighterCount,proto3" json:"fighterCount,omitempty"`
-}
-
-func (m *Fleet) Reset()      { *m = Fleet{} }
-func (*Fleet) ProtoMessage() {}
-func (*Fleet) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{4}
-}
-func (m *Fleet) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Fleet) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Fleet.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (dst *Fleet) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Fleet.Merge(dst, src)
-}
-func (m *Fleet) XXX_Size() int {
-	return m.Size()
-}
-func (m *Fleet) XXX_DiscardUnknown() {
-	xxx_messageInfo_Fleet.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Fleet proto.InternalMessageInfo
-
-func (m *Fleet) GetInterX() int64 {
-	if m != nil {
-		return m.InterX
-	}
-	return 0
-}
-
-func (m *Fleet) GetInterY() int64 {
-	if m != nil {
-		return m.InterY
-	}
-	return 0
-}
-
-func (m *Fleet) GetOwnerUint() uint64 {
-	if m != nil {
-		return m.OwnerUint
-	}
-	return 0
-}
-
-func (m *Fleet) GetClosestSystemUint() uint64 {
-	if m != nil {
-		return m.ClosestSystemUint
-	}
-	return 0
-}
-
-func (m *Fleet) GetTitanCount() int32 {
-	if m != nil {
-		return m.TitanCount
-	}
-	return 0
-}
-
-func (m *Fleet) GetCapitalCount() int32 {
-	if m != nil {
-		return m.CapitalCount
-	}
-	return 0
-}
-
-func (m *Fleet) GetFighterCount() int32 {
-	if m != nil {
-		return m.FighterCount
-	}
-	return 0
-}
-
-type Battle struct {
-	Strategy          int32                  `protobuf:"varint,2,opt,name=strategy,proto3" json:"strategy,omitempty"`
-	AttackingFleetIDs map[int32]*NullMessage `protobuf:"bytes,128,rep,name=attackingFleetIDs" json:"attackingFleetIDs,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	DefendingFleetIDs map[int32]*NullMessage `protobuf:"bytes,129,rep,name=defendingFleetIDs" json:"defendingFleetIDs,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-}
-
-func (m *Battle) Reset()      { *m = Battle{} }
-func (*Battle) ProtoMessage() {}
-func (*Battle) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{5}
-}
-func (m *Battle) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Battle) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Battle.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (dst *Battle) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Battle.Merge(dst, src)
-}
-func (m *Battle) XXX_Size() int {
-	return m.Size()
-}
-func (m *Battle) XXX_DiscardUnknown() {
-	xxx_messageInfo_Battle.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Battle proto.InternalMessageInfo
-
-func (m *Battle) GetStrategy() int32 {
-	if m != nil {
-		return m.Strategy
-	}
-	return 0
-}
-
-func (m *Battle) GetAttackingFleetIDs() map[int32]*NullMessage {
-	if m != nil {
-		return m.AttackingFleetIDs
-	}
-	return nil
-}
-
-func (m *Battle) GetDefendingFleetIDs() map[int32]*NullMessage {
-	if m != nil {
-		return m.DefendingFleetIDs
-	}
-	return nil
-}
-
-type Siege struct {
-	TimeLeft               int64                  `protobuf:"varint,2,opt,name=timeLeft,proto3" json:"timeLeft,omitempty"`
-	FightingOverSystemUint uint64                 `protobuf:"varint,3,opt,name=fightingOverSystemUint,proto3" json:"fightingOverSystemUint,omitempty"`
-	AggressorFleetIDs      map[int32]*NullMessage `protobuf:"bytes,128,rep,name=aggressorFleetIDs" json:"aggressorFleetIDs,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-}
-
-func (m *Siege) Reset()      { *m = Siege{} }
-func (*Siege) ProtoMessage() {}
-func (*Siege) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{6}
-}
-func (m *Siege) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Siege) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Siege.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (dst *Siege) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Siege.Merge(dst, src)
-}
-func (m *Siege) XXX_Size() int {
-	return m.Size()
-}
-func (m *Siege) XXX_DiscardUnknown() {
-	xxx_messageInfo_Siege.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Siege proto.InternalMessageInfo
-
-func (m *Siege) GetTimeLeft() int64 {
-	if m != nil {
-		return m.TimeLeft
-	}
-	return 0
-}
-
-func (m *Siege) GetFightingOverSystemUint() uint64 {
-	if m != nil {
-		return m.FightingOverSystemUint
-	}
-	return 0
-}
-
-func (m *Siege) GetAggressorFleetIDs() map[int32]*NullMessage {
-	if m != nil {
-		return m.AggressorFleetIDs
-	}
-	return nil
-}
-
-type Action struct {
-	ActionType   int32    `protobuf:"varint,2,opt,name=actionType,proto3" json:"actionType,omitempty"`
-	TimeLeft     int64    `protobuf:"varint,3,opt,name=timeLeft,proto3" json:"timeLeft,omitempty"`
-	OwnerUint    uint64   `protobuf:"varint,4,opt,name=ownerUint,proto3" json:"ownerUint,omitempty"`
-	ActionValues []int64  `protobuf:"varint,64,rep,packed,name=actionValues" json:"actionValues,omitempty"`
-	ActionNames  []uint64 `protobuf:"varint,65,rep,packed,name=actionNames" json:"actionNames,omitempty"`
-}
-
-func (m *Action) Reset()      { *m = Action{} }
-func (*Action) ProtoMessage() {}
-func (*Action) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{7}
-}
-func (m *Action) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Action) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Action.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (dst *Action) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Action.Merge(dst, src)
-}
-func (m *Action) XXX_Size() int {
-	return m.Size()
-}
-func (m *Action) XXX_DiscardUnknown() {
-	xxx_messageInfo_Action.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Action proto.InternalMessageInfo
-
-func (m *Action) GetActionType() int32 {
-	if m != nil {
-		return m.ActionType
-	}
-	return 0
-}
-
-func (m *Action) GetTimeLeft() int64 {
-	if m != nil {
-		return m.TimeLeft
-	}
-	return 0
-}
-
-func (m *Action) GetOwnerUint() uint64 {
-	if m != nil {
-		return m.OwnerUint
-	}
-	return 0
-}
-
-func (m *Action) GetActionValues() []int64 {
-	if m != nil {
-		return m.ActionValues
-	}
-	return nil
-}
-
-func (m *Action) GetActionNames() []uint64 {
-	if m != nil {
-		return m.ActionNames
-	}
-	return nil
-}
-
-type Galaxy struct {
-	NameUint   uint64             `protobuf:"varint,1,opt,name=nameUint,proto3" json:"nameUint,omitempty"`
-	GlobalX    int64              `protobuf:"varint,2,opt,name=globalX,proto3" json:"globalX,omitempty"`
-	GlobalY    int64              `protobuf:"varint,3,opt,name=globalY,proto3" json:"globalY,omitempty"`
-	GalaxyType int32              `protobuf:"varint,16,opt,name=galaxyType,proto3" json:"galaxyType,omitempty"`
-	Planet     map[uint64]*Planet `protobuf:"bytes,128,rep,name=planet" json:"planet,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	Object     map[uint64]*Object `protobuf:"bytes,129,rep,name=object" json:"object,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	System     map[uint64]*System `protobuf:"bytes,130,rep,name=system" json:"system,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	Fleet      map[int32]*Fleet   `protobuf:"bytes,131,rep,name=fleet" json:"fleet,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	Battle     map[int32]*Battle  `protobuf:"bytes,132,rep,name=battle" json:"battle,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	Siege      map[int32]*Siege   `protobuf:"bytes,133,rep,name=siege" json:"siege,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	Action     map[int32]*Action  `protobuf:"bytes,134,rep,name=action" json:"action,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-}
-
-func (m *Galaxy) Reset()      { *m = Galaxy{} }
-func (*Galaxy) ProtoMessage() {}
-func (*Galaxy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_backendmessage_f0547bfb7fccf199, []int{8}
-}
-func (m *Galaxy) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Galaxy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_Galaxy.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalTo(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (dst *Galaxy) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Galaxy.Merge(dst, src)
-}
-func (m *Galaxy) XXX_Size() int {
-	return m.Size()
-}
-func (m *Galaxy) XXX_DiscardUnknown() {
-	xxx_messageInfo_Galaxy.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Galaxy proto.InternalMessageInfo
-
-func (m *Galaxy) GetNameUint() uint64 {
-	if m != nil {
-		return m.NameUint
-	}
-	return 0
-}
-
-func (m *Galaxy) GetGlobalX() int64 {
+func (m *StaticGalaxy) GetGlobalX() int64 {
 	if m != nil {
 		return m.GlobalX
 	}
 	return 0
 }
 
-func (m *Galaxy) GetGlobalY() int64 {
+func (m *StaticGalaxy) GetGlobalY() int64 {
 	if m != nil {
 		return m.GlobalY
 	}
 	return 0
 }
 
-func (m *Galaxy) GetGalaxyType() int32 {
+func (m *StaticGalaxy) GetPrecision() int32 {
 	if m != nil {
-		return m.GalaxyType
+		return m.Precision
 	}
 	return 0
 }
 
-func (m *Galaxy) GetPlanet() map[uint64]*Planet {
+func (m *StaticGalaxy) GetStaticSystem() map[int32]*StaticSystem {
 	if m != nil {
-		return m.Planet
+		return m.StaticSystem
 	}
 	return nil
 }
 
-func (m *Galaxy) GetObject() map[uint64]*Object {
+type StaticSystem struct {
+	InterX int32 `protobuf:"varint,1,opt,name=interX,proto3" json:"interX,omitempty"`
+	InterY int32 `protobuf:"varint,2,opt,name=interY,proto3" json:"interY,omitempty"`
+}
+
+func (m *StaticSystem) Reset()      { *m = StaticSystem{} }
+func (*StaticSystem) ProtoMessage() {}
+func (*StaticSystem) Descriptor() ([]byte, []int) {
+	return fileDescriptor_backendmessage_3981642a80d3e238, []int{2}
+}
+func (m *StaticSystem) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *StaticSystem) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_StaticSystem.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *StaticSystem) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StaticSystem.Merge(dst, src)
+}
+func (m *StaticSystem) XXX_Size() int {
+	return m.Size()
+}
+func (m *StaticSystem) XXX_DiscardUnknown() {
+	xxx_messageInfo_StaticSystem.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StaticSystem proto.InternalMessageInfo
+
+func (m *StaticSystem) GetInterX() int32 {
 	if m != nil {
-		return m.Object
+		return m.InterX
+	}
+	return 0
+}
+
+func (m *StaticSystem) GetInterY() int32 {
+	if m != nil {
+		return m.InterY
+	}
+	return 0
+}
+
+type DynamicGalaxySection struct {
+	Id            int32                    `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Section       int32                    `protobuf:"varint,2,opt,name=section,proto3" json:"section,omitempty"`
+	DynamicSystem map[int32]*DynamicSystem `protobuf:"bytes,128,rep,name=dynamicSystem" json:"dynamicSystem,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+}
+
+func (m *DynamicGalaxySection) Reset()      { *m = DynamicGalaxySection{} }
+func (*DynamicGalaxySection) ProtoMessage() {}
+func (*DynamicGalaxySection) Descriptor() ([]byte, []int) {
+	return fileDescriptor_backendmessage_3981642a80d3e238, []int{3}
+}
+func (m *DynamicGalaxySection) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DynamicGalaxySection) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DynamicGalaxySection.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *DynamicGalaxySection) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DynamicGalaxySection.Merge(dst, src)
+}
+func (m *DynamicGalaxySection) XXX_Size() int {
+	return m.Size()
+}
+func (m *DynamicGalaxySection) XXX_DiscardUnknown() {
+	xxx_messageInfo_DynamicGalaxySection.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DynamicGalaxySection proto.InternalMessageInfo
+
+func (m *DynamicGalaxySection) GetId() int32 {
+	if m != nil {
+		return m.Id
+	}
+	return 0
+}
+
+func (m *DynamicGalaxySection) GetSection() int32 {
+	if m != nil {
+		return m.Section
+	}
+	return 0
+}
+
+func (m *DynamicGalaxySection) GetDynamicSystem() map[int32]*DynamicSystem {
+	if m != nil {
+		return m.DynamicSystem
 	}
 	return nil
 }
 
-func (m *Galaxy) GetSystem() map[uint64]*System {
-	if m != nil {
-		return m.System
-	}
-	return nil
+type DynamicSystem struct {
+	Progress           int32 `protobuf:"varint,1,opt,name=progress,proto3" json:"progress,omitempty"`
+	DockedTitanCount   int32 `protobuf:"varint,2,opt,name=dockedTitanCount,proto3" json:"dockedTitanCount,omitempty"`
+	DockedCapitalCount int32 `protobuf:"varint,3,opt,name=dockedCapitalCount,proto3" json:"dockedCapitalCount,omitempty"`
+	DockedFighterCount int32 `protobuf:"varint,4,opt,name=dockedFighterCount,proto3" json:"dockedFighterCount,omitempty"`
 }
 
-func (m *Galaxy) GetFleet() map[int32]*Fleet {
-	if m != nil {
-		return m.Fleet
+func (m *DynamicSystem) Reset()      { *m = DynamicSystem{} }
+func (*DynamicSystem) ProtoMessage() {}
+func (*DynamicSystem) Descriptor() ([]byte, []int) {
+	return fileDescriptor_backendmessage_3981642a80d3e238, []int{4}
+}
+func (m *DynamicSystem) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DynamicSystem) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DynamicSystem.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
 	}
-	return nil
+}
+func (dst *DynamicSystem) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DynamicSystem.Merge(dst, src)
+}
+func (m *DynamicSystem) XXX_Size() int {
+	return m.Size()
+}
+func (m *DynamicSystem) XXX_DiscardUnknown() {
+	xxx_messageInfo_DynamicSystem.DiscardUnknown(m)
 }
 
-func (m *Galaxy) GetBattle() map[int32]*Battle {
+var xxx_messageInfo_DynamicSystem proto.InternalMessageInfo
+
+func (m *DynamicSystem) GetProgress() int32 {
 	if m != nil {
-		return m.Battle
+		return m.Progress
 	}
-	return nil
+	return 0
 }
 
-func (m *Galaxy) GetSiege() map[int32]*Siege {
+func (m *DynamicSystem) GetDockedTitanCount() int32 {
 	if m != nil {
-		return m.Siege
+		return m.DockedTitanCount
 	}
-	return nil
+	return 0
 }
 
-func (m *Galaxy) GetAction() map[int32]*Action {
+func (m *DynamicSystem) GetDockedCapitalCount() int32 {
 	if m != nil {
-		return m.Action
+		return m.DockedCapitalCount
 	}
-	return nil
+	return 0
+}
+
+func (m *DynamicSystem) GetDockedFighterCount() int32 {
+	if m != nil {
+		return m.DockedFighterCount
+	}
+	return 0
 }
 
 func init() {
 	proto.RegisterType((*NullMessage)(nil), "backendmessage.NullMessage")
-	proto.RegisterType((*Planet)(nil), "backendmessage.Planet")
-	proto.RegisterType((*Object)(nil), "backendmessage.Object")
-	proto.RegisterType((*System)(nil), "backendmessage.System")
-	proto.RegisterMapType((map[uint64]*NullMessage)(nil), "backendmessage.System.ChildObjectEntry")
-	proto.RegisterMapType((map[uint64]*NullMessage)(nil), "backendmessage.System.ChildPlanetEntry")
-	proto.RegisterMapType((map[uint64]*NullMessage)(nil), "backendmessage.System.NearbyFleetsEntry")
-	proto.RegisterMapType((map[uint64]*NullMessage)(nil), "backendmessage.System.NearbySystemsEntry")
-	proto.RegisterType((*Fleet)(nil), "backendmessage.Fleet")
-	proto.RegisterType((*Battle)(nil), "backendmessage.Battle")
-	proto.RegisterMapType((map[int32]*NullMessage)(nil), "backendmessage.Battle.AttackingFleetIDsEntry")
-	proto.RegisterMapType((map[int32]*NullMessage)(nil), "backendmessage.Battle.DefendingFleetIDsEntry")
-	proto.RegisterType((*Siege)(nil), "backendmessage.Siege")
-	proto.RegisterMapType((map[int32]*NullMessage)(nil), "backendmessage.Siege.AggressorFleetIDsEntry")
-	proto.RegisterType((*Action)(nil), "backendmessage.Action")
-	proto.RegisterType((*Galaxy)(nil), "backendmessage.Galaxy")
-	proto.RegisterMapType((map[int32]*Action)(nil), "backendmessage.Galaxy.ActionEntry")
-	proto.RegisterMapType((map[int32]*Battle)(nil), "backendmessage.Galaxy.BattleEntry")
-	proto.RegisterMapType((map[int32]*Fleet)(nil), "backendmessage.Galaxy.FleetEntry")
-	proto.RegisterMapType((map[uint64]*Object)(nil), "backendmessage.Galaxy.ObjectEntry")
-	proto.RegisterMapType((map[uint64]*Planet)(nil), "backendmessage.Galaxy.PlanetEntry")
-	proto.RegisterMapType((map[int32]*Siege)(nil), "backendmessage.Galaxy.SiegeEntry")
-	proto.RegisterMapType((map[uint64]*System)(nil), "backendmessage.Galaxy.SystemEntry")
+	proto.RegisterType((*StaticGalaxy)(nil), "backendmessage.StaticGalaxy")
+	proto.RegisterMapType((map[int32]*StaticSystem)(nil), "backendmessage.StaticGalaxy.StaticSystemEntry")
+	proto.RegisterType((*StaticSystem)(nil), "backendmessage.StaticSystem")
+	proto.RegisterType((*DynamicGalaxySection)(nil), "backendmessage.DynamicGalaxySection")
+	proto.RegisterMapType((map[int32]*DynamicSystem)(nil), "backendmessage.DynamicGalaxySection.DynamicSystemEntry")
+	proto.RegisterType((*DynamicSystem)(nil), "backendmessage.DynamicSystem")
 }
 func (this *NullMessage) Equal(that interface{}) bool {
 	if that == nil {
@@ -793,14 +341,14 @@ func (this *NullMessage) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *Planet) Equal(that interface{}) bool {
+func (this *StaticGalaxy) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
 	}
 
-	that1, ok := that.(*Planet)
+	that1, ok := that.(*StaticGalaxy)
 	if !ok {
-		that2, ok := that.(Planet)
+		that2, ok := that.(StaticGalaxy)
 		if ok {
 			that1 = &that2
 		} else {
@@ -812,22 +360,107 @@ func (this *Planet) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
-	if this.ParentSystemUint != that1.ParentSystemUint {
+	if this.Id != that1.Id {
 		return false
 	}
-	if this.OwnerUint != that1.OwnerUint {
+	if this.GlobalX != that1.GlobalX {
 		return false
 	}
-	if this.Food != that1.Food {
+	if this.GlobalY != that1.GlobalY {
 		return false
 	}
-	if this.Population != that1.Population {
+	if this.Precision != that1.Precision {
 		return false
 	}
-	if this.PlanetType != that1.PlanetType {
+	if len(this.StaticSystem) != len(that1.StaticSystem) {
 		return false
 	}
-	if this.Health != that1.Health {
+	for i := range this.StaticSystem {
+		if !this.StaticSystem[i].Equal(that1.StaticSystem[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *StaticSystem) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*StaticSystem)
+	if !ok {
+		that2, ok := that.(StaticSystem)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.InterX != that1.InterX {
+		return false
+	}
+	if this.InterY != that1.InterY {
+		return false
+	}
+	return true
+}
+func (this *DynamicGalaxySection) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*DynamicGalaxySection)
+	if !ok {
+		that2, ok := that.(DynamicGalaxySection)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Id != that1.Id {
+		return false
+	}
+	if this.Section != that1.Section {
+		return false
+	}
+	if len(this.DynamicSystem) != len(that1.DynamicSystem) {
+		return false
+	}
+	for i := range this.DynamicSystem {
+		if !this.DynamicSystem[i].Equal(that1.DynamicSystem[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *DynamicSystem) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*DynamicSystem)
+	if !ok {
+		that2, ok := that.(DynamicSystem)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
 		return false
 	}
 	if this.Progress != that1.Progress {
@@ -844,356 +477,6 @@ func (this *Planet) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *Object) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Object)
-	if !ok {
-		that2, ok := that.(Object)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.ParentSystemUint != that1.ParentSystemUint {
-		return false
-	}
-	if this.OwnerUint != that1.OwnerUint {
-		return false
-	}
-	if this.ObjectType != that1.ObjectType {
-		return false
-	}
-	if this.Health != that1.Health {
-		return false
-	}
-	return true
-}
-func (this *System) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*System)
-	if !ok {
-		that2, ok := that.(System)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.InterX != that1.InterX {
-		return false
-	}
-	if this.InterY != that1.InterY {
-		return false
-	}
-	if this.PrimaryOwnerUint != that1.PrimaryOwnerUint {
-		return false
-	}
-	if this.SystemType != that1.SystemType {
-		return false
-	}
-	if len(this.NearbySystems) != len(that1.NearbySystems) {
-		return false
-	}
-	for i := range this.NearbySystems {
-		if !this.NearbySystems[i].Equal(that1.NearbySystems[i]) {
-			return false
-		}
-	}
-	if len(this.ChildPlanet) != len(that1.ChildPlanet) {
-		return false
-	}
-	for i := range this.ChildPlanet {
-		if !this.ChildPlanet[i].Equal(that1.ChildPlanet[i]) {
-			return false
-		}
-	}
-	if len(this.ChildObject) != len(that1.ChildObject) {
-		return false
-	}
-	for i := range this.ChildObject {
-		if !this.ChildObject[i].Equal(that1.ChildObject[i]) {
-			return false
-		}
-	}
-	if len(this.NearbyFleets) != len(that1.NearbyFleets) {
-		return false
-	}
-	for i := range this.NearbyFleets {
-		if !this.NearbyFleets[i].Equal(that1.NearbyFleets[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *Fleet) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Fleet)
-	if !ok {
-		that2, ok := that.(Fleet)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.InterX != that1.InterX {
-		return false
-	}
-	if this.InterY != that1.InterY {
-		return false
-	}
-	if this.OwnerUint != that1.OwnerUint {
-		return false
-	}
-	if this.ClosestSystemUint != that1.ClosestSystemUint {
-		return false
-	}
-	if this.TitanCount != that1.TitanCount {
-		return false
-	}
-	if this.CapitalCount != that1.CapitalCount {
-		return false
-	}
-	if this.FighterCount != that1.FighterCount {
-		return false
-	}
-	return true
-}
-func (this *Battle) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Battle)
-	if !ok {
-		that2, ok := that.(Battle)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.Strategy != that1.Strategy {
-		return false
-	}
-	if len(this.AttackingFleetIDs) != len(that1.AttackingFleetIDs) {
-		return false
-	}
-	for i := range this.AttackingFleetIDs {
-		if !this.AttackingFleetIDs[i].Equal(that1.AttackingFleetIDs[i]) {
-			return false
-		}
-	}
-	if len(this.DefendingFleetIDs) != len(that1.DefendingFleetIDs) {
-		return false
-	}
-	for i := range this.DefendingFleetIDs {
-		if !this.DefendingFleetIDs[i].Equal(that1.DefendingFleetIDs[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *Siege) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Siege)
-	if !ok {
-		that2, ok := that.(Siege)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.TimeLeft != that1.TimeLeft {
-		return false
-	}
-	if this.FightingOverSystemUint != that1.FightingOverSystemUint {
-		return false
-	}
-	if len(this.AggressorFleetIDs) != len(that1.AggressorFleetIDs) {
-		return false
-	}
-	for i := range this.AggressorFleetIDs {
-		if !this.AggressorFleetIDs[i].Equal(that1.AggressorFleetIDs[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *Action) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Action)
-	if !ok {
-		that2, ok := that.(Action)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.ActionType != that1.ActionType {
-		return false
-	}
-	if this.TimeLeft != that1.TimeLeft {
-		return false
-	}
-	if this.OwnerUint != that1.OwnerUint {
-		return false
-	}
-	if len(this.ActionValues) != len(that1.ActionValues) {
-		return false
-	}
-	for i := range this.ActionValues {
-		if this.ActionValues[i] != that1.ActionValues[i] {
-			return false
-		}
-	}
-	if len(this.ActionNames) != len(that1.ActionNames) {
-		return false
-	}
-	for i := range this.ActionNames {
-		if this.ActionNames[i] != that1.ActionNames[i] {
-			return false
-		}
-	}
-	return true
-}
-func (this *Galaxy) Equal(that interface{}) bool {
-	if that == nil {
-		return this == nil
-	}
-
-	that1, ok := that.(*Galaxy)
-	if !ok {
-		that2, ok := that.(Galaxy)
-		if ok {
-			that1 = &that2
-		} else {
-			return false
-		}
-	}
-	if that1 == nil {
-		return this == nil
-	} else if this == nil {
-		return false
-	}
-	if this.NameUint != that1.NameUint {
-		return false
-	}
-	if this.GlobalX != that1.GlobalX {
-		return false
-	}
-	if this.GlobalY != that1.GlobalY {
-		return false
-	}
-	if this.GalaxyType != that1.GalaxyType {
-		return false
-	}
-	if len(this.Planet) != len(that1.Planet) {
-		return false
-	}
-	for i := range this.Planet {
-		if !this.Planet[i].Equal(that1.Planet[i]) {
-			return false
-		}
-	}
-	if len(this.Object) != len(that1.Object) {
-		return false
-	}
-	for i := range this.Object {
-		if !this.Object[i].Equal(that1.Object[i]) {
-			return false
-		}
-	}
-	if len(this.System) != len(that1.System) {
-		return false
-	}
-	for i := range this.System {
-		if !this.System[i].Equal(that1.System[i]) {
-			return false
-		}
-	}
-	if len(this.Fleet) != len(that1.Fleet) {
-		return false
-	}
-	for i := range this.Fleet {
-		if !this.Fleet[i].Equal(that1.Fleet[i]) {
-			return false
-		}
-	}
-	if len(this.Battle) != len(that1.Battle) {
-		return false
-	}
-	for i := range this.Battle {
-		if !this.Battle[i].Equal(that1.Battle[i]) {
-			return false
-		}
-	}
-	if len(this.Siege) != len(that1.Siege) {
-		return false
-	}
-	for i := range this.Siege {
-		if !this.Siege[i].Equal(that1.Siege[i]) {
-			return false
-		}
-	}
-	if len(this.Action) != len(that1.Action) {
-		return false
-	}
-	for i := range this.Action {
-		if !this.Action[i].Equal(that1.Action[i]) {
-			return false
-		}
-	}
-	return true
-}
 func (this *NullMessage) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1203,294 +486,77 @@ func (this *NullMessage) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Planet) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 14)
-	s = append(s, "&backendmessage.Planet{")
-	s = append(s, "ParentSystemUint: "+fmt.Sprintf("%#v", this.ParentSystemUint)+",\n")
-	s = append(s, "OwnerUint: "+fmt.Sprintf("%#v", this.OwnerUint)+",\n")
-	s = append(s, "Food: "+fmt.Sprintf("%#v", this.Food)+",\n")
-	s = append(s, "Population: "+fmt.Sprintf("%#v", this.Population)+",\n")
-	s = append(s, "PlanetType: "+fmt.Sprintf("%#v", this.PlanetType)+",\n")
-	s = append(s, "Health: "+fmt.Sprintf("%#v", this.Health)+",\n")
-	s = append(s, "Progress: "+fmt.Sprintf("%#v", this.Progress)+",\n")
-	s = append(s, "DockedTitanCount: "+fmt.Sprintf("%#v", this.DockedTitanCount)+",\n")
-	s = append(s, "DockedCapitalCount: "+fmt.Sprintf("%#v", this.DockedCapitalCount)+",\n")
-	s = append(s, "DockedFighterCount: "+fmt.Sprintf("%#v", this.DockedFighterCount)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Object) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 8)
-	s = append(s, "&backendmessage.Object{")
-	s = append(s, "ParentSystemUint: "+fmt.Sprintf("%#v", this.ParentSystemUint)+",\n")
-	s = append(s, "OwnerUint: "+fmt.Sprintf("%#v", this.OwnerUint)+",\n")
-	s = append(s, "ObjectType: "+fmt.Sprintf("%#v", this.ObjectType)+",\n")
-	s = append(s, "Health: "+fmt.Sprintf("%#v", this.Health)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *System) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 12)
-	s = append(s, "&backendmessage.System{")
-	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
-	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
-	s = append(s, "PrimaryOwnerUint: "+fmt.Sprintf("%#v", this.PrimaryOwnerUint)+",\n")
-	s = append(s, "SystemType: "+fmt.Sprintf("%#v", this.SystemType)+",\n")
-	keysForNearbySystems := make([]uint64, 0, len(this.NearbySystems))
-	for k, _ := range this.NearbySystems {
-		keysForNearbySystems = append(keysForNearbySystems, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNearbySystems)
-	mapStringForNearbySystems := "map[uint64]*NullMessage{"
-	for _, k := range keysForNearbySystems {
-		mapStringForNearbySystems += fmt.Sprintf("%#v: %#v,", k, this.NearbySystems[k])
-	}
-	mapStringForNearbySystems += "}"
-	if this.NearbySystems != nil {
-		s = append(s, "NearbySystems: "+mapStringForNearbySystems+",\n")
-	}
-	keysForChildPlanet := make([]uint64, 0, len(this.ChildPlanet))
-	for k, _ := range this.ChildPlanet {
-		keysForChildPlanet = append(keysForChildPlanet, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForChildPlanet)
-	mapStringForChildPlanet := "map[uint64]*NullMessage{"
-	for _, k := range keysForChildPlanet {
-		mapStringForChildPlanet += fmt.Sprintf("%#v: %#v,", k, this.ChildPlanet[k])
-	}
-	mapStringForChildPlanet += "}"
-	if this.ChildPlanet != nil {
-		s = append(s, "ChildPlanet: "+mapStringForChildPlanet+",\n")
-	}
-	keysForChildObject := make([]uint64, 0, len(this.ChildObject))
-	for k, _ := range this.ChildObject {
-		keysForChildObject = append(keysForChildObject, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForChildObject)
-	mapStringForChildObject := "map[uint64]*NullMessage{"
-	for _, k := range keysForChildObject {
-		mapStringForChildObject += fmt.Sprintf("%#v: %#v,", k, this.ChildObject[k])
-	}
-	mapStringForChildObject += "}"
-	if this.ChildObject != nil {
-		s = append(s, "ChildObject: "+mapStringForChildObject+",\n")
-	}
-	keysForNearbyFleets := make([]uint64, 0, len(this.NearbyFleets))
-	for k, _ := range this.NearbyFleets {
-		keysForNearbyFleets = append(keysForNearbyFleets, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNearbyFleets)
-	mapStringForNearbyFleets := "map[uint64]*NullMessage{"
-	for _, k := range keysForNearbyFleets {
-		mapStringForNearbyFleets += fmt.Sprintf("%#v: %#v,", k, this.NearbyFleets[k])
-	}
-	mapStringForNearbyFleets += "}"
-	if this.NearbyFleets != nil {
-		s = append(s, "NearbyFleets: "+mapStringForNearbyFleets+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Fleet) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 11)
-	s = append(s, "&backendmessage.Fleet{")
-	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
-	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
-	s = append(s, "OwnerUint: "+fmt.Sprintf("%#v", this.OwnerUint)+",\n")
-	s = append(s, "ClosestSystemUint: "+fmt.Sprintf("%#v", this.ClosestSystemUint)+",\n")
-	s = append(s, "TitanCount: "+fmt.Sprintf("%#v", this.TitanCount)+",\n")
-	s = append(s, "CapitalCount: "+fmt.Sprintf("%#v", this.CapitalCount)+",\n")
-	s = append(s, "FighterCount: "+fmt.Sprintf("%#v", this.FighterCount)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Battle) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&backendmessage.Battle{")
-	s = append(s, "Strategy: "+fmt.Sprintf("%#v", this.Strategy)+",\n")
-	keysForAttackingFleetIDs := make([]int32, 0, len(this.AttackingFleetIDs))
-	for k, _ := range this.AttackingFleetIDs {
-		keysForAttackingFleetIDs = append(keysForAttackingFleetIDs, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForAttackingFleetIDs)
-	mapStringForAttackingFleetIDs := "map[int32]*NullMessage{"
-	for _, k := range keysForAttackingFleetIDs {
-		mapStringForAttackingFleetIDs += fmt.Sprintf("%#v: %#v,", k, this.AttackingFleetIDs[k])
-	}
-	mapStringForAttackingFleetIDs += "}"
-	if this.AttackingFleetIDs != nil {
-		s = append(s, "AttackingFleetIDs: "+mapStringForAttackingFleetIDs+",\n")
-	}
-	keysForDefendingFleetIDs := make([]int32, 0, len(this.DefendingFleetIDs))
-	for k, _ := range this.DefendingFleetIDs {
-		keysForDefendingFleetIDs = append(keysForDefendingFleetIDs, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForDefendingFleetIDs)
-	mapStringForDefendingFleetIDs := "map[int32]*NullMessage{"
-	for _, k := range keysForDefendingFleetIDs {
-		mapStringForDefendingFleetIDs += fmt.Sprintf("%#v: %#v,", k, this.DefendingFleetIDs[k])
-	}
-	mapStringForDefendingFleetIDs += "}"
-	if this.DefendingFleetIDs != nil {
-		s = append(s, "DefendingFleetIDs: "+mapStringForDefendingFleetIDs+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Siege) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 7)
-	s = append(s, "&backendmessage.Siege{")
-	s = append(s, "TimeLeft: "+fmt.Sprintf("%#v", this.TimeLeft)+",\n")
-	s = append(s, "FightingOverSystemUint: "+fmt.Sprintf("%#v", this.FightingOverSystemUint)+",\n")
-	keysForAggressorFleetIDs := make([]int32, 0, len(this.AggressorFleetIDs))
-	for k, _ := range this.AggressorFleetIDs {
-		keysForAggressorFleetIDs = append(keysForAggressorFleetIDs, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForAggressorFleetIDs)
-	mapStringForAggressorFleetIDs := "map[int32]*NullMessage{"
-	for _, k := range keysForAggressorFleetIDs {
-		mapStringForAggressorFleetIDs += fmt.Sprintf("%#v: %#v,", k, this.AggressorFleetIDs[k])
-	}
-	mapStringForAggressorFleetIDs += "}"
-	if this.AggressorFleetIDs != nil {
-		s = append(s, "AggressorFleetIDs: "+mapStringForAggressorFleetIDs+",\n")
-	}
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *Action) GoString() string {
+func (this *StaticGalaxy) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 9)
-	s = append(s, "&backendmessage.Action{")
-	s = append(s, "ActionType: "+fmt.Sprintf("%#v", this.ActionType)+",\n")
-	s = append(s, "TimeLeft: "+fmt.Sprintf("%#v", this.TimeLeft)+",\n")
-	s = append(s, "OwnerUint: "+fmt.Sprintf("%#v", this.OwnerUint)+",\n")
-	s = append(s, "ActionValues: "+fmt.Sprintf("%#v", this.ActionValues)+",\n")
-	s = append(s, "ActionNames: "+fmt.Sprintf("%#v", this.ActionNames)+",\n")
+	s = append(s, "&backendmessage.StaticGalaxy{")
+	s = append(s, "Id: "+fmt.Sprintf("%#v", this.Id)+",\n")
+	s = append(s, "GlobalX: "+fmt.Sprintf("%#v", this.GlobalX)+",\n")
+	s = append(s, "GlobalY: "+fmt.Sprintf("%#v", this.GlobalY)+",\n")
+	s = append(s, "Precision: "+fmt.Sprintf("%#v", this.Precision)+",\n")
+	keysForStaticSystem := make([]int32, 0, len(this.StaticSystem))
+	for k, _ := range this.StaticSystem {
+		keysForStaticSystem = append(keysForStaticSystem, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Int32s(keysForStaticSystem)
+	mapStringForStaticSystem := "map[int32]*StaticSystem{"
+	for _, k := range keysForStaticSystem {
+		mapStringForStaticSystem += fmt.Sprintf("%#v: %#v,", k, this.StaticSystem[k])
+	}
+	mapStringForStaticSystem += "}"
+	if this.StaticSystem != nil {
+		s = append(s, "StaticSystem: "+mapStringForStaticSystem+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func (this *Galaxy) GoString() string {
+func (this *StaticSystem) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 15)
-	s = append(s, "&backendmessage.Galaxy{")
-	s = append(s, "NameUint: "+fmt.Sprintf("%#v", this.NameUint)+",\n")
-	s = append(s, "GlobalX: "+fmt.Sprintf("%#v", this.GlobalX)+",\n")
-	s = append(s, "GlobalY: "+fmt.Sprintf("%#v", this.GlobalY)+",\n")
-	s = append(s, "GalaxyType: "+fmt.Sprintf("%#v", this.GalaxyType)+",\n")
-	keysForPlanet := make([]uint64, 0, len(this.Planet))
-	for k, _ := range this.Planet {
-		keysForPlanet = append(keysForPlanet, k)
+	s := make([]string, 0, 6)
+	s = append(s, "&backendmessage.StaticSystem{")
+	s = append(s, "InterX: "+fmt.Sprintf("%#v", this.InterX)+",\n")
+	s = append(s, "InterY: "+fmt.Sprintf("%#v", this.InterY)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *DynamicGalaxySection) GoString() string {
+	if this == nil {
+		return "nil"
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPlanet)
-	mapStringForPlanet := "map[uint64]*Planet{"
-	for _, k := range keysForPlanet {
-		mapStringForPlanet += fmt.Sprintf("%#v: %#v,", k, this.Planet[k])
+	s := make([]string, 0, 7)
+	s = append(s, "&backendmessage.DynamicGalaxySection{")
+	s = append(s, "Id: "+fmt.Sprintf("%#v", this.Id)+",\n")
+	s = append(s, "Section: "+fmt.Sprintf("%#v", this.Section)+",\n")
+	keysForDynamicSystem := make([]int32, 0, len(this.DynamicSystem))
+	for k, _ := range this.DynamicSystem {
+		keysForDynamicSystem = append(keysForDynamicSystem, k)
 	}
-	mapStringForPlanet += "}"
-	if this.Planet != nil {
-		s = append(s, "Planet: "+mapStringForPlanet+",\n")
+	github_com_gogo_protobuf_sortkeys.Int32s(keysForDynamicSystem)
+	mapStringForDynamicSystem := "map[int32]*DynamicSystem{"
+	for _, k := range keysForDynamicSystem {
+		mapStringForDynamicSystem += fmt.Sprintf("%#v: %#v,", k, this.DynamicSystem[k])
 	}
-	keysForObject := make([]uint64, 0, len(this.Object))
-	for k, _ := range this.Object {
-		keysForObject = append(keysForObject, k)
+	mapStringForDynamicSystem += "}"
+	if this.DynamicSystem != nil {
+		s = append(s, "DynamicSystem: "+mapStringForDynamicSystem+",\n")
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForObject)
-	mapStringForObject := "map[uint64]*Object{"
-	for _, k := range keysForObject {
-		mapStringForObject += fmt.Sprintf("%#v: %#v,", k, this.Object[k])
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *DynamicSystem) GoString() string {
+	if this == nil {
+		return "nil"
 	}
-	mapStringForObject += "}"
-	if this.Object != nil {
-		s = append(s, "Object: "+mapStringForObject+",\n")
-	}
-	keysForSystem := make([]uint64, 0, len(this.System))
-	for k, _ := range this.System {
-		keysForSystem = append(keysForSystem, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSystem)
-	mapStringForSystem := "map[uint64]*System{"
-	for _, k := range keysForSystem {
-		mapStringForSystem += fmt.Sprintf("%#v: %#v,", k, this.System[k])
-	}
-	mapStringForSystem += "}"
-	if this.System != nil {
-		s = append(s, "System: "+mapStringForSystem+",\n")
-	}
-	keysForFleet := make([]int32, 0, len(this.Fleet))
-	for k, _ := range this.Fleet {
-		keysForFleet = append(keysForFleet, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForFleet)
-	mapStringForFleet := "map[int32]*Fleet{"
-	for _, k := range keysForFleet {
-		mapStringForFleet += fmt.Sprintf("%#v: %#v,", k, this.Fleet[k])
-	}
-	mapStringForFleet += "}"
-	if this.Fleet != nil {
-		s = append(s, "Fleet: "+mapStringForFleet+",\n")
-	}
-	keysForBattle := make([]int32, 0, len(this.Battle))
-	for k, _ := range this.Battle {
-		keysForBattle = append(keysForBattle, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForBattle)
-	mapStringForBattle := "map[int32]*Battle{"
-	for _, k := range keysForBattle {
-		mapStringForBattle += fmt.Sprintf("%#v: %#v,", k, this.Battle[k])
-	}
-	mapStringForBattle += "}"
-	if this.Battle != nil {
-		s = append(s, "Battle: "+mapStringForBattle+",\n")
-	}
-	keysForSiege := make([]int32, 0, len(this.Siege))
-	for k, _ := range this.Siege {
-		keysForSiege = append(keysForSiege, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForSiege)
-	mapStringForSiege := "map[int32]*Siege{"
-	for _, k := range keysForSiege {
-		mapStringForSiege += fmt.Sprintf("%#v: %#v,", k, this.Siege[k])
-	}
-	mapStringForSiege += "}"
-	if this.Siege != nil {
-		s = append(s, "Siege: "+mapStringForSiege+",\n")
-	}
-	keysForAction := make([]int32, 0, len(this.Action))
-	for k, _ := range this.Action {
-		keysForAction = append(keysForAction, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForAction)
-	mapStringForAction := "map[int32]*Action{"
-	for _, k := range keysForAction {
-		mapStringForAction += fmt.Sprintf("%#v: %#v,", k, this.Action[k])
-	}
-	mapStringForAction += "}"
-	if this.Action != nil {
-		s = append(s, "Action: "+mapStringForAction+",\n")
-	}
+	s := make([]string, 0, 8)
+	s = append(s, "&backendmessage.DynamicSystem{")
+	s = append(s, "Progress: "+fmt.Sprintf("%#v", this.Progress)+",\n")
+	s = append(s, "DockedTitanCount: "+fmt.Sprintf("%#v", this.DockedTitanCount)+",\n")
+	s = append(s, "DockedCapitalCount: "+fmt.Sprintf("%#v", this.DockedCapitalCount)+",\n")
+	s = append(s, "DockedFighterCount: "+fmt.Sprintf("%#v", this.DockedFighterCount)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -1520,7 +586,7 @@ func (m *NullMessage) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Planet) Marshal() (dAtA []byte, err error) {
+func (m *StaticGalaxy) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1530,146 +596,38 @@ func (m *Planet) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Planet) MarshalTo(dAtA []byte) (int, error) {
+func (m *StaticGalaxy) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.ParentSystemUint != 0 {
+	if m.Id != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Id))
+	}
+	if m.GlobalX != 0 {
 		dAtA[i] = 0x10
 		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.ParentSystemUint))
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.GlobalX))
 	}
-	if m.OwnerUint != 0 {
+	if m.GlobalY != 0 {
 		dAtA[i] = 0x18
 		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.OwnerUint))
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.GlobalY))
 	}
-	if m.Food != 0 {
+	if m.Precision != 0 {
 		dAtA[i] = 0x20
 		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Food))
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Precision))
 	}
-	if m.Population != 0 {
-		dAtA[i] = 0x28
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Population))
-	}
-	if m.PlanetType != 0 {
-		dAtA[i] = 0x30
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.PlanetType))
-	}
-	if m.Health != 0 {
-		dAtA[i] = 0x38
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Health))
-	}
-	if m.Progress != 0 {
-		dAtA[i] = 0x40
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Progress))
-	}
-	if m.DockedTitanCount != 0 {
-		dAtA[i] = 0x48
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.DockedTitanCount))
-	}
-	if m.DockedCapitalCount != 0 {
-		dAtA[i] = 0x50
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.DockedCapitalCount))
-	}
-	if m.DockedFighterCount != 0 {
-		dAtA[i] = 0x58
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.DockedFighterCount))
-	}
-	return i, nil
-}
-
-func (m *Object) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Object) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ParentSystemUint != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.ParentSystemUint))
-	}
-	if m.OwnerUint != 0 {
-		dAtA[i] = 0x28
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.OwnerUint))
-	}
-	if m.ObjectType != 0 {
-		dAtA[i] = 0x30
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.ObjectType))
-	}
-	if m.Health != 0 {
-		dAtA[i] = 0x38
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Health))
-	}
-	return i, nil
-}
-
-func (m *System) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *System) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.InterX != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.InterX))
-	}
-	if m.InterY != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.InterY))
-	}
-	if m.PrimaryOwnerUint != 0 {
-		dAtA[i] = 0x20
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.PrimaryOwnerUint))
-	}
-	if m.SystemType != 0 {
-		dAtA[i] = 0x80
-		i++
-		dAtA[i] = 0x1
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.SystemType))
-	}
-	if len(m.NearbySystems) > 0 {
-		for k, _ := range m.NearbySystems {
+	if len(m.StaticSystem) > 0 {
+		for k, _ := range m.StaticSystem {
 			dAtA[i] = 0x82
 			i++
 			dAtA[i] = 0x8
 			i++
-			v := m.NearbySystems[k]
+			v := m.StaticSystem[k]
 			msgSize := 0
 			if v != nil {
 				msgSize = v.Size()
@@ -1692,13 +650,69 @@ func (m *System) MarshalTo(dAtA []byte) (int, error) {
 			}
 		}
 	}
-	if len(m.ChildPlanet) > 0 {
-		for k, _ := range m.ChildPlanet {
-			dAtA[i] = 0x8a
+	return i, nil
+}
+
+func (m *StaticSystem) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *StaticSystem) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.InterX != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.InterX))
+	}
+	if m.InterY != 0 {
+		dAtA[i] = 0x10
+		i++
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.InterY))
+	}
+	return i, nil
+}
+
+func (m *DynamicGalaxySection) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *DynamicGalaxySection) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Id != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Id))
+	}
+	if m.Section != 0 {
+		dAtA[i] = 0x10
+		i++
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Section))
+	}
+	if len(m.DynamicSystem) > 0 {
+		for k, _ := range m.DynamicSystem {
+			dAtA[i] = 0x82
 			i++
 			dAtA[i] = 0x8
 			i++
-			v := m.ChildPlanet[k]
+			v := m.DynamicSystem[k]
 			msgSize := 0
 			if v != nil {
 				msgSize = v.Size()
@@ -1721,68 +735,10 @@ func (m *System) MarshalTo(dAtA []byte) (int, error) {
 			}
 		}
 	}
-	if len(m.ChildObject) > 0 {
-		for k, _ := range m.ChildObject {
-			dAtA[i] = 0x92
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.ChildObject[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n3, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n3
-			}
-		}
-	}
-	if len(m.NearbyFleets) > 0 {
-		for k, _ := range m.NearbyFleets {
-			dAtA[i] = 0x9a
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.NearbyFleets[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n4, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n4
-			}
-		}
-	}
 	return i, nil
 }
 
-func (m *Fleet) Marshal() (dAtA []byte, err error) {
+func (m *DynamicSystem) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalTo(dAtA)
@@ -1792,504 +748,30 @@ func (m *Fleet) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Fleet) MarshalTo(dAtA []byte) (int, error) {
+func (m *DynamicSystem) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.InterX != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.InterX))
-	}
-	if m.InterY != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.InterY))
-	}
-	if m.OwnerUint != 0 {
-		dAtA[i] = 0x20
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.OwnerUint))
-	}
-	if m.ClosestSystemUint != 0 {
-		dAtA[i] = 0x28
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.ClosestSystemUint))
-	}
-	if m.TitanCount != 0 {
-		dAtA[i] = 0x80
-		i++
-		dAtA[i] = 0x2
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.TitanCount))
-	}
-	if m.CapitalCount != 0 {
-		dAtA[i] = 0x88
-		i++
-		dAtA[i] = 0x2
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.CapitalCount))
-	}
-	if m.FighterCount != 0 {
-		dAtA[i] = 0x90
-		i++
-		dAtA[i] = 0x2
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.FighterCount))
-	}
-	return i, nil
-}
-
-func (m *Battle) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Battle) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Strategy != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Strategy))
-	}
-	if len(m.AttackingFleetIDs) > 0 {
-		for k, _ := range m.AttackingFleetIDs {
-			dAtA[i] = 0x82
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.AttackingFleetIDs[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n5, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n5
-			}
-		}
-	}
-	if len(m.DefendingFleetIDs) > 0 {
-		for k, _ := range m.DefendingFleetIDs {
-			dAtA[i] = 0x8a
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.DefendingFleetIDs[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n6, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n6
-			}
-		}
-	}
-	return i, nil
-}
-
-func (m *Siege) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Siege) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.TimeLeft != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.TimeLeft))
-	}
-	if m.FightingOverSystemUint != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.FightingOverSystemUint))
-	}
-	if len(m.AggressorFleetIDs) > 0 {
-		for k, _ := range m.AggressorFleetIDs {
-			dAtA[i] = 0x82
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.AggressorFleetIDs[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n7, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n7
-			}
-		}
-	}
-	return i, nil
-}
-
-func (m *Action) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Action) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ActionType != 0 {
-		dAtA[i] = 0x10
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.ActionType))
-	}
-	if m.TimeLeft != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.TimeLeft))
-	}
-	if m.OwnerUint != 0 {
-		dAtA[i] = 0x20
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.OwnerUint))
-	}
-	if len(m.ActionValues) > 0 {
-		dAtA9 := make([]byte, len(m.ActionValues)*10)
-		var j8 int
-		for _, num1 := range m.ActionValues {
-			num := uint64(num1)
-			for num >= 1<<7 {
-				dAtA9[j8] = uint8(uint64(num)&0x7f | 0x80)
-				num >>= 7
-				j8++
-			}
-			dAtA9[j8] = uint8(num)
-			j8++
-		}
-		dAtA[i] = 0x82
-		i++
-		dAtA[i] = 0x4
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(j8))
-		i += copy(dAtA[i:], dAtA9[:j8])
-	}
-	if len(m.ActionNames) > 0 {
-		dAtA11 := make([]byte, len(m.ActionNames)*10)
-		var j10 int
-		for _, num := range m.ActionNames {
-			for num >= 1<<7 {
-				dAtA11[j10] = uint8(uint64(num)&0x7f | 0x80)
-				num >>= 7
-				j10++
-			}
-			dAtA11[j10] = uint8(num)
-			j10++
-		}
-		dAtA[i] = 0x8a
-		i++
-		dAtA[i] = 0x4
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(j10))
-		i += copy(dAtA[i:], dAtA11[:j10])
-	}
-	return i, nil
-}
-
-func (m *Galaxy) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Galaxy) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.NameUint != 0 {
+	if m.Progress != 0 {
 		dAtA[i] = 0x8
 		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.NameUint))
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.Progress))
 	}
-	if m.GlobalX != 0 {
+	if m.DockedTitanCount != 0 {
 		dAtA[i] = 0x10
 		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.GlobalX))
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.DockedTitanCount))
 	}
-	if m.GlobalY != 0 {
+	if m.DockedCapitalCount != 0 {
 		dAtA[i] = 0x18
 		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.GlobalY))
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.DockedCapitalCount))
 	}
-	if m.GalaxyType != 0 {
-		dAtA[i] = 0x80
+	if m.DockedFighterCount != 0 {
+		dAtA[i] = 0x20
 		i++
-		dAtA[i] = 0x1
-		i++
-		i = encodeVarintBackendmessage(dAtA, i, uint64(m.GalaxyType))
-	}
-	if len(m.Planet) > 0 {
-		for k, _ := range m.Planet {
-			dAtA[i] = 0x82
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.Planet[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n12, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n12
-			}
-		}
-	}
-	if len(m.Object) > 0 {
-		for k, _ := range m.Object {
-			dAtA[i] = 0x8a
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.Object[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n13, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n13
-			}
-		}
-	}
-	if len(m.System) > 0 {
-		for k, _ := range m.System {
-			dAtA[i] = 0x92
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.System[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n14, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n14
-			}
-		}
-	}
-	if len(m.Fleet) > 0 {
-		for k, _ := range m.Fleet {
-			dAtA[i] = 0x9a
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.Fleet[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n15, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n15
-			}
-		}
-	}
-	if len(m.Battle) > 0 {
-		for k, _ := range m.Battle {
-			dAtA[i] = 0xa2
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.Battle[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n16, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n16
-			}
-		}
-	}
-	if len(m.Siege) > 0 {
-		for k, _ := range m.Siege {
-			dAtA[i] = 0xaa
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.Siege[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n17, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n17
-			}
-		}
-	}
-	if len(m.Action) > 0 {
-		for k, _ := range m.Action {
-			dAtA[i] = 0xb2
-			i++
-			dAtA[i] = 0x8
-			i++
-			v := m.Action[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovBackendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovBackendmessage(uint64(k)) + msgSize
-			i = encodeVarintBackendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintBackendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintBackendmessage(dAtA, i, uint64(v.Size()))
-				n18, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n18
-			}
-		}
+		i = encodeVarintBackendmessage(dAtA, i, uint64(m.DockedFighterCount))
 	}
 	return i, nil
 }
@@ -2312,30 +794,89 @@ func (m *NullMessage) Size() (n int) {
 	return n
 }
 
-func (m *Planet) Size() (n int) {
+func (m *StaticGalaxy) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.ParentSystemUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.ParentSystemUint))
+	if m.Id != 0 {
+		n += 1 + sovBackendmessage(uint64(m.Id))
 	}
-	if m.OwnerUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.OwnerUint))
+	if m.GlobalX != 0 {
+		n += 1 + sovBackendmessage(uint64(m.GlobalX))
 	}
-	if m.Food != 0 {
-		n += 1 + sovBackendmessage(uint64(m.Food))
+	if m.GlobalY != 0 {
+		n += 1 + sovBackendmessage(uint64(m.GlobalY))
 	}
-	if m.Population != 0 {
-		n += 1 + sovBackendmessage(uint64(m.Population))
+	if m.Precision != 0 {
+		n += 1 + sovBackendmessage(uint64(m.Precision))
 	}
-	if m.PlanetType != 0 {
-		n += 1 + sovBackendmessage(uint64(m.PlanetType))
+	if len(m.StaticSystem) > 0 {
+		for k, v := range m.StaticSystem {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovBackendmessage(uint64(l))
+			}
+			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
+			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
+		}
 	}
-	if m.Health != 0 {
-		n += 1 + sovBackendmessage(uint64(m.Health))
+	return n
+}
+
+func (m *StaticSystem) Size() (n int) {
+	if m == nil {
+		return 0
 	}
+	var l int
+	_ = l
+	if m.InterX != 0 {
+		n += 1 + sovBackendmessage(uint64(m.InterX))
+	}
+	if m.InterY != 0 {
+		n += 1 + sovBackendmessage(uint64(m.InterY))
+	}
+	return n
+}
+
+func (m *DynamicGalaxySection) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Id != 0 {
+		n += 1 + sovBackendmessage(uint64(m.Id))
+	}
+	if m.Section != 0 {
+		n += 1 + sovBackendmessage(uint64(m.Section))
+	}
+	if len(m.DynamicSystem) > 0 {
+		for k, v := range m.DynamicSystem {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovBackendmessage(uint64(l))
+			}
+			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
+			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *DynamicSystem) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
 	if m.Progress != 0 {
 		n += 1 + sovBackendmessage(uint64(m.Progress))
 	}
@@ -2347,340 +888,6 @@ func (m *Planet) Size() (n int) {
 	}
 	if m.DockedFighterCount != 0 {
 		n += 1 + sovBackendmessage(uint64(m.DockedFighterCount))
-	}
-	return n
-}
-
-func (m *Object) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.ParentSystemUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.ParentSystemUint))
-	}
-	if m.OwnerUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.OwnerUint))
-	}
-	if m.ObjectType != 0 {
-		n += 1 + sovBackendmessage(uint64(m.ObjectType))
-	}
-	if m.Health != 0 {
-		n += 1 + sovBackendmessage(uint64(m.Health))
-	}
-	return n
-}
-
-func (m *System) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.InterX != 0 {
-		n += 1 + sovBackendmessage(uint64(m.InterX))
-	}
-	if m.InterY != 0 {
-		n += 1 + sovBackendmessage(uint64(m.InterY))
-	}
-	if m.PrimaryOwnerUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.PrimaryOwnerUint))
-	}
-	if m.SystemType != 0 {
-		n += 2 + sovBackendmessage(uint64(m.SystemType))
-	}
-	if len(m.NearbySystems) > 0 {
-		for k, v := range m.NearbySystems {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.ChildPlanet) > 0 {
-		for k, v := range m.ChildPlanet {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.ChildObject) > 0 {
-		for k, v := range m.ChildObject {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.NearbyFleets) > 0 {
-		for k, v := range m.NearbyFleets {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *Fleet) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.InterX != 0 {
-		n += 1 + sovBackendmessage(uint64(m.InterX))
-	}
-	if m.InterY != 0 {
-		n += 1 + sovBackendmessage(uint64(m.InterY))
-	}
-	if m.OwnerUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.OwnerUint))
-	}
-	if m.ClosestSystemUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.ClosestSystemUint))
-	}
-	if m.TitanCount != 0 {
-		n += 2 + sovBackendmessage(uint64(m.TitanCount))
-	}
-	if m.CapitalCount != 0 {
-		n += 2 + sovBackendmessage(uint64(m.CapitalCount))
-	}
-	if m.FighterCount != 0 {
-		n += 2 + sovBackendmessage(uint64(m.FighterCount))
-	}
-	return n
-}
-
-func (m *Battle) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.Strategy != 0 {
-		n += 1 + sovBackendmessage(uint64(m.Strategy))
-	}
-	if len(m.AttackingFleetIDs) > 0 {
-		for k, v := range m.AttackingFleetIDs {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.DefendingFleetIDs) > 0 {
-		for k, v := range m.DefendingFleetIDs {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *Siege) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.TimeLeft != 0 {
-		n += 1 + sovBackendmessage(uint64(m.TimeLeft))
-	}
-	if m.FightingOverSystemUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.FightingOverSystemUint))
-	}
-	if len(m.AggressorFleetIDs) > 0 {
-		for k, v := range m.AggressorFleetIDs {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *Action) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.ActionType != 0 {
-		n += 1 + sovBackendmessage(uint64(m.ActionType))
-	}
-	if m.TimeLeft != 0 {
-		n += 1 + sovBackendmessage(uint64(m.TimeLeft))
-	}
-	if m.OwnerUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.OwnerUint))
-	}
-	if len(m.ActionValues) > 0 {
-		l = 0
-		for _, e := range m.ActionValues {
-			l += sovBackendmessage(uint64(e))
-		}
-		n += 2 + sovBackendmessage(uint64(l)) + l
-	}
-	if len(m.ActionNames) > 0 {
-		l = 0
-		for _, e := range m.ActionNames {
-			l += sovBackendmessage(uint64(e))
-		}
-		n += 2 + sovBackendmessage(uint64(l)) + l
-	}
-	return n
-}
-
-func (m *Galaxy) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if m.NameUint != 0 {
-		n += 1 + sovBackendmessage(uint64(m.NameUint))
-	}
-	if m.GlobalX != 0 {
-		n += 1 + sovBackendmessage(uint64(m.GlobalX))
-	}
-	if m.GlobalY != 0 {
-		n += 1 + sovBackendmessage(uint64(m.GlobalY))
-	}
-	if m.GalaxyType != 0 {
-		n += 2 + sovBackendmessage(uint64(m.GalaxyType))
-	}
-	if len(m.Planet) > 0 {
-		for k, v := range m.Planet {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.Object) > 0 {
-		for k, v := range m.Object {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.System) > 0 {
-		for k, v := range m.System {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.Fleet) > 0 {
-		for k, v := range m.Fleet {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.Battle) > 0 {
-		for k, v := range m.Battle {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.Siege) > 0 {
-		for k, v := range m.Siege {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
-	}
-	if len(m.Action) > 0 {
-		for k, v := range m.Action {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovBackendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovBackendmessage(uint64(k)) + l
-			n += mapEntrySize + 2 + sovBackendmessage(uint64(mapEntrySize))
-		}
 	}
 	return n
 }
@@ -2707,265 +914,72 @@ func (this *NullMessage) String() string {
 	}, "")
 	return s
 }
-func (this *Planet) String() string {
+func (this *StaticGalaxy) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Planet{`,
-		`ParentSystemUint:` + fmt.Sprintf("%v", this.ParentSystemUint) + `,`,
-		`OwnerUint:` + fmt.Sprintf("%v", this.OwnerUint) + `,`,
-		`Food:` + fmt.Sprintf("%v", this.Food) + `,`,
-		`Population:` + fmt.Sprintf("%v", this.Population) + `,`,
-		`PlanetType:` + fmt.Sprintf("%v", this.PlanetType) + `,`,
-		`Health:` + fmt.Sprintf("%v", this.Health) + `,`,
+	keysForStaticSystem := make([]int32, 0, len(this.StaticSystem))
+	for k, _ := range this.StaticSystem {
+		keysForStaticSystem = append(keysForStaticSystem, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Int32s(keysForStaticSystem)
+	mapStringForStaticSystem := "map[int32]*StaticSystem{"
+	for _, k := range keysForStaticSystem {
+		mapStringForStaticSystem += fmt.Sprintf("%v: %v,", k, this.StaticSystem[k])
+	}
+	mapStringForStaticSystem += "}"
+	s := strings.Join([]string{`&StaticGalaxy{`,
+		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
+		`GlobalX:` + fmt.Sprintf("%v", this.GlobalX) + `,`,
+		`GlobalY:` + fmt.Sprintf("%v", this.GlobalY) + `,`,
+		`Precision:` + fmt.Sprintf("%v", this.Precision) + `,`,
+		`StaticSystem:` + mapStringForStaticSystem + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *StaticSystem) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&StaticSystem{`,
+		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
+		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *DynamicGalaxySection) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForDynamicSystem := make([]int32, 0, len(this.DynamicSystem))
+	for k, _ := range this.DynamicSystem {
+		keysForDynamicSystem = append(keysForDynamicSystem, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Int32s(keysForDynamicSystem)
+	mapStringForDynamicSystem := "map[int32]*DynamicSystem{"
+	for _, k := range keysForDynamicSystem {
+		mapStringForDynamicSystem += fmt.Sprintf("%v: %v,", k, this.DynamicSystem[k])
+	}
+	mapStringForDynamicSystem += "}"
+	s := strings.Join([]string{`&DynamicGalaxySection{`,
+		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
+		`Section:` + fmt.Sprintf("%v", this.Section) + `,`,
+		`DynamicSystem:` + mapStringForDynamicSystem + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *DynamicSystem) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&DynamicSystem{`,
 		`Progress:` + fmt.Sprintf("%v", this.Progress) + `,`,
 		`DockedTitanCount:` + fmt.Sprintf("%v", this.DockedTitanCount) + `,`,
 		`DockedCapitalCount:` + fmt.Sprintf("%v", this.DockedCapitalCount) + `,`,
 		`DockedFighterCount:` + fmt.Sprintf("%v", this.DockedFighterCount) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Object) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Object{`,
-		`ParentSystemUint:` + fmt.Sprintf("%v", this.ParentSystemUint) + `,`,
-		`OwnerUint:` + fmt.Sprintf("%v", this.OwnerUint) + `,`,
-		`ObjectType:` + fmt.Sprintf("%v", this.ObjectType) + `,`,
-		`Health:` + fmt.Sprintf("%v", this.Health) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *System) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForNearbySystems := make([]uint64, 0, len(this.NearbySystems))
-	for k, _ := range this.NearbySystems {
-		keysForNearbySystems = append(keysForNearbySystems, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNearbySystems)
-	mapStringForNearbySystems := "map[uint64]*NullMessage{"
-	for _, k := range keysForNearbySystems {
-		mapStringForNearbySystems += fmt.Sprintf("%v: %v,", k, this.NearbySystems[k])
-	}
-	mapStringForNearbySystems += "}"
-	keysForChildPlanet := make([]uint64, 0, len(this.ChildPlanet))
-	for k, _ := range this.ChildPlanet {
-		keysForChildPlanet = append(keysForChildPlanet, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForChildPlanet)
-	mapStringForChildPlanet := "map[uint64]*NullMessage{"
-	for _, k := range keysForChildPlanet {
-		mapStringForChildPlanet += fmt.Sprintf("%v: %v,", k, this.ChildPlanet[k])
-	}
-	mapStringForChildPlanet += "}"
-	keysForChildObject := make([]uint64, 0, len(this.ChildObject))
-	for k, _ := range this.ChildObject {
-		keysForChildObject = append(keysForChildObject, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForChildObject)
-	mapStringForChildObject := "map[uint64]*NullMessage{"
-	for _, k := range keysForChildObject {
-		mapStringForChildObject += fmt.Sprintf("%v: %v,", k, this.ChildObject[k])
-	}
-	mapStringForChildObject += "}"
-	keysForNearbyFleets := make([]uint64, 0, len(this.NearbyFleets))
-	for k, _ := range this.NearbyFleets {
-		keysForNearbyFleets = append(keysForNearbyFleets, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNearbyFleets)
-	mapStringForNearbyFleets := "map[uint64]*NullMessage{"
-	for _, k := range keysForNearbyFleets {
-		mapStringForNearbyFleets += fmt.Sprintf("%v: %v,", k, this.NearbyFleets[k])
-	}
-	mapStringForNearbyFleets += "}"
-	s := strings.Join([]string{`&System{`,
-		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
-		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
-		`PrimaryOwnerUint:` + fmt.Sprintf("%v", this.PrimaryOwnerUint) + `,`,
-		`SystemType:` + fmt.Sprintf("%v", this.SystemType) + `,`,
-		`NearbySystems:` + mapStringForNearbySystems + `,`,
-		`ChildPlanet:` + mapStringForChildPlanet + `,`,
-		`ChildObject:` + mapStringForChildObject + `,`,
-		`NearbyFleets:` + mapStringForNearbyFleets + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Fleet) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Fleet{`,
-		`InterX:` + fmt.Sprintf("%v", this.InterX) + `,`,
-		`InterY:` + fmt.Sprintf("%v", this.InterY) + `,`,
-		`OwnerUint:` + fmt.Sprintf("%v", this.OwnerUint) + `,`,
-		`ClosestSystemUint:` + fmt.Sprintf("%v", this.ClosestSystemUint) + `,`,
-		`TitanCount:` + fmt.Sprintf("%v", this.TitanCount) + `,`,
-		`CapitalCount:` + fmt.Sprintf("%v", this.CapitalCount) + `,`,
-		`FighterCount:` + fmt.Sprintf("%v", this.FighterCount) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Battle) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForAttackingFleetIDs := make([]int32, 0, len(this.AttackingFleetIDs))
-	for k, _ := range this.AttackingFleetIDs {
-		keysForAttackingFleetIDs = append(keysForAttackingFleetIDs, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForAttackingFleetIDs)
-	mapStringForAttackingFleetIDs := "map[int32]*NullMessage{"
-	for _, k := range keysForAttackingFleetIDs {
-		mapStringForAttackingFleetIDs += fmt.Sprintf("%v: %v,", k, this.AttackingFleetIDs[k])
-	}
-	mapStringForAttackingFleetIDs += "}"
-	keysForDefendingFleetIDs := make([]int32, 0, len(this.DefendingFleetIDs))
-	for k, _ := range this.DefendingFleetIDs {
-		keysForDefendingFleetIDs = append(keysForDefendingFleetIDs, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForDefendingFleetIDs)
-	mapStringForDefendingFleetIDs := "map[int32]*NullMessage{"
-	for _, k := range keysForDefendingFleetIDs {
-		mapStringForDefendingFleetIDs += fmt.Sprintf("%v: %v,", k, this.DefendingFleetIDs[k])
-	}
-	mapStringForDefendingFleetIDs += "}"
-	s := strings.Join([]string{`&Battle{`,
-		`Strategy:` + fmt.Sprintf("%v", this.Strategy) + `,`,
-		`AttackingFleetIDs:` + mapStringForAttackingFleetIDs + `,`,
-		`DefendingFleetIDs:` + mapStringForDefendingFleetIDs + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Siege) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForAggressorFleetIDs := make([]int32, 0, len(this.AggressorFleetIDs))
-	for k, _ := range this.AggressorFleetIDs {
-		keysForAggressorFleetIDs = append(keysForAggressorFleetIDs, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForAggressorFleetIDs)
-	mapStringForAggressorFleetIDs := "map[int32]*NullMessage{"
-	for _, k := range keysForAggressorFleetIDs {
-		mapStringForAggressorFleetIDs += fmt.Sprintf("%v: %v,", k, this.AggressorFleetIDs[k])
-	}
-	mapStringForAggressorFleetIDs += "}"
-	s := strings.Join([]string{`&Siege{`,
-		`TimeLeft:` + fmt.Sprintf("%v", this.TimeLeft) + `,`,
-		`FightingOverSystemUint:` + fmt.Sprintf("%v", this.FightingOverSystemUint) + `,`,
-		`AggressorFleetIDs:` + mapStringForAggressorFleetIDs + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Action) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Action{`,
-		`ActionType:` + fmt.Sprintf("%v", this.ActionType) + `,`,
-		`TimeLeft:` + fmt.Sprintf("%v", this.TimeLeft) + `,`,
-		`OwnerUint:` + fmt.Sprintf("%v", this.OwnerUint) + `,`,
-		`ActionValues:` + fmt.Sprintf("%v", this.ActionValues) + `,`,
-		`ActionNames:` + fmt.Sprintf("%v", this.ActionNames) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Galaxy) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForPlanet := make([]uint64, 0, len(this.Planet))
-	for k, _ := range this.Planet {
-		keysForPlanet = append(keysForPlanet, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPlanet)
-	mapStringForPlanet := "map[uint64]*Planet{"
-	for _, k := range keysForPlanet {
-		mapStringForPlanet += fmt.Sprintf("%v: %v,", k, this.Planet[k])
-	}
-	mapStringForPlanet += "}"
-	keysForObject := make([]uint64, 0, len(this.Object))
-	for k, _ := range this.Object {
-		keysForObject = append(keysForObject, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForObject)
-	mapStringForObject := "map[uint64]*Object{"
-	for _, k := range keysForObject {
-		mapStringForObject += fmt.Sprintf("%v: %v,", k, this.Object[k])
-	}
-	mapStringForObject += "}"
-	keysForSystem := make([]uint64, 0, len(this.System))
-	for k, _ := range this.System {
-		keysForSystem = append(keysForSystem, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSystem)
-	mapStringForSystem := "map[uint64]*System{"
-	for _, k := range keysForSystem {
-		mapStringForSystem += fmt.Sprintf("%v: %v,", k, this.System[k])
-	}
-	mapStringForSystem += "}"
-	keysForFleet := make([]int32, 0, len(this.Fleet))
-	for k, _ := range this.Fleet {
-		keysForFleet = append(keysForFleet, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForFleet)
-	mapStringForFleet := "map[int32]*Fleet{"
-	for _, k := range keysForFleet {
-		mapStringForFleet += fmt.Sprintf("%v: %v,", k, this.Fleet[k])
-	}
-	mapStringForFleet += "}"
-	keysForBattle := make([]int32, 0, len(this.Battle))
-	for k, _ := range this.Battle {
-		keysForBattle = append(keysForBattle, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForBattle)
-	mapStringForBattle := "map[int32]*Battle{"
-	for _, k := range keysForBattle {
-		mapStringForBattle += fmt.Sprintf("%v: %v,", k, this.Battle[k])
-	}
-	mapStringForBattle += "}"
-	keysForSiege := make([]int32, 0, len(this.Siege))
-	for k, _ := range this.Siege {
-		keysForSiege = append(keysForSiege, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForSiege)
-	mapStringForSiege := "map[int32]*Siege{"
-	for _, k := range keysForSiege {
-		mapStringForSiege += fmt.Sprintf("%v: %v,", k, this.Siege[k])
-	}
-	mapStringForSiege += "}"
-	keysForAction := make([]int32, 0, len(this.Action))
-	for k, _ := range this.Action {
-		keysForAction = append(keysForAction, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForAction)
-	mapStringForAction := "map[int32]*Action{"
-	for _, k := range keysForAction {
-		mapStringForAction += fmt.Sprintf("%v: %v,", k, this.Action[k])
-	}
-	mapStringForAction += "}"
-	s := strings.Join([]string{`&Galaxy{`,
-		`NameUint:` + fmt.Sprintf("%v", this.NameUint) + `,`,
-		`GlobalX:` + fmt.Sprintf("%v", this.GlobalX) + `,`,
-		`GlobalY:` + fmt.Sprintf("%v", this.GlobalY) + `,`,
-		`GalaxyType:` + fmt.Sprintf("%v", this.GalaxyType) + `,`,
-		`Planet:` + mapStringForPlanet + `,`,
-		`Object:` + mapStringForObject + `,`,
-		`System:` + mapStringForSystem + `,`,
-		`Fleet:` + mapStringForFleet + `,`,
-		`Battle:` + mapStringForBattle + `,`,
-		`Siege:` + mapStringForSiege + `,`,
-		`Action:` + mapStringForAction + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3028,7 +1042,7 @@ func (m *NullMessage) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Planet) Unmarshal(dAtA []byte) error {
+func (m *StaticGalaxy) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3051,1886 +1065,17 @@ func (m *Planet) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Planet: wiretype end group for non-group")
+			return fmt.Errorf("proto: StaticGalaxy: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Planet: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ParentSystemUint", wireType)
-			}
-			m.ParentSystemUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ParentSystemUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OwnerUint", wireType)
-			}
-			m.OwnerUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.OwnerUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Food", wireType)
-			}
-			m.Food = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Food |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Population", wireType)
-			}
-			m.Population = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Population |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 6:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PlanetType", wireType)
-			}
-			m.PlanetType = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.PlanetType |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 7:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Health", wireType)
-			}
-			m.Health = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Health |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 8:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Progress", wireType)
-			}
-			m.Progress = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Progress |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 9:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DockedTitanCount", wireType)
-			}
-			m.DockedTitanCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.DockedTitanCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 10:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DockedCapitalCount", wireType)
-			}
-			m.DockedCapitalCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.DockedCapitalCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 11:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DockedFighterCount", wireType)
-			}
-			m.DockedFighterCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.DockedFighterCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBackendmessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Object) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBackendmessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Object: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Object: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ParentSystemUint", wireType)
-			}
-			m.ParentSystemUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ParentSystemUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OwnerUint", wireType)
-			}
-			m.OwnerUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.OwnerUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 6:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ObjectType", wireType)
-			}
-			m.ObjectType = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ObjectType |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 7:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Health", wireType)
-			}
-			m.Health = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Health |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBackendmessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *System) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBackendmessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: System: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: System: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InterX", wireType)
-			}
-			m.InterX = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.InterX |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InterY", wireType)
-			}
-			m.InterY = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.InterY |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PrimaryOwnerUint", wireType)
-			}
-			m.PrimaryOwnerUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.PrimaryOwnerUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 16:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SystemType", wireType)
-			}
-			m.SystemType = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.SystemType |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 128:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NearbySystems", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.NearbySystems == nil {
-				m.NearbySystems = make(map[uint64]*NullMessage)
-			}
-			var mapkey uint64
-			var mapvalue *NullMessage
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &NullMessage{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.NearbySystems[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 129:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ChildPlanet", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.ChildPlanet == nil {
-				m.ChildPlanet = make(map[uint64]*NullMessage)
-			}
-			var mapkey uint64
-			var mapvalue *NullMessage
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &NullMessage{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.ChildPlanet[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 130:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ChildObject", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.ChildObject == nil {
-				m.ChildObject = make(map[uint64]*NullMessage)
-			}
-			var mapkey uint64
-			var mapvalue *NullMessage
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &NullMessage{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.ChildObject[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 131:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NearbyFleets", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.NearbyFleets == nil {
-				m.NearbyFleets = make(map[uint64]*NullMessage)
-			}
-			var mapkey uint64
-			var mapvalue *NullMessage
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &NullMessage{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.NearbyFleets[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBackendmessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Fleet) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBackendmessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Fleet: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Fleet: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InterX", wireType)
-			}
-			m.InterX = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.InterX |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InterY", wireType)
-			}
-			m.InterY = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.InterY |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OwnerUint", wireType)
-			}
-			m.OwnerUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.OwnerUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ClosestSystemUint", wireType)
-			}
-			m.ClosestSystemUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ClosestSystemUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 32:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TitanCount", wireType)
-			}
-			m.TitanCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.TitanCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 33:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CapitalCount", wireType)
-			}
-			m.CapitalCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.CapitalCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 34:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FighterCount", wireType)
-			}
-			m.FighterCount = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.FighterCount |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBackendmessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Battle) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBackendmessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Battle: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Battle: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Strategy", wireType)
-			}
-			m.Strategy = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Strategy |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 128:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AttackingFleetIDs", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.AttackingFleetIDs == nil {
-				m.AttackingFleetIDs = make(map[int32]*NullMessage)
-			}
-			var mapkey int32
-			var mapvalue *NullMessage
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (int32(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &NullMessage{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.AttackingFleetIDs[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 129:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field DefendingFleetIDs", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.DefendingFleetIDs == nil {
-				m.DefendingFleetIDs = make(map[int32]*NullMessage)
-			}
-			var mapkey int32
-			var mapvalue *NullMessage
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (int32(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &NullMessage{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.DefendingFleetIDs[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBackendmessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Siege) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBackendmessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Siege: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Siege: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TimeLeft", wireType)
-			}
-			m.TimeLeft = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.TimeLeft |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FightingOverSystemUint", wireType)
-			}
-			m.FightingOverSystemUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.FightingOverSystemUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 128:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AggressorFleetIDs", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.AggressorFleetIDs == nil {
-				m.AggressorFleetIDs = make(map[int32]*NullMessage)
-			}
-			var mapkey int32
-			var mapvalue *NullMessage
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (int32(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &NullMessage{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.AggressorFleetIDs[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBackendmessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Action) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBackendmessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Action: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Action: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ActionType", wireType)
-			}
-			m.ActionType = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.ActionType |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TimeLeft", wireType)
-			}
-			m.TimeLeft = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.TimeLeft |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OwnerUint", wireType)
-			}
-			m.OwnerUint = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.OwnerUint |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 64:
-			if wireType == 0 {
-				var v int64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= (int64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.ActionValues = append(m.ActionValues, v)
-			} else if wireType == 2 {
-				var packedLen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					packedLen |= (int(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if packedLen < 0 {
-					return ErrInvalidLengthBackendmessage
-				}
-				postIndex := iNdEx + packedLen
-				if postIndex > l {
-					return io.ErrUnexpectedEOF
-				}
-				var elementCount int
-				var count int
-				for _, integer := range dAtA {
-					if integer < 128 {
-						count++
-					}
-				}
-				elementCount = count
-				if elementCount != 0 && len(m.ActionValues) == 0 {
-					m.ActionValues = make([]int64, 0, elementCount)
-				}
-				for iNdEx < postIndex {
-					var v int64
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						v |= (int64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					m.ActionValues = append(m.ActionValues, v)
-				}
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field ActionValues", wireType)
-			}
-		case 65:
-			if wireType == 0 {
-				var v uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.ActionNames = append(m.ActionNames, v)
-			} else if wireType == 2 {
-				var packedLen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					packedLen |= (int(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if packedLen < 0 {
-					return ErrInvalidLengthBackendmessage
-				}
-				postIndex := iNdEx + packedLen
-				if postIndex > l {
-					return io.ErrUnexpectedEOF
-				}
-				var elementCount int
-				var count int
-				for _, integer := range dAtA {
-					if integer < 128 {
-						count++
-					}
-				}
-				elementCount = count
-				if elementCount != 0 && len(m.ActionNames) == 0 {
-					m.ActionNames = make([]uint64, 0, elementCount)
-				}
-				for iNdEx < postIndex {
-					var v uint64
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						v |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					m.ActionNames = append(m.ActionNames, v)
-				}
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field ActionNames", wireType)
-			}
-		default:
-			iNdEx = preIndex
-			skippy, err := skipBackendmessage(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *Galaxy) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowBackendmessage
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Galaxy: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Galaxy: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: StaticGalaxy: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NameUint", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
 			}
-			m.NameUint = 0
+			m.Id = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBackendmessage
@@ -4940,7 +1085,7 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.NameUint |= (uint64(b) & 0x7F) << shift
+				m.Id |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4983,11 +1128,11 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 16:
+		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field GalaxyType", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Precision", wireType)
 			}
-			m.GalaxyType = 0
+			m.Precision = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBackendmessage
@@ -4997,14 +1142,14 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.GalaxyType |= (int32(b) & 0x7F) << shift
+				m.Precision |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 128:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Planet", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field StaticSystem", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5028,347 +1173,11 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Planet == nil {
-				m.Planet = make(map[uint64]*Planet)
-			}
-			var mapkey uint64
-			var mapvalue *Planet
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &Planet{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.Planet[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 129:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Object", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Object == nil {
-				m.Object = make(map[uint64]*Object)
-			}
-			var mapkey uint64
-			var mapvalue *Object
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &Object{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.Object[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 130:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field System", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.System == nil {
-				m.System = make(map[uint64]*System)
-			}
-			var mapkey uint64
-			var mapvalue *System
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &System{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.System[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 131:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Fleet", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowBackendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Fleet == nil {
-				m.Fleet = make(map[int32]*Fleet)
+			if m.StaticSystem == nil {
+				m.StaticSystem = make(map[int32]*StaticSystem)
 			}
 			var mapkey int32
-			var mapvalue *Fleet
+			var mapvalue *StaticSystem
 			for iNdEx < postIndex {
 				entryPreIndex := iNdEx
 				var wire uint64
@@ -5428,7 +1237,7 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 					if postmsgIndex > l {
 						return io.ErrUnexpectedEOF
 					}
-					mapvalue = &Fleet{}
+					mapvalue = &StaticSystem{}
 					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
 						return err
 					}
@@ -5448,11 +1257,187 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 					iNdEx += skippy
 				}
 			}
-			m.Fleet[mapkey] = mapvalue
+			m.StaticSystem[mapkey] = mapvalue
 			iNdEx = postIndex
-		case 132:
+		default:
+			iNdEx = preIndex
+			skippy, err := skipBackendmessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthBackendmessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *StaticSystem) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowBackendmessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: StaticSystem: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: StaticSystem: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InterX", wireType)
+			}
+			m.InterX = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBackendmessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.InterX |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InterY", wireType)
+			}
+			m.InterY = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBackendmessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.InterY |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipBackendmessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthBackendmessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DynamicGalaxySection) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowBackendmessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DynamicGalaxySection: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DynamicGalaxySection: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			m.Id = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBackendmessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Id |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Section", wireType)
+			}
+			m.Section = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBackendmessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Section |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 128:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Battle", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field DynamicSystem", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5476,11 +1461,11 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Battle == nil {
-				m.Battle = make(map[int32]*Battle)
+			if m.DynamicSystem == nil {
+				m.DynamicSystem = make(map[int32]*DynamicSystem)
 			}
 			var mapkey int32
-			var mapvalue *Battle
+			var mapvalue *DynamicSystem
 			for iNdEx < postIndex {
 				entryPreIndex := iNdEx
 				var wire uint64
@@ -5540,7 +1525,7 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 					if postmsgIndex > l {
 						return io.ErrUnexpectedEOF
 					}
-					mapvalue = &Battle{}
+					mapvalue = &DynamicSystem{}
 					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
 						return err
 					}
@@ -5560,13 +1545,63 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 					iNdEx += skippy
 				}
 			}
-			m.Battle[mapkey] = mapvalue
+			m.DynamicSystem[mapkey] = mapvalue
 			iNdEx = postIndex
-		case 133:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Siege", wireType)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipBackendmessage(dAtA[iNdEx:])
+			if err != nil {
+				return err
 			}
-			var msglen int
+			if skippy < 0 {
+				return ErrInvalidLengthBackendmessage
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *DynamicSystem) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowBackendmessage
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DynamicSystem: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DynamicSystem: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Progress", wireType)
+			}
+			m.Progress = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBackendmessage
@@ -5576,109 +1611,16 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				m.Progress |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DockedTitanCount", wireType)
 			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Siege == nil {
-				m.Siege = make(map[int32]*Siege)
-			}
-			var mapkey int32
-			var mapvalue *Siege
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (int32(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &Siege{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.Siege[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 134:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Action", wireType)
-			}
-			var msglen int
+			m.DockedTitanCount = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowBackendmessage
@@ -5688,104 +1630,49 @@ func (m *Galaxy) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				m.DockedTitanCount |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
-				return ErrInvalidLengthBackendmessage
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DockedCapitalCount", wireType)
 			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Action == nil {
-				m.Action = make(map[int32]*Action)
-			}
-			var mapkey int32
-			var mapvalue *Action
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowBackendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
+			m.DockedCapitalCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBackendmessage
 				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (int32(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowBackendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &Action{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipBackendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthBackendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DockedCapitalCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
 				}
 			}
-			m.Action[mapkey] = mapvalue
-			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DockedFighterCount", wireType)
+			}
+			m.DockedFighterCount = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowBackendmessage
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.DockedFighterCount |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipBackendmessage(dAtA[iNdEx:])
@@ -5913,77 +1800,38 @@ var (
 )
 
 func init() {
-	proto.RegisterFile("backendmessage.proto", fileDescriptor_backendmessage_f0547bfb7fccf199)
+	proto.RegisterFile("backendmessage.proto", fileDescriptor_backendmessage_3981642a80d3e238)
 }
 
-var fileDescriptor_backendmessage_f0547bfb7fccf199 = []byte{
-	// 1079 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x57, 0x4f, 0x6f, 0x1b, 0x45,
-	0x14, 0xf7, 0x66, 0xed, 0x6d, 0xfa, 0x9c, 0xa2, 0x64, 0x04, 0xd6, 0xca, 0xa0, 0x95, 0xbb, 0x17,
-	0x0c, 0x04, 0x4b, 0x14, 0x84, 0x2a, 0xb8, 0x90, 0xa6, 0x14, 0x81, 0x68, 0xd2, 0xba, 0x05, 0x51,
-	0xb5, 0x1c, 0xc6, 0xf6, 0x78, 0xb3, 0x64, 0xbd, 0x6b, 0xed, 0x4e, 0x0a, 0xbe, 0xb5, 0xfc, 0x3b,
-	0x70, 0xe2, 0xce, 0x1d, 0xf5, 0x03, 0xf0, 0x21, 0x38, 0xe6, 0xd8, 0x13, 0x22, 0x8e, 0x84, 0x90,
-	0xb8, 0xf4, 0x23, 0xa0, 0x7d, 0x6f, 0xd7, 0x3b, 0x1e, 0xff, 0x29, 0x24, 0xbe, 0x79, 0xde, 0xbc,
-	0xdf, 0xef, 0xfd, 0xf6, 0xbd, 0x37, 0x6f, 0xc6, 0xf0, 0x62, 0x87, 0x77, 0x0f, 0x45, 0xd8, 0x1b,
-	0x88, 0x24, 0xe1, 0x9e, 0x68, 0x0d, 0xe3, 0x48, 0x46, 0xec, 0x85, 0x69, 0xab, 0x7b, 0x09, 0xaa,
-	0x7b, 0x47, 0x41, 0x70, 0x33, 0x5b, 0xfe, 0xb5, 0x06, 0xd6, 0xad, 0x80, 0x87, 0x42, 0xb2, 0xd7,
-	0x61, 0x73, 0xc8, 0x63, 0x11, 0xca, 0x3b, 0xa3, 0x44, 0x8a, 0xc1, 0x67, 0x7e, 0x28, 0xed, 0xb5,
-	0x86, 0xd1, 0x2c, 0xb7, 0x67, 0xec, 0xec, 0x15, 0xb8, 0x18, 0x7d, 0x1d, 0x8a, 0x18, 0x9d, 0x4c,
-	0x74, 0x2a, 0x0c, 0x8c, 0x41, 0xb9, 0x1f, 0x45, 0x3d, 0xbb, 0xdc, 0x30, 0x9a, 0x95, 0x36, 0xfe,
-	0x66, 0x0e, 0xc0, 0x30, 0x1a, 0x1e, 0x05, 0x5c, 0xfa, 0x51, 0x68, 0x57, 0x1a, 0x46, 0xd3, 0x6c,
-	0x2b, 0x16, 0xdc, 0x47, 0x1d, 0x77, 0x47, 0x43, 0x61, 0x5b, 0x88, 0x54, 0x2c, 0xac, 0x06, 0xd6,
-	0x81, 0xe0, 0x81, 0x3c, 0xb0, 0x2f, 0xe0, 0x5e, 0xb6, 0x62, 0x75, 0x58, 0x1f, 0xc6, 0x91, 0x17,
-	0x8b, 0x24, 0xb1, 0xd7, 0x71, 0x67, 0xb2, 0x4e, 0xbf, 0xa8, 0x17, 0x75, 0x0f, 0x45, 0xef, 0xae,
-	0x2f, 0x79, 0xb8, 0x1b, 0x1d, 0x85, 0xd2, 0xbe, 0x88, 0x3e, 0x33, 0x76, 0xd6, 0x02, 0x46, 0xb6,
-	0x5d, 0x3e, 0xf4, 0x25, 0x0f, 0xc8, 0x1b, 0xd0, 0x7b, 0xce, 0x4e, 0xe1, 0x7f, 0xc3, 0xf7, 0x0e,
-	0xa4, 0x88, 0xc9, 0xbf, 0xaa, 0xfa, 0xab, 0x3b, 0xee, 0x4f, 0x06, 0x58, 0xfb, 0x9d, 0xaf, 0x44,
-	0xf7, 0x1c, 0x89, 0xae, 0xe8, 0x89, 0x76, 0x00, 0x22, 0xe4, 0x54, 0x93, 0x56, 0x58, 0x16, 0x25,
-	0xcd, 0xfd, 0xcd, 0x02, 0x8b, 0x82, 0xa4, 0x2e, 0x7e, 0x28, 0x45, 0xfc, 0x05, 0x4a, 0x30, 0xdb,
-	0xd9, 0x6a, 0x62, 0xbf, 0x87, 0xe5, 0xcd, 0xed, 0xf7, 0x50, 0x7c, 0xec, 0x0f, 0x78, 0x3c, 0xda,
-	0x9f, 0xe8, 0x2a, 0x67, 0xe2, 0x35, 0x7b, 0x2a, 0x2f, 0xc1, 0x28, 0x28, 0x6f, 0x93, 0xe4, 0x15,
-	0x16, 0x76, 0x0b, 0x2e, 0x85, 0x82, 0xc7, 0x9d, 0x11, 0x69, 0x49, 0xec, 0x47, 0x46, 0xc3, 0x6c,
-	0x56, 0xaf, 0xbc, 0xd6, 0xd2, 0x5a, 0x99, 0xf6, 0x5b, 0x7b, 0xaa, 0xf3, 0x87, 0xa1, 0x8c, 0x47,
-	0xed, 0x69, 0x02, 0xf6, 0x09, 0x54, 0xbb, 0x07, 0x7e, 0xd0, 0xa3, 0x96, 0xb6, 0x1f, 0x13, 0xdf,
-	0xab, 0x0b, 0xf8, 0x76, 0x0b, 0x57, 0x62, 0x53, 0xc1, 0x13, 0x2e, 0xaa, 0x9a, 0xfd, 0xed, 0x7f,
-	0xe0, 0x22, 0x57, 0x95, 0x2b, 0x2b, 0xf9, 0x4d, 0xd8, 0x20, 0xa1, 0x37, 0x02, 0x21, 0x64, 0x62,
-	0x7f, 0x47, 0x64, 0xcd, 0xa5, 0x1f, 0x4a, 0xbe, 0xc4, 0x36, 0x05, 0xaf, 0x7f, 0x09, 0x6c, 0x36,
-	0x17, 0x6c, 0x13, 0xcc, 0x43, 0x31, 0xb2, 0x0d, 0xac, 0x46, 0xfa, 0x93, 0xbd, 0x05, 0x95, 0x87,
-	0x3c, 0x38, 0x12, 0x58, 0xdb, 0xea, 0x95, 0x97, 0xf5, 0x70, 0xca, 0x24, 0x68, 0x93, 0xe7, 0x7b,
-	0x6b, 0x57, 0x8d, 0xfa, 0x7d, 0xd8, 0xd4, 0x53, 0xb3, 0x7a, 0x72, 0x25, 0x57, 0xab, 0x23, 0x7f,
-	0x00, 0x5b, 0x33, 0xb9, 0x5b, 0x19, 0xbb, 0xfb, 0x8f, 0x01, 0x15, 0x24, 0xfe, 0xdf, 0xa7, 0x66,
-	0xea, 0x18, 0x97, 0xf5, 0x63, 0xbc, 0x0d, 0x5b, 0xdd, 0x20, 0x4a, 0x44, 0xa2, 0x4e, 0x04, 0x3a,
-	0xec, 0xb3, 0x1b, 0xe9, 0xa9, 0x92, 0xc5, 0x3c, 0x6b, 0xd0, 0xa9, 0x2a, 0x2c, 0xcc, 0x85, 0x8d,
-	0xae, 0x3a, 0xc3, 0x2e, 0xa3, 0xc7, 0x94, 0x2d, 0xf5, 0xe9, 0xab, 0x73, 0xcb, 0x25, 0x1f, 0xd5,
-	0xe6, 0xfe, 0x6a, 0x82, 0x75, 0x8d, 0x4b, 0x19, 0x88, 0x74, 0xc8, 0x26, 0x32, 0xe6, 0x52, 0x78,
-	0x23, 0xfc, 0xe0, 0x4a, 0x7b, 0xb2, 0x66, 0x0f, 0x60, 0x8b, 0x4b, 0xc9, 0xbb, 0x87, 0x7e, 0xe8,
-	0x61, 0x72, 0x3e, 0xbe, 0x3e, 0x39, 0xc8, 0x6f, 0xea, 0x89, 0x25, 0xbe, 0xd6, 0x8e, 0x0e, 0xa0,
-	0x26, 0x9f, 0x25, 0x4a, 0xd9, 0x7b, 0xa2, 0x2f, 0xc2, 0x9e, 0xca, 0xfe, 0x78, 0x39, 0xfb, 0x75,
-	0x1d, 0x90, 0xb1, 0xcf, 0x10, 0xd5, 0x39, 0xd4, 0xe6, 0x4b, 0x51, 0x7b, 0xa6, 0x72, 0xae, 0x8e,
-	0xe4, 0x50, 0x9b, 0xaf, 0x67, 0x65, 0x21, 0xdc, 0x5f, 0xd6, 0xa0, 0x72, 0xc7, 0x17, 0x1e, 0xd6,
-	0x49, 0xfa, 0x03, 0xf1, 0xa9, 0xe8, 0xcb, 0xac, 0x31, 0x27, 0x6b, 0xf6, 0x2e, 0xd4, 0xb0, 0xbc,
-	0x7e, 0xe8, 0xed, 0x3f, 0x14, 0xb1, 0xd2, 0x69, 0x74, 0x7f, 0x2f, 0xd8, 0x65, 0xf7, 0x61, 0x8b,
-	0x7b, 0x78, 0x9f, 0x46, 0xb1, 0x5e, 0xdf, 0xed, 0x99, 0xf9, 0x95, 0xca, 0x68, 0xed, 0xe8, 0xfe,
-	0x79, 0x79, 0x75, 0x3b, 0x16, 0x60, 0xae, 0xf3, 0xea, 0xb2, 0xf3, 0xc4, 0x00, 0x6b, 0xa7, 0x9b,
-	0xbf, 0x31, 0x38, 0xfe, 0xc2, 0xfb, 0x88, 0x1a, 0x59, 0xb1, 0x4c, 0xa5, 0xcf, 0xd4, 0xd2, 0xb7,
-	0xfc, 0x04, 0xbb, 0xb0, 0x41, 0x3c, 0x9f, 0xa7, 0x71, 0x13, 0xfb, 0x83, 0x86, 0xd9, 0x34, 0xdb,
-	0x53, 0x36, 0xd6, 0x80, 0x2a, 0xad, 0xf7, 0xf8, 0x40, 0x24, 0xf6, 0x4e, 0xc3, 0x6c, 0x96, 0xdb,
-	0xaa, 0xc9, 0xfd, 0x63, 0x1d, 0xac, 0x8f, 0x78, 0xc0, 0xbf, 0x19, 0xa5, 0x52, 0x42, 0x3e, 0x10,
-	0x18, 0x8d, 0x06, 0xd7, 0x64, 0xcd, 0x6c, 0xb8, 0xe0, 0x05, 0x51, 0x87, 0x07, 0xf9, 0xf4, 0xc9,
-	0x97, 0xc5, 0x4e, 0x3e, 0x7f, 0xf2, 0x65, 0xfa, 0xe9, 0x1e, 0x32, 0xab, 0x57, 0x71, 0x61, 0x61,
-	0xef, 0x83, 0x45, 0x8f, 0xad, 0xbc, 0xb4, 0xae, 0x9e, 0x5e, 0x12, 0xd6, 0x52, 0xaf, 0xcb, 0x0c,
-	0x92, 0x82, 0xe9, 0xd1, 0x91, 0x9f, 0xcc, 0x45, 0x60, 0xf5, 0x7e, 0xcc, 0x20, 0x29, 0x98, 0x9e,
-	0x04, 0xf9, 0x0d, 0xbb, 0x08, 0x4c, 0x3d, 0x99, 0x81, 0x09, 0xc2, 0xae, 0x42, 0xa5, 0x9f, 0xb6,
-	0x4d, 0x7e, 0xa1, 0x5e, 0x5e, 0x80, 0xc5, 0xde, 0x22, 0x28, 0x01, 0xd2, 0xb0, 0x1d, 0x1c, 0x17,
-	0xf6, 0xf7, 0xcb, 0xc3, 0xd2, 0x50, 0xc9, 0xc2, 0x12, 0x24, 0x0d, 0x9b, 0xa4, 0x9d, 0x6e, 0xff,
-	0xb0, 0x3c, 0x2c, 0x1e, 0x87, 0x2c, 0x2c, 0x02, 0xd2, 0xb0, 0x54, 0x71, 0xfb, 0xc7, 0xe5, 0x61,
-	0xa9, 0x65, 0xb3, 0xb0, 0x04, 0xa9, 0xdf, 0x86, 0xea, 0xf2, 0x2b, 0x79, 0x7b, 0xfa, 0x88, 0xd4,
-	0x74, 0x6e, 0x42, 0xab, 0xe3, 0xe9, 0x36, 0x54, 0x97, 0x5f, 0xc4, 0xcf, 0xa3, 0x24, 0xb4, 0x46,
-	0xa9, 0x94, 0xea, 0x0c, 0x94, 0x84, 0x56, 0x29, 0xf7, 0x01, 0x8a, 0x0a, 0xce, 0x19, 0x0d, 0x6f,
-	0x4c, 0x33, 0xbe, 0xa4, 0x33, 0x22, 0x58, 0xd3, 0xa8, 0xd4, 0x75, 0x0e, 0xe3, 0xf3, 0x34, 0x12,
-	0x5a, 0xd3, 0x58, 0x94, 0xfb, 0x0c, 0x1a, 0x11, 0xac, 0x69, 0x54, 0x9a, 0xe0, 0x0c, 0x1a, 0x09,
-	0xad, 0x50, 0x5e, 0x7b, 0xe7, 0xf8, 0xc4, 0x29, 0x3d, 0x3d, 0x71, 0x4a, 0xcf, 0x4e, 0x1c, 0xe3,
-	0xd1, 0xd8, 0x31, 0x9e, 0x8c, 0x1d, 0xe3, 0xf7, 0xb1, 0x63, 0x1c, 0x8f, 0x1d, 0xe3, 0xcf, 0xb1,
-	0x63, 0xfc, 0x3d, 0x76, 0x4a, 0xcf, 0xc6, 0x8e, 0xf1, 0xf3, 0xa9, 0x53, 0x3a, 0x3e, 0x75, 0x4a,
-	0x4f, 0x4f, 0x9d, 0x52, 0xc7, 0xc2, 0x7f, 0x92, 0x6f, 0xff, 0x1b, 0x00, 0x00, 0xff, 0xff, 0x13,
-	0xf9, 0x1d, 0xc8, 0x61, 0x0e, 0x00, 0x00,
+var fileDescriptor_backendmessage_3981642a80d3e238 = []byte{
+	// 450 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x53, 0xbf, 0x6e, 0xd3, 0x40,
+	0x1c, 0xf6, 0xd9, 0x6d, 0x81, 0x5f, 0x9a, 0xaa, 0x9c, 0x2a, 0x64, 0x45, 0xe5, 0x14, 0x65, 0x8a,
+	0x18, 0x32, 0xa4, 0x48, 0x20, 0x06, 0x06, 0xca, 0x9f, 0x09, 0x06, 0x9b, 0xa1, 0x1e, 0x00, 0x5d,
+	0xec, 0x93, 0x39, 0xc5, 0xb1, 0x2d, 0xdf, 0x05, 0xe1, 0xad, 0xbc, 0x01, 0x0f, 0xc1, 0xc0, 0x1b,
+	0xf0, 0x0a, 0x8c, 0x19, 0x3b, 0x12, 0x67, 0x61, 0xec, 0x23, 0xa0, 0xfa, 0xce, 0x8d, 0x1d, 0x9b,
+	0x2d, 0xdf, 0x9f, 0x7c, 0xdf, 0xfd, 0x3e, 0xc9, 0x70, 0x32, 0xa3, 0xfe, 0x9c, 0xc5, 0xc1, 0x82,
+	0x09, 0x41, 0x43, 0x36, 0x49, 0xb3, 0x44, 0x26, 0xf8, 0xa8, 0xc9, 0x8e, 0xfa, 0xd0, 0x7b, 0xb7,
+	0x8c, 0xa2, 0xb7, 0x1a, 0xfe, 0x30, 0xe1, 0xd0, 0x95, 0x54, 0x72, 0xff, 0x0d, 0x8d, 0xe8, 0xd7,
+	0x1c, 0x1f, 0x81, 0xc9, 0x03, 0x1b, 0x0d, 0xd1, 0x78, 0xdf, 0x31, 0x79, 0x80, 0x6d, 0xb8, 0x13,
+	0x46, 0xc9, 0x8c, 0x46, 0x17, 0xb6, 0x39, 0x44, 0x63, 0xcb, 0xa9, 0xe0, 0x56, 0xf1, 0x6c, 0xab,
+	0xae, 0x78, 0xf8, 0x14, 0xee, 0xa5, 0x19, 0xf3, 0xb9, 0xe0, 0x49, 0x6c, 0xef, 0x95, 0x51, 0x5b,
+	0x02, 0xbb, 0x70, 0x28, 0xca, 0x46, 0x37, 0x17, 0x92, 0x2d, 0xec, 0x4b, 0x34, 0xb4, 0xc6, 0xbd,
+	0xe9, 0x64, 0xb2, 0xf3, 0xfe, 0xfa, 0xb3, 0x34, 0x50, 0xff, 0x78, 0x15, 0xcb, 0x2c, 0x77, 0x1a,
+	0x21, 0x83, 0x0f, 0x70, 0xbf, 0x65, 0xc1, 0xc7, 0x60, 0xcd, 0x59, 0xae, 0x8f, 0xb9, 0xf9, 0x89,
+	0xa7, 0xb0, 0xff, 0x85, 0x46, 0x4b, 0x56, 0xde, 0xd2, 0x9b, 0x9e, 0x76, 0x77, 0xaa, 0x0c, 0x47,
+	0x59, 0x9f, 0x99, 0x4f, 0xd1, 0xe8, 0x79, 0xb5, 0x92, 0x92, 0xf0, 0x03, 0x38, 0xe0, 0xb1, 0x64,
+	0xd9, 0x85, 0x0e, 0xd7, 0xe8, 0x96, 0xf7, 0xca, 0x82, 0x8a, 0xf7, 0x46, 0xdf, 0x4c, 0x38, 0x79,
+	0x99, 0xc7, 0x74, 0x51, 0x1d, 0xe4, 0x32, 0x5f, 0xde, 0x8c, 0xd1, 0x31, 0xb7, 0x50, 0x92, 0x4e,
+	0xa8, 0x20, 0xfe, 0x08, 0xfd, 0x40, 0x25, 0x34, 0x77, 0x7b, 0xb2, 0x7b, 0x43, 0x57, 0x4f, 0x45,
+	0xd6, 0x07, 0x6c, 0xc6, 0x0d, 0x3e, 0x01, 0x6e, 0x9b, 0x3a, 0x26, 0x3c, 0x6b, 0x4e, 0xf8, 0xf0,
+	0x3f, 0xf5, 0xed, 0x0d, 0x7f, 0x21, 0xe8, 0x37, 0x44, 0x3c, 0x80, 0xbb, 0x69, 0x96, 0x84, 0x19,
+	0x13, 0x42, 0x37, 0xdc, 0x62, 0xfc, 0x08, 0x8e, 0x83, 0xc4, 0x9f, 0xb3, 0xe0, 0x3d, 0x97, 0x34,
+	0x3e, 0x4f, 0x96, 0xb1, 0xd4, 0x8b, 0xb4, 0x78, 0x3c, 0x01, 0xac, 0xb8, 0x73, 0x9a, 0x72, 0x49,
+	0x23, 0xe5, 0xb6, 0x4a, 0x77, 0x87, 0xb2, 0xf5, 0xbf, 0xe6, 0xe1, 0x67, 0xc9, 0x32, 0xe5, 0xdf,
+	0xab, 0xfb, 0xeb, 0xca, 0x8b, 0xc7, 0xab, 0x35, 0x31, 0xae, 0xd6, 0xc4, 0xb8, 0x5e, 0x13, 0x74,
+	0x59, 0x10, 0xf4, 0xb3, 0x20, 0xe8, 0x77, 0x41, 0xd0, 0xaa, 0x20, 0xe8, 0x4f, 0x41, 0xd0, 0xdf,
+	0x82, 0x18, 0xd7, 0x05, 0x41, 0xdf, 0x37, 0xc4, 0x58, 0x6d, 0x88, 0x71, 0xb5, 0x21, 0xc6, 0xec,
+	0xa0, 0xfc, 0x00, 0xcf, 0xfe, 0x05, 0x00, 0x00, 0xff, 0xff, 0xd6, 0xe2, 0x53, 0x0a, 0x98, 0x03,
+	0x00, 0x00,
 }

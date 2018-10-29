@@ -7,14 +7,13 @@ message Backend {
 	string hostname = 1;
 	int64 globalX = 2;
 	int64 globalY = 3;
-	int32 numberOfPlayers = 4;
-	map<int32, int32> factionStrength = 5;
+	map<string, int32> playerStrength = 4;
 }
 
 message ServerInfo {
 	string errorMessage = 1;
 	string instanceName = 2;
 	int32 version = 3;
-	map<uint64, Backend> yourServers = 4;
-	map<uint64, Backend> allServers = 5;
+	int32 precision = 4;
+	map<int32, Backend> servers = 5;
 }

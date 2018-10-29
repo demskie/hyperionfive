@@ -25,17 +25,16 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type Backend struct {
-	Hostname        string          `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	GlobalX         int64           `protobuf:"varint,2,opt,name=globalX,proto3" json:"globalX,omitempty"`
-	GlobalY         int64           `protobuf:"varint,3,opt,name=globalY,proto3" json:"globalY,omitempty"`
-	NumberOfPlayers int32           `protobuf:"varint,4,opt,name=numberOfPlayers,proto3" json:"numberOfPlayers,omitempty"`
-	FactionStrength map[int32]int32 `protobuf:"bytes,5,rep,name=factionStrength" json:"factionStrength,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	Hostname       string           `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	GlobalX        int64            `protobuf:"varint,2,opt,name=globalX,proto3" json:"globalX,omitempty"`
+	GlobalY        int64            `protobuf:"varint,3,opt,name=globalY,proto3" json:"globalY,omitempty"`
+	PlayerStrength map[string]int32 `protobuf:"bytes,4,rep,name=playerStrength" json:"playerStrength,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 }
 
 func (m *Backend) Reset()      { *m = Backend{} }
 func (*Backend) ProtoMessage() {}
 func (*Backend) Descriptor() ([]byte, []int) {
-	return fileDescriptor_frontendmessage_afc2af527b03204f, []int{0}
+	return fileDescriptor_frontendmessage_cc2675e1229589e0, []int{0}
 }
 func (m *Backend) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -85,32 +84,25 @@ func (m *Backend) GetGlobalY() int64 {
 	return 0
 }
 
-func (m *Backend) GetNumberOfPlayers() int32 {
+func (m *Backend) GetPlayerStrength() map[string]int32 {
 	if m != nil {
-		return m.NumberOfPlayers
-	}
-	return 0
-}
-
-func (m *Backend) GetFactionStrength() map[int32]int32 {
-	if m != nil {
-		return m.FactionStrength
+		return m.PlayerStrength
 	}
 	return nil
 }
 
 type ServerInfo struct {
-	ErrorMessage string              `protobuf:"bytes,1,opt,name=errorMessage,proto3" json:"errorMessage,omitempty"`
-	InstanceName string              `protobuf:"bytes,2,opt,name=instanceName,proto3" json:"instanceName,omitempty"`
-	Version      int32               `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	YourServers  map[uint64]*Backend `protobuf:"bytes,4,rep,name=yourServers" json:"yourServers,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	AllServers   map[uint64]*Backend `protobuf:"bytes,5,rep,name=allServers" json:"allServers,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	ErrorMessage string             `protobuf:"bytes,1,opt,name=errorMessage,proto3" json:"errorMessage,omitempty"`
+	InstanceName string             `protobuf:"bytes,2,opt,name=instanceName,proto3" json:"instanceName,omitempty"`
+	Version      int32              `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Precision    int32              `protobuf:"varint,4,opt,name=precision,proto3" json:"precision,omitempty"`
+	Servers      map[int32]*Backend `protobuf:"bytes,5,rep,name=servers" json:"servers,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
 }
 
 func (m *ServerInfo) Reset()      { *m = ServerInfo{} }
 func (*ServerInfo) ProtoMessage() {}
 func (*ServerInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_frontendmessage_afc2af527b03204f, []int{1}
+	return fileDescriptor_frontendmessage_cc2675e1229589e0, []int{1}
 }
 func (m *ServerInfo) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -160,26 +152,25 @@ func (m *ServerInfo) GetVersion() int32 {
 	return 0
 }
 
-func (m *ServerInfo) GetYourServers() map[uint64]*Backend {
+func (m *ServerInfo) GetPrecision() int32 {
 	if m != nil {
-		return m.YourServers
+		return m.Precision
 	}
-	return nil
+	return 0
 }
 
-func (m *ServerInfo) GetAllServers() map[uint64]*Backend {
+func (m *ServerInfo) GetServers() map[int32]*Backend {
 	if m != nil {
-		return m.AllServers
+		return m.Servers
 	}
 	return nil
 }
 
 func init() {
 	proto.RegisterType((*Backend)(nil), "frontendmessage.Backend")
-	proto.RegisterMapType((map[int32]int32)(nil), "frontendmessage.Backend.FactionStrengthEntry")
+	proto.RegisterMapType((map[string]int32)(nil), "frontendmessage.Backend.PlayerStrengthEntry")
 	proto.RegisterType((*ServerInfo)(nil), "frontendmessage.ServerInfo")
-	proto.RegisterMapType((map[uint64]*Backend)(nil), "frontendmessage.ServerInfo.AllServersEntry")
-	proto.RegisterMapType((map[uint64]*Backend)(nil), "frontendmessage.ServerInfo.YourServersEntry")
+	proto.RegisterMapType((map[int32]*Backend)(nil), "frontendmessage.ServerInfo.ServersEntry")
 }
 func (this *Backend) Equal(that interface{}) bool {
 	if that == nil {
@@ -209,14 +200,11 @@ func (this *Backend) Equal(that interface{}) bool {
 	if this.GlobalY != that1.GlobalY {
 		return false
 	}
-	if this.NumberOfPlayers != that1.NumberOfPlayers {
+	if len(this.PlayerStrength) != len(that1.PlayerStrength) {
 		return false
 	}
-	if len(this.FactionStrength) != len(that1.FactionStrength) {
-		return false
-	}
-	for i := range this.FactionStrength {
-		if this.FactionStrength[i] != that1.FactionStrength[i] {
+	for i := range this.PlayerStrength {
+		if this.PlayerStrength[i] != that1.PlayerStrength[i] {
 			return false
 		}
 	}
@@ -250,19 +238,14 @@ func (this *ServerInfo) Equal(that interface{}) bool {
 	if this.Version != that1.Version {
 		return false
 	}
-	if len(this.YourServers) != len(that1.YourServers) {
+	if this.Precision != that1.Precision {
 		return false
 	}
-	for i := range this.YourServers {
-		if !this.YourServers[i].Equal(that1.YourServers[i]) {
-			return false
-		}
-	}
-	if len(this.AllServers) != len(that1.AllServers) {
+	if len(this.Servers) != len(that1.Servers) {
 		return false
 	}
-	for i := range this.AllServers {
-		if !this.AllServers[i].Equal(that1.AllServers[i]) {
+	for i := range this.Servers {
+		if !this.Servers[i].Equal(that1.Servers[i]) {
 			return false
 		}
 	}
@@ -272,24 +255,23 @@ func (this *Backend) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 8)
 	s = append(s, "&frontendmessage.Backend{")
 	s = append(s, "Hostname: "+fmt.Sprintf("%#v", this.Hostname)+",\n")
 	s = append(s, "GlobalX: "+fmt.Sprintf("%#v", this.GlobalX)+",\n")
 	s = append(s, "GlobalY: "+fmt.Sprintf("%#v", this.GlobalY)+",\n")
-	s = append(s, "NumberOfPlayers: "+fmt.Sprintf("%#v", this.NumberOfPlayers)+",\n")
-	keysForFactionStrength := make([]int32, 0, len(this.FactionStrength))
-	for k, _ := range this.FactionStrength {
-		keysForFactionStrength = append(keysForFactionStrength, k)
+	keysForPlayerStrength := make([]string, 0, len(this.PlayerStrength))
+	for k, _ := range this.PlayerStrength {
+		keysForPlayerStrength = append(keysForPlayerStrength, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForFactionStrength)
-	mapStringForFactionStrength := "map[int32]int32{"
-	for _, k := range keysForFactionStrength {
-		mapStringForFactionStrength += fmt.Sprintf("%#v: %#v,", k, this.FactionStrength[k])
+	github_com_gogo_protobuf_sortkeys.Strings(keysForPlayerStrength)
+	mapStringForPlayerStrength := "map[string]int32{"
+	for _, k := range keysForPlayerStrength {
+		mapStringForPlayerStrength += fmt.Sprintf("%#v: %#v,", k, this.PlayerStrength[k])
 	}
-	mapStringForFactionStrength += "}"
-	if this.FactionStrength != nil {
-		s = append(s, "FactionStrength: "+mapStringForFactionStrength+",\n")
+	mapStringForPlayerStrength += "}"
+	if this.PlayerStrength != nil {
+		s = append(s, "PlayerStrength: "+mapStringForPlayerStrength+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -303,31 +285,19 @@ func (this *ServerInfo) GoString() string {
 	s = append(s, "ErrorMessage: "+fmt.Sprintf("%#v", this.ErrorMessage)+",\n")
 	s = append(s, "InstanceName: "+fmt.Sprintf("%#v", this.InstanceName)+",\n")
 	s = append(s, "Version: "+fmt.Sprintf("%#v", this.Version)+",\n")
-	keysForYourServers := make([]uint64, 0, len(this.YourServers))
-	for k, _ := range this.YourServers {
-		keysForYourServers = append(keysForYourServers, k)
+	s = append(s, "Precision: "+fmt.Sprintf("%#v", this.Precision)+",\n")
+	keysForServers := make([]int32, 0, len(this.Servers))
+	for k, _ := range this.Servers {
+		keysForServers = append(keysForServers, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForYourServers)
-	mapStringForYourServers := "map[uint64]*Backend{"
-	for _, k := range keysForYourServers {
-		mapStringForYourServers += fmt.Sprintf("%#v: %#v,", k, this.YourServers[k])
+	github_com_gogo_protobuf_sortkeys.Int32s(keysForServers)
+	mapStringForServers := "map[int32]*Backend{"
+	for _, k := range keysForServers {
+		mapStringForServers += fmt.Sprintf("%#v: %#v,", k, this.Servers[k])
 	}
-	mapStringForYourServers += "}"
-	if this.YourServers != nil {
-		s = append(s, "YourServers: "+mapStringForYourServers+",\n")
-	}
-	keysForAllServers := make([]uint64, 0, len(this.AllServers))
-	for k, _ := range this.AllServers {
-		keysForAllServers = append(keysForAllServers, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForAllServers)
-	mapStringForAllServers := "map[uint64]*Backend{"
-	for _, k := range keysForAllServers {
-		mapStringForAllServers += fmt.Sprintf("%#v: %#v,", k, this.AllServers[k])
-	}
-	mapStringForAllServers += "}"
-	if this.AllServers != nil {
-		s = append(s, "AllServers: "+mapStringForAllServers+",\n")
+	mapStringForServers += "}"
+	if this.Servers != nil {
+		s = append(s, "Servers: "+mapStringForServers+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -371,21 +341,17 @@ func (m *Backend) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintFrontendmessage(dAtA, i, uint64(m.GlobalY))
 	}
-	if m.NumberOfPlayers != 0 {
-		dAtA[i] = 0x20
-		i++
-		i = encodeVarintFrontendmessage(dAtA, i, uint64(m.NumberOfPlayers))
-	}
-	if len(m.FactionStrength) > 0 {
-		for k, _ := range m.FactionStrength {
-			dAtA[i] = 0x2a
+	if len(m.PlayerStrength) > 0 {
+		for k, _ := range m.PlayerStrength {
+			dAtA[i] = 0x22
 			i++
-			v := m.FactionStrength[k]
-			mapSize := 1 + sovFrontendmessage(uint64(k)) + 1 + sovFrontendmessage(uint64(v))
+			v := m.PlayerStrength[k]
+			mapSize := 1 + len(k) + sovFrontendmessage(uint64(len(k))) + 1 + sovFrontendmessage(uint64(v))
 			i = encodeVarintFrontendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintFrontendmessage(dAtA, i, uint64(k))
+			i = encodeVarintFrontendmessage(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
 			dAtA[i] = 0x10
 			i++
 			i = encodeVarintFrontendmessage(dAtA, i, uint64(v))
@@ -426,11 +392,16 @@ func (m *ServerInfo) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintFrontendmessage(dAtA, i, uint64(m.Version))
 	}
-	if len(m.YourServers) > 0 {
-		for k, _ := range m.YourServers {
-			dAtA[i] = 0x22
+	if m.Precision != 0 {
+		dAtA[i] = 0x20
+		i++
+		i = encodeVarintFrontendmessage(dAtA, i, uint64(m.Precision))
+	}
+	if len(m.Servers) > 0 {
+		for k, _ := range m.Servers {
+			dAtA[i] = 0x2a
 			i++
-			v := m.YourServers[k]
+			v := m.Servers[k]
 			msgSize := 0
 			if v != nil {
 				msgSize = v.Size()
@@ -450,33 +421,6 @@ func (m *ServerInfo) MarshalTo(dAtA []byte) (int, error) {
 					return 0, err
 				}
 				i += n1
-			}
-		}
-	}
-	if len(m.AllServers) > 0 {
-		for k, _ := range m.AllServers {
-			dAtA[i] = 0x2a
-			i++
-			v := m.AllServers[k]
-			msgSize := 0
-			if v != nil {
-				msgSize = v.Size()
-				msgSize += 1 + sovFrontendmessage(uint64(msgSize))
-			}
-			mapSize := 1 + sovFrontendmessage(uint64(k)) + msgSize
-			i = encodeVarintFrontendmessage(dAtA, i, uint64(mapSize))
-			dAtA[i] = 0x8
-			i++
-			i = encodeVarintFrontendmessage(dAtA, i, uint64(k))
-			if v != nil {
-				dAtA[i] = 0x12
-				i++
-				i = encodeVarintFrontendmessage(dAtA, i, uint64(v.Size()))
-				n2, err := v.MarshalTo(dAtA[i:])
-				if err != nil {
-					return 0, err
-				}
-				i += n2
 			}
 		}
 	}
@@ -508,14 +452,11 @@ func (m *Backend) Size() (n int) {
 	if m.GlobalY != 0 {
 		n += 1 + sovFrontendmessage(uint64(m.GlobalY))
 	}
-	if m.NumberOfPlayers != 0 {
-		n += 1 + sovFrontendmessage(uint64(m.NumberOfPlayers))
-	}
-	if len(m.FactionStrength) > 0 {
-		for k, v := range m.FactionStrength {
+	if len(m.PlayerStrength) > 0 {
+		for k, v := range m.PlayerStrength {
 			_ = k
 			_ = v
-			mapEntrySize := 1 + sovFrontendmessage(uint64(k)) + 1 + sovFrontendmessage(uint64(v))
+			mapEntrySize := 1 + len(k) + sovFrontendmessage(uint64(len(k))) + 1 + sovFrontendmessage(uint64(v))
 			n += mapEntrySize + 1 + sovFrontendmessage(uint64(mapEntrySize))
 		}
 	}
@@ -539,21 +480,11 @@ func (m *ServerInfo) Size() (n int) {
 	if m.Version != 0 {
 		n += 1 + sovFrontendmessage(uint64(m.Version))
 	}
-	if len(m.YourServers) > 0 {
-		for k, v := range m.YourServers {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-				l += 1 + sovFrontendmessage(uint64(l))
-			}
-			mapEntrySize := 1 + sovFrontendmessage(uint64(k)) + l
-			n += mapEntrySize + 1 + sovFrontendmessage(uint64(mapEntrySize))
-		}
+	if m.Precision != 0 {
+		n += 1 + sovFrontendmessage(uint64(m.Precision))
 	}
-	if len(m.AllServers) > 0 {
-		for k, v := range m.AllServers {
+	if len(m.Servers) > 0 {
+		for k, v := range m.Servers {
 			_ = k
 			_ = v
 			l = 0
@@ -585,22 +516,21 @@ func (this *Backend) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForFactionStrength := make([]int32, 0, len(this.FactionStrength))
-	for k, _ := range this.FactionStrength {
-		keysForFactionStrength = append(keysForFactionStrength, k)
+	keysForPlayerStrength := make([]string, 0, len(this.PlayerStrength))
+	for k, _ := range this.PlayerStrength {
+		keysForPlayerStrength = append(keysForPlayerStrength, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Int32s(keysForFactionStrength)
-	mapStringForFactionStrength := "map[int32]int32{"
-	for _, k := range keysForFactionStrength {
-		mapStringForFactionStrength += fmt.Sprintf("%v: %v,", k, this.FactionStrength[k])
+	github_com_gogo_protobuf_sortkeys.Strings(keysForPlayerStrength)
+	mapStringForPlayerStrength := "map[string]int32{"
+	for _, k := range keysForPlayerStrength {
+		mapStringForPlayerStrength += fmt.Sprintf("%v: %v,", k, this.PlayerStrength[k])
 	}
-	mapStringForFactionStrength += "}"
+	mapStringForPlayerStrength += "}"
 	s := strings.Join([]string{`&Backend{`,
 		`Hostname:` + fmt.Sprintf("%v", this.Hostname) + `,`,
 		`GlobalX:` + fmt.Sprintf("%v", this.GlobalX) + `,`,
 		`GlobalY:` + fmt.Sprintf("%v", this.GlobalY) + `,`,
-		`NumberOfPlayers:` + fmt.Sprintf("%v", this.NumberOfPlayers) + `,`,
-		`FactionStrength:` + mapStringForFactionStrength + `,`,
+		`PlayerStrength:` + mapStringForPlayerStrength + `,`,
 		`}`,
 	}, "")
 	return s
@@ -609,32 +539,22 @@ func (this *ServerInfo) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForYourServers := make([]uint64, 0, len(this.YourServers))
-	for k, _ := range this.YourServers {
-		keysForYourServers = append(keysForYourServers, k)
+	keysForServers := make([]int32, 0, len(this.Servers))
+	for k, _ := range this.Servers {
+		keysForServers = append(keysForServers, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForYourServers)
-	mapStringForYourServers := "map[uint64]*Backend{"
-	for _, k := range keysForYourServers {
-		mapStringForYourServers += fmt.Sprintf("%v: %v,", k, this.YourServers[k])
+	github_com_gogo_protobuf_sortkeys.Int32s(keysForServers)
+	mapStringForServers := "map[int32]*Backend{"
+	for _, k := range keysForServers {
+		mapStringForServers += fmt.Sprintf("%v: %v,", k, this.Servers[k])
 	}
-	mapStringForYourServers += "}"
-	keysForAllServers := make([]uint64, 0, len(this.AllServers))
-	for k, _ := range this.AllServers {
-		keysForAllServers = append(keysForAllServers, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForAllServers)
-	mapStringForAllServers := "map[uint64]*Backend{"
-	for _, k := range keysForAllServers {
-		mapStringForAllServers += fmt.Sprintf("%v: %v,", k, this.AllServers[k])
-	}
-	mapStringForAllServers += "}"
+	mapStringForServers += "}"
 	s := strings.Join([]string{`&ServerInfo{`,
 		`ErrorMessage:` + fmt.Sprintf("%v", this.ErrorMessage) + `,`,
 		`InstanceName:` + fmt.Sprintf("%v", this.InstanceName) + `,`,
 		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`YourServers:` + mapStringForYourServers + `,`,
-		`AllServers:` + mapStringForAllServers + `,`,
+		`Precision:` + fmt.Sprintf("%v", this.Precision) + `,`,
+		`Servers:` + mapStringForServers + `,`,
 		`}`,
 	}, "")
 	return s
@@ -744,27 +664,8 @@ func (m *Backend) Unmarshal(dAtA []byte) error {
 				}
 			}
 		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NumberOfPlayers", wireType)
-			}
-			m.NumberOfPlayers = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowFrontendmessage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.NumberOfPlayers |= (int32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FactionStrength", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PlayerStrength", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -788,10 +689,10 @@ func (m *Backend) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.FactionStrength == nil {
-				m.FactionStrength = make(map[int32]int32)
+			if m.PlayerStrength == nil {
+				m.PlayerStrength = make(map[string]int32)
 			}
-			var mapkey int32
+			var mapkey string
 			var mapvalue int32
 			for iNdEx < postIndex {
 				entryPreIndex := iNdEx
@@ -812,6 +713,7 @@ func (m *Backend) Unmarshal(dAtA []byte) error {
 				}
 				fieldNum := int32(wire >> 3)
 				if fieldNum == 1 {
+					var stringLenmapkey uint64
 					for shift := uint(0); ; shift += 7 {
 						if shift >= 64 {
 							return ErrIntOverflowFrontendmessage
@@ -821,11 +723,21 @@ func (m *Backend) Unmarshal(dAtA []byte) error {
 						}
 						b := dAtA[iNdEx]
 						iNdEx++
-						mapkey |= (int32(b) & 0x7F) << shift
+						stringLenmapkey |= (uint64(b) & 0x7F) << shift
 						if b < 0x80 {
 							break
 						}
 					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthFrontendmessage
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
 				} else if fieldNum == 2 {
 					for shift := uint(0); ; shift += 7 {
 						if shift >= 64 {
@@ -856,7 +768,7 @@ func (m *Backend) Unmarshal(dAtA []byte) error {
 					iNdEx += skippy
 				}
 			}
-			m.FactionStrength[mapkey] = mapvalue
+			m.PlayerStrength[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -986,10 +898,10 @@ func (m *ServerInfo) Unmarshal(dAtA []byte) error {
 				}
 			}
 		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field YourServers", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Precision", wireType)
 			}
-			var msglen int
+			m.Precision = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowFrontendmessage
@@ -999,107 +911,14 @@ func (m *ServerInfo) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				m.Precision |= (int32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
-				return ErrInvalidLengthFrontendmessage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.YourServers == nil {
-				m.YourServers = make(map[uint64]*Backend)
-			}
-			var mapkey uint64
-			var mapvalue *Backend
-			for iNdEx < postIndex {
-				entryPreIndex := iNdEx
-				var wire uint64
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowFrontendmessage
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					wire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				fieldNum := int32(wire >> 3)
-				if fieldNum == 1 {
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowFrontendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-				} else if fieldNum == 2 {
-					var mapmsglen int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflowFrontendmessage
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						mapmsglen |= (int(b) & 0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					if mapmsglen < 0 {
-						return ErrInvalidLengthFrontendmessage
-					}
-					postmsgIndex := iNdEx + mapmsglen
-					if mapmsglen < 0 {
-						return ErrInvalidLengthFrontendmessage
-					}
-					if postmsgIndex > l {
-						return io.ErrUnexpectedEOF
-					}
-					mapvalue = &Backend{}
-					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
-						return err
-					}
-					iNdEx = postmsgIndex
-				} else {
-					iNdEx = entryPreIndex
-					skippy, err := skipFrontendmessage(dAtA[iNdEx:])
-					if err != nil {
-						return err
-					}
-					if skippy < 0 {
-						return ErrInvalidLengthFrontendmessage
-					}
-					if (iNdEx + skippy) > postIndex {
-						return io.ErrUnexpectedEOF
-					}
-					iNdEx += skippy
-				}
-			}
-			m.YourServers[mapkey] = mapvalue
-			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field AllServers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Servers", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1123,10 +942,10 @@ func (m *ServerInfo) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.AllServers == nil {
-				m.AllServers = make(map[uint64]*Backend)
+			if m.Servers == nil {
+				m.Servers = make(map[int32]*Backend)
 			}
-			var mapkey uint64
+			var mapkey int32
 			var mapvalue *Backend
 			for iNdEx < postIndex {
 				entryPreIndex := iNdEx
@@ -1156,7 +975,7 @@ func (m *ServerInfo) Unmarshal(dAtA []byte) error {
 						}
 						b := dAtA[iNdEx]
 						iNdEx++
-						mapkey |= (uint64(b) & 0x7F) << shift
+						mapkey |= (int32(b) & 0x7F) << shift
 						if b < 0x80 {
 							break
 						}
@@ -1207,7 +1026,7 @@ func (m *ServerInfo) Unmarshal(dAtA []byte) error {
 					iNdEx += skippy
 				}
 			}
-			m.AllServers[mapkey] = mapvalue
+			m.Servers[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1336,36 +1155,33 @@ var (
 )
 
 func init() {
-	proto.RegisterFile("frontendmessage.proto", fileDescriptor_frontendmessage_afc2af527b03204f)
+	proto.RegisterFile("frontendmessage.proto", fileDescriptor_frontendmessage_cc2675e1229589e0)
 }
 
-var fileDescriptor_frontendmessage_afc2af527b03204f = []byte{
-	// 424 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x93, 0xbd, 0xae, 0xd3, 0x40,
-	0x10, 0x85, 0xbd, 0xf6, 0x35, 0x17, 0x26, 0x48, 0xbe, 0x5a, 0x5d, 0x24, 0xcb, 0xc5, 0xca, 0x4a,
-	0x65, 0x09, 0x70, 0x11, 0x28, 0x10, 0x1d, 0x91, 0x40, 0x42, 0x88, 0x80, 0x9c, 0x22, 0x49, 0xb9,
-	0x49, 0xd6, 0x49, 0x14, 0x67, 0x17, 0xad, 0x37, 0x91, 0xdc, 0xf1, 0x08, 0x3c, 0x02, 0x25, 0x4f,
-	0x41, 0x4d, 0x99, 0x32, 0x25, 0x71, 0x1a, 0xca, 0x3c, 0x02, 0xb2, 0x37, 0x3f, 0x8e, 0xf9, 0xa9,
-	0x6e, 0xe7, 0x39, 0x73, 0x7c, 0x66, 0xe6, 0xb3, 0x0c, 0x8f, 0x62, 0x29, 0xb8, 0x62, 0x7c, 0xbc,
-	0x60, 0x69, 0x4a, 0x27, 0x2c, 0xfc, 0x24, 0x85, 0x12, 0xd8, 0xa9, 0xc9, 0xcd, 0xaf, 0x26, 0x5c,
-	0xb7, 0xe9, 0x68, 0xce, 0xf8, 0x18, 0x7b, 0x70, 0x7f, 0x2a, 0x52, 0xc5, 0xe9, 0x82, 0xb9, 0xc8,
-	0x47, 0xc1, 0x83, 0xe8, 0x54, 0x63, 0x17, 0xae, 0x27, 0x89, 0x18, 0xd2, 0xa4, 0xef, 0x9a, 0x3e,
-	0x0a, 0xac, 0xe8, 0x58, 0x9e, 0x3b, 0x03, 0xd7, 0xaa, 0x76, 0x06, 0x38, 0x00, 0x87, 0x2f, 0x17,
-	0x43, 0x26, 0x3f, 0xc4, 0x1f, 0x13, 0x9a, 0x31, 0x99, 0xba, 0x57, 0x3e, 0x0a, 0xec, 0xa8, 0x2e,
-	0xe3, 0x1e, 0x38, 0x31, 0x1d, 0xa9, 0x99, 0xe0, 0x5d, 0x25, 0x19, 0x9f, 0xa8, 0xa9, 0x6b, 0xfb,
-	0x56, 0xd0, 0x68, 0x3d, 0x0d, 0xeb, 0x77, 0x1c, 0x96, 0x0d, 0xdf, 0x5c, 0xfa, 0x5f, 0x73, 0x25,
-	0xb3, 0xa8, 0x9e, 0xe2, 0xb5, 0xe1, 0xf6, 0x6f, 0x46, 0x7c, 0x03, 0xd6, 0x9c, 0x65, 0xe5, 0x95,
-	0x76, 0x54, 0x3c, 0xe2, 0x5b, 0xb0, 0x57, 0x34, 0x59, 0xb2, 0xf2, 0x3c, 0x3b, 0xd2, 0xc5, 0x4b,
-	0xf3, 0x05, 0x6a, 0x7e, 0xb7, 0x00, 0xba, 0x4c, 0xae, 0x98, 0x7c, 0xcb, 0x63, 0x81, 0x9b, 0xf0,
-	0x90, 0x49, 0x29, 0xe4, 0x7b, 0xbd, 0xd0, 0x81, 0xd4, 0x85, 0x56, 0x78, 0x66, 0x3c, 0x55, 0x94,
-	0x8f, 0x58, 0xa7, 0xa0, 0x69, 0x6a, 0x4f, 0x55, 0x2b, 0xb8, 0xad, 0x98, 0x4c, 0x67, 0x82, 0x97,
-	0xdc, 0xec, 0xe8, 0x58, 0xe2, 0x0e, 0x34, 0x32, 0xb1, 0x94, 0x7a, 0x66, 0xc1, 0xac, 0x20, 0xf1,
-	0xe4, 0x0f, 0x12, 0xe7, 0x9d, 0xc2, 0xc1, 0xd9, 0xae, 0x41, 0x54, 0x03, 0xf0, 0x3b, 0x00, 0x9a,
-	0x24, 0xc7, 0x38, 0x0d, 0xf6, 0xf1, 0xff, 0xe2, 0x5e, 0x9d, 0xdc, 0x3a, 0xad, 0xf2, 0xba, 0xd7,
-	0x87, 0x9b, 0xfa, 0xb4, 0x2a, 0xcd, 0x2b, 0x4d, 0x33, 0xac, 0xd2, 0x6c, 0xb4, 0xdc, 0x7f, 0x7d,
-	0xc6, 0x0a, 0x67, 0xaf, 0x07, 0x4e, 0x6d, 0xf0, 0xdd, 0x04, 0xb7, 0x9f, 0xaf, 0xb7, 0xc4, 0xd8,
-	0x6c, 0x89, 0xb1, 0xdf, 0x12, 0xf4, 0x39, 0x27, 0xe8, 0x5b, 0x4e, 0xd0, 0x8f, 0x9c, 0xa0, 0x75,
-	0x4e, 0xd0, 0xcf, 0x9c, 0xa0, 0x5f, 0x39, 0x31, 0xf6, 0x39, 0x41, 0x5f, 0x76, 0xc4, 0x58, 0xef,
-	0x88, 0xb1, 0xd9, 0x11, 0x63, 0x78, 0xaf, 0xfc, 0x63, 0x9e, 0xfd, 0x0e, 0x00, 0x00, 0xff, 0xff,
-	0x20, 0x09, 0xab, 0xa5, 0x4a, 0x03, 0x00, 0x00,
+var fileDescriptor_frontendmessage_cc2675e1229589e0 = []byte{
+	// 376 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x92, 0xbb, 0x4e, 0x2a, 0x41,
+	0x18, 0xc7, 0x77, 0x76, 0xd9, 0xc3, 0xe1, 0x83, 0x9c, 0x73, 0x32, 0x47, 0x93, 0x0d, 0x31, 0x13,
+	0x42, 0xb5, 0x85, 0xd9, 0x02, 0x2d, 0x8c, 0x9d, 0x24, 0x16, 0x16, 0x1a, 0xb3, 0x50, 0x48, 0xb9,
+	0xc0, 0xc7, 0x25, 0x2c, 0x33, 0x64, 0x66, 0x25, 0xa1, 0xf3, 0x11, 0x7c, 0x0a, 0xe3, 0xa3, 0x58,
+	0x52, 0x52, 0xca, 0xd2, 0x58, 0x12, 0x9f, 0xc0, 0xec, 0x05, 0x59, 0x50, 0xbb, 0xf9, 0x5f, 0x76,
+	0xf2, 0xcf, 0x6f, 0x07, 0x0e, 0x7b, 0x52, 0xf0, 0x00, 0x79, 0x77, 0x8c, 0x4a, 0x79, 0x7d, 0x74,
+	0x26, 0x52, 0x04, 0x82, 0xfe, 0xdd, 0xb3, 0xab, 0xef, 0x04, 0xf2, 0x75, 0xaf, 0x33, 0x42, 0xde,
+	0xa5, 0x65, 0xf8, 0x3d, 0x10, 0x2a, 0xe0, 0xde, 0x18, 0x2d, 0x52, 0x21, 0x76, 0xc1, 0xfd, 0xd4,
+	0xd4, 0x82, 0x7c, 0xdf, 0x17, 0x6d, 0xcf, 0xbf, 0xb3, 0xf4, 0x0a, 0xb1, 0x0d, 0x77, 0x23, 0xb7,
+	0x49, 0xcb, 0x32, 0xb2, 0x49, 0x8b, 0x36, 0xe1, 0xcf, 0xc4, 0xf7, 0x66, 0x28, 0x1b, 0x81, 0x44,
+	0xde, 0x0f, 0x06, 0x56, 0xae, 0x62, 0xd8, 0xc5, 0xda, 0xb1, 0xb3, 0x3f, 0x2e, 0x5d, 0xe0, 0xdc,
+	0xee, 0xd4, 0x2f, 0x79, 0x20, 0x67, 0xee, 0xde, 0x1d, 0xe5, 0x0b, 0xf8, 0xff, 0x4d, 0x8d, 0xfe,
+	0x03, 0x63, 0x84, 0xb3, 0x74, 0x77, 0x74, 0xa4, 0x07, 0x60, 0x4e, 0x3d, 0xff, 0x1e, 0xe3, 0xc1,
+	0xa6, 0x9b, 0x88, 0x73, 0xfd, 0x8c, 0x54, 0x9f, 0x74, 0x80, 0x06, 0xca, 0x29, 0xca, 0x2b, 0xde,
+	0x13, 0xb4, 0x0a, 0x25, 0x94, 0x52, 0xc8, 0xeb, 0x64, 0x4d, 0x7a, 0xc7, 0x8e, 0x17, 0x75, 0x86,
+	0x5c, 0x05, 0x1e, 0xef, 0xe0, 0x4d, 0xc4, 0x47, 0x4f, 0x3a, 0x59, 0x2f, 0x22, 0x31, 0x45, 0xa9,
+	0x86, 0x82, 0xc7, 0x24, 0x4c, 0x77, 0x23, 0xe9, 0x11, 0x14, 0x26, 0x12, 0x3b, 0xc3, 0x38, 0xcb,
+	0xc5, 0xd9, 0xd6, 0xa0, 0x75, 0xc8, 0xab, 0x78, 0x8d, 0xb2, 0xcc, 0x18, 0x90, 0xfd, 0x05, 0xd0,
+	0x76, 0x6d, 0x7a, 0x54, 0x09, 0x9c, 0xcd, 0x87, 0xe5, 0x26, 0x94, 0xb2, 0x41, 0x16, 0x87, 0x99,
+	0xe0, 0x70, 0xb2, 0x38, 0x8a, 0x35, 0xeb, 0xa7, 0x9f, 0x90, 0x01, 0x55, 0x3f, 0x9d, 0x2f, 0x99,
+	0xb6, 0x58, 0x32, 0x6d, 0xbd, 0x64, 0xe4, 0x21, 0x64, 0xe4, 0x39, 0x64, 0xe4, 0x25, 0x64, 0x64,
+	0x1e, 0x32, 0xf2, 0x1a, 0x32, 0xf2, 0x16, 0x32, 0x6d, 0x1d, 0x32, 0xf2, 0xb8, 0x62, 0xda, 0x7c,
+	0xc5, 0xb4, 0xc5, 0x8a, 0x69, 0xed, 0x5f, 0xf1, 0x5b, 0x3b, 0xf9, 0x08, 0x00, 0x00, 0xff, 0xff,
+	0xe9, 0x5d, 0x24, 0xa4, 0x84, 0x02, 0x00, 0x00,
 }

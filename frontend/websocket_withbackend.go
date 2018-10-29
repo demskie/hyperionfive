@@ -4,13 +4,14 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net"
-	"time"
+
+	"github.com/demskie/hyperionfive/frontendmessage"
 
 	"github.com/demskie/hyperionfive/backend"
 	"github.com/gorilla/websocket"
 )
 
-func (s *Service) receiveBackendSync(conn *websocket.Conn) error {
+func (s *service) receiveBackendSync(conn *websocket.Conn) error {
 	remoteIP, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
 	msgType, connReader, err := conn.NextReader()
@@ -25,8 +26,39 @@ func (s *Service) receiveBackendSync(conn *websocket.Conn) error {
 		return err
 	}
 
+	var mutated bool
 	s.RLock()
-	outMsg := backend.FromBackendToFrontend{
+	val, exists := s.allServers[inMsg.GalaxyID]
+	if !exists {
+		mutated = true
+	} else if val.Hostname != inMsg.Hostname ||
+		val.GlobalX != inMsg.GlobalX ||
+		val.GlobalY != inMsg.GlobalY {
+		mutated = true
+	}
+	// BUG: does not account for removal of galaxies
+	s.RUnlock()
+
+	s.Lock()
+	if mutated {
+		s.version++
+	}
+	s.allServers[inMsg.GalaxyID] = &frontendmessage.Backend{
+		Hostname:       inMsg.Hostname,
+		GlobalX:        inMsg.GlobalX,
+		GlobalY:        inMsg.GlobalY,
+		PlayerStrength: inMsg.PlayerStrength,
+	}
+	s.dynamicUniverse.Reset()
+	s.dynamicUniverse.Marshal(&frontendmessage.ServerInfo{
+		InstanceName: s.instanceName,
+		Version:      s.version,
+		Servers:      s.allServers,
+	})
+	s.Unlock()
+
+	s.RLock()
+	outMsg := backend.ToBackendFromFrontend{
 		PlayersToSpawn: make(map[string]int32, len(s.playersToSpawn)),
 	}
 	for k, v := range s.playersToSpawn {
@@ -40,13 +72,11 @@ func (s *Service) receiveBackendSync(conn *websocket.Conn) error {
 	}
 	defer connWriter.Close()
 
-	conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	err = gob.NewEncoder(connWriter).Encode(&outMsg)
 	if err != nil {
 		return err
 	}
 	connWriter.Close()
-	conn.SetWriteDeadline(time.Time{})
 
 	return nil
 }

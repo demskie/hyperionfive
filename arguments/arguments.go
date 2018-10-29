@@ -3,22 +3,27 @@ package arguments
 import (
 	"flag"
 	"runtime"
+	"strconv"
 
 	"github.com/demskie/logging"
 )
 
 // Args ...
 type Args struct {
-	InputFile      string
-	OutputFile     string
-	GoogleAudience string
-	AuthPassword   string
-	StaticFrontend string
-	LocalInterface string
-	LocalAddress   string
-	DebugModeBool  bool
-	NumberOfCores  int
-	Mode           string
+	InputFile       string
+	OutputFile      string
+	GoogleAudience  string
+	AuthPassword    string
+	StaticFrontend  string
+	LocalInterface  string
+	LocalAddress    string
+	DebugModeBool   bool
+	NumberOfCores   int
+	Mode            string
+	BackendHostname string
+	BackendGalaxyID int32
+	BackendGlobalX  int64
+	BackendGlobalY  int64
 }
 
 // Get ...
@@ -35,6 +40,11 @@ func Get(log *logging.Logger) (args *Args) {
 		singleThreadedBoolPtr = flag.Bool("singlethreaded", false, "force singlethreaded behavior")
 		enableFrontendBoolPtr = flag.Bool("frontend", false, "enable frontend mode")
 		enableBackendBoolPtr  = flag.Bool("backend", false, "enable backend mode")
+
+		backendHostnamePtr = flag.String("backendhostname", "", "specify backend hostname")
+		backendGalaxyIDPtr = flag.String("backendgalaxyid", "", "specify backend galaxyID")
+		backendGlobalXPtr  = flag.Int64("globalx", 0, "specify backend globalX")
+		backendGlobalYPtr  = flag.Int64("globaly", 0, "specify backend globalY")
 	)
 
 	flag.Parse()
@@ -88,6 +98,20 @@ func Get(log *logging.Logger) (args *Args) {
 		args.Mode = "frontend"
 	} else if *enableBackendBoolPtr {
 		args.Mode = "backend"
+	}
+
+	if args.Mode == "backend" {
+		args.BackendHostname = *backendHostnamePtr
+
+		val, err := strconv.ParseInt(*backendGalaxyIDPtr, 10, 64)
+		if log.CheckError(err, "invalid/missing int32 galaxyNameID") {
+			log.SuddenExit()
+		}
+		args.BackendGalaxyID = int32(val)
+
+		args.BackendGlobalX = *backendGlobalXPtr
+
+		args.BackendGlobalY = *backendGlobalYPtr
 	}
 
 	return args

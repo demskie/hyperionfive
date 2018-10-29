@@ -14,13 +14,13 @@ type toFrontendMessage struct {
 	OtherFrontends map[string]time.Time
 }
 
-func (s *Service) receiveFrontendSync(conn *websocket.Conn) error {
+func (s *service) receiveFrontendSync(conn *websocket.Conn) error {
 	const fName = "(frontendToFrontend)"
 
 	return nil
 }
 
-func (s *Service) startFrontendSync(conn *websocket.Conn) error {
+func (s *service) startFrontendSync(conn *websocket.Conn) error {
 	const fName = "(frontendToFrontend)"
 
 	return nil
