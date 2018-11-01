@@ -19,10 +19,13 @@ import (
 	"github.com/demskie/hyperionfive/backend/subdivision"
 	"github.com/demskie/hyperionfive/backendmessage"
 	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/hyperionfive/frontendmessage"
 	"github.com/demskie/hyperionfive/intutil"
 	"github.com/demskie/hyperionfive/netutil"
 	"github.com/demskie/logging"
+	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
 
 	// runtimepprof "runtime/pprof"
 	_ "net/http/pprof"
@@ -96,9 +99,14 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		}
 	}()
 
-	// setup HTTP and HTTPS server
-	muxSecure := http.NewServeMux()
-	muxSecure.HandleFunc("/static-galaxy", func(w http.ResponseWriter, r *http.Request) {
+	staticGalaxyHandler := func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		origin := r.Header.Get("Origin")
+		if origin != "http://localhost:3000" {
+			origin = "https://hyperion5.com"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Content-Type", "application/octet-stream")
 		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
 		err := s.fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
 		if s.log.CheckError(err, fName, httpRemoteIP) {
@@ -108,18 +116,32 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		defer s.fwall.RemoveSessionFromHistory(httpRemoteIP, fName)
 		_, err = s.googleAuth.HandleRestful(fName, r)
 		if s.log.CheckError(err, fName, httpRemoteIP) {
-			return
+			b, err := proto.Marshal(
+				&frontendmessage.ServerInfo{
+					ErrorMessage: err.Error(),
+				},
+			)
+			if s.log.CheckError(err, fName, "unable to marshal error message") {
+				return
+			}
+			w.Write(b)
+		} else {
+			s.RLock()
+			b := s.virtualGalaxy.GetStaticGalaxyBytes()
+			copiedBytes := make([]byte, len(b))
+			copy(copiedBytes, b)
+			s.RUnlock()
+			_, err = w.Write(copiedBytes)
+			s.log.CheckError(err, fName, "failed to completely write response")
 		}
-		w.Header().Set("Content-Type", "application/octet-stream")
-		s.RLock()
-		b := s.virtualGalaxy.GetStaticGalaxyBytes()
-		copiedBytes := make([]byte, len(b))
-		copy(copiedBytes, b)
-		s.RUnlock()
-		_, err = w.Write(copiedBytes)
-		s.log.CheckError(err, fName, "failed to completely write response")
-	})
-	muxSecure.HandleFunc("/websocket", func(w http.ResponseWriter, r *http.Request) {
+	}
+
+	websocketHandler := func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		origin := r.Header.Get("Origin")
+		if origin != "http://localhost:3000" {
+			origin = "https://hyperion5.com"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
 		err := s.fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
 		if s.log.CheckError(err, fName, httpRemoteIP) {
@@ -128,9 +150,13 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		s.fwall.AddSessionToHistory(httpRemoteIP, fName)
 		defer s.fwall.RemoveSessionFromHistory(httpRemoteIP, fName)
 		upgrader := websocket.Upgrader{
-			HandshakeTimeout:  15 * time.Second,
-			ReadBufferSize:    0,
-			WriteBufferSize:   0,
+			HandshakeTimeout: 15 * time.Second,
+			ReadBufferSize:   0,
+			WriteBufferSize:  0,
+			Subprotocols: []string{
+				"client-to-backend",
+			},
+			CheckOrigin:       func(r *http.Request) bool { return true },
 			EnableCompression: false,
 		}
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -149,17 +175,18 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		default:
 			s.log.Info(fName, "received invalid Subprotocol:", conn.Subprotocol())
 		}
-	})
+	}
 
-	// tying the following http parameters to the handlers associated with 'muxSecure'
+	router := httprouter.New()
+	router.POST("/staticgalaxy", staticGalaxyHandler)
+	router.GET("/websocket", websocketHandler)
+
 	srvSecure := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
 		Addr:         fmt.Sprintf("[%v]:443", netutil.GetLocalAddress(s.args, s.log)),
-		Handler:      muxSecure,
-
-		// defining various security parameters used to specify accepted ciphersuites
+		Handler:      router,
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -169,12 +196,9 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 		},
-
-		// allow HTTP2 by not specifying proto handlers
 		TLSNextProto: nil,
 	}
 
-	// serve HTTPS requests with config defined above
 	go func() {
 		exPath, err := os.Executable()
 		if s.log.CheckError(err, fName) {

@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/demskie/hyperionfive/auth"
-	"github.com/demskie/hyperionfive/frontendmessage"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
 
 	"github.com/demskie/hyperionfive/arguments"
+	"github.com/demskie/hyperionfive/auth"
 	"github.com/demskie/hyperionfive/firewall"
+	"github.com/demskie/hyperionfive/frontendmessage"
 	"github.com/demskie/hyperionfive/netutil"
 	"github.com/demskie/logging"
 )
@@ -32,6 +33,7 @@ type service struct {
 	dynamicUniverse *proto.Buffer
 	instanceName    string
 	version         int32
+	precision       int32
 	allServers      map[int32]*frontendmessage.Backend
 	playersToSpawn  map[string]int32
 }
@@ -45,8 +47,9 @@ func newService(ar *arguments.Args, lg *logging.Logger) *service {
 		fwall:           fw,
 		googleAuth:      ga,
 		dynamicUniverse: &proto.Buffer{},
-		instanceName:    "",
-		version:         -1,
+		instanceName:    "alpha",
+		version:         0,
+		precision:       256,
 		allServers:      make(map[int32]*frontendmessage.Backend, 0),
 		playersToSpawn:  make(map[string]int32, 0),
 	}
@@ -59,13 +62,7 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 	s := newService(arguments, logger)
 	s.log.Info(fName, "starting")
 
-	// setup httpMux to avoid leaking default handlers
-	muxSecure := http.NewServeMux()
-	muxSecure.HandleFunc("/dynamic-universe", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "custom error #100929", http.StatusMethodNotAllowed)
-			return
-		}
+	dynamicUniverseHandler := func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		origin := r.Header.Get("Origin")
 		if origin != "http://localhost:3000" {
 			origin = "https://hyperion5.com"
@@ -100,8 +97,9 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 			_, err = w.Write(copiedBytes)
 			s.log.CheckError(err, fName, "failed to completely write response")
 		}
-	})
-	muxSecure.HandleFunc("/websocket", func(w http.ResponseWriter, r *http.Request) {
+	}
+
+	websocketHandler := func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		httpRemoteIP, _, _ := net.SplitHostPort(r.RemoteAddr)
 		err := s.fwall.CheckFirewall(firewall.SESSIONLIMIT, fName, httpRemoteIP)
 		if s.log.CheckError(err, fName, httpRemoteIP) {
@@ -110,14 +108,14 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		s.fwall.AddSessionToHistory(httpRemoteIP, fName)
 		defer s.fwall.RemoveSessionFromHistory(httpRemoteIP, fName)
 		upgrader := websocket.Upgrader{
-			HandshakeTimeout:  15 * time.Second,
-			ReadBufferSize:    0,
-			WriteBufferSize:   0,
-			EnableCompression: false,
+			HandshakeTimeout: 15 * time.Second,
+			ReadBufferSize:   0,
+			WriteBufferSize:  0,
 			Subprotocols: []string{
 				"backend-to-frontend",
 				"frontend-to-frontend",
 			},
+			EnableCompression: false,
 		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if s.log.CheckError(err, fName, "upgrade error") {
@@ -147,27 +145,19 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 		default:
 			s.log.Info(fName, fmt.Sprintf("received invalid Subprotocol: '%v'", conn.Subprotocol()))
 		}
-	})
-
-	// to enable perfect forward secrecy it's necessary to add 'Strict-Transport-Security'
-	// and since we are not writing out own FileServer, we'll need to add Headers this way
-	addSecurityHeaders := func(h http.Handler) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-			h.ServeHTTP(w, r)
-		}
 	}
-	directoryObject := http.Dir(filepath.Dir(`C:\Users\alexd\OneDrive\react-hyperion5-game\build\`))
-	muxSecure.Handle("/", addSecurityHeaders(http.FileServer(directoryObject)))
 
-	// tying the following http parameters to the handlers associated with 'muxSecure'
-	srvSecure := &http.Server{
+	router := httprouter.New()
+	router.POST("/dynamic-universe", dynamicUniverseHandler)
+	router.GET("/websocket", websocketHandler)
+	router.NotFound = http.FileServer(http.Dir(filepath.Dir(`C:\Users\alexd\OneDrive\react-hyperion5-game\build\`)))
+
+	secureServer := &http.Server{
+		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  30 * time.Second,
-		Addr:         netutil.GetLocalAddress(s.args, s.log) + ":443",
-		Handler:      muxSecure,
-
-		// defining various security parameters used to specify accepted ciphersuites
+		Addr:         fmt.Sprintf("[%v]:443", netutil.GetLocalAddress(s.args, s.log)),
+		Handler:      router,
 		TLSConfig: &tls.Config{
 			MinVersion:               tls.VersionTLS12,
 			CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -181,19 +171,16 @@ func Start(arguments *arguments.Args, logger *logging.Logger) {
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			},
 		},
-
-		// enables HTTP2
 		TLSNextProto: nil,
 	}
 
-	// serve HTTPS requests with config defined above
 	go func() {
 		exPath, err := os.Executable()
 		if s.log.CheckError(err, fName) {
 			s.log.SuddenExit()
 		}
 		dir := filepath.Dir(exPath)
-		errServeTLS := srvSecure.ListenAndServeTLS(
+		errServeTLS := secureServer.ListenAndServeTLS(
 			filepath.Join(dir, "server.rsa.crt"),
 			filepath.Join(dir, "server.rsa.key"))
 		if s.log.CheckError(errServeTLS, fName) {

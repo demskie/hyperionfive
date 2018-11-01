@@ -53,6 +53,7 @@ func (s *service) receiveBackendSync(conn *websocket.Conn) error {
 	s.dynamicUniverse.Marshal(&frontendmessage.ServerInfo{
 		InstanceName: s.instanceName,
 		Version:      s.version,
+		Precision:    s.precision,
 		Servers:      s.allServers,
 	})
 	s.Unlock()
